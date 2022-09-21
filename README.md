@@ -30,3 +30,26 @@ This repository is a non-registered Julia package.
     using ACOPFGenerator
     ```
 
+## Quick start
+
+```julia
+using Random, PGLib, PowerModels
+using ACOPFGenerator
+PowerModels.silence()
+
+using StableRNGs
+rng = StableRNG(42)
+
+data = make_basic_network(pglib("3_lmbd"))
+load_sampler = SimpleLoadScaling(data, 0.8, 1.2)
+opf_sampler  = SimpleOPFSampler(data, load_sampler)
+
+# Generate a new instance. First we 
+new_data = ACOPFGenerator.sample(rng, opf_sampler)
+
+data["load"]["1"]["pd"]
+1.1
+
+new_data["load"]["1"]["pd"]
+1.135426539581486
+```
