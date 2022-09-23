@@ -1,3 +1,5 @@
+Copyright Georgia Tech 2022
+
 # ACOPFGenerator
 Instance generator for ACOPF problem
 
