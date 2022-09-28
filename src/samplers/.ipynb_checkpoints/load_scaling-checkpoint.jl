@@ -37,13 +37,12 @@ struct SimpleLoadScaling <: AbstractLoadSampler
     function SimpleLoadScaling(pd::Vector{Float64}, qd::Vector{Float64}, a::Vector{Tuple{Float64, Float64}})
         L = length(pd)
         length(qd) == L || error("pd and qd must have same size")
+        length(a) == L || error("'a' must be the same size as pd and qd")
+        a_l = hcat(collect.(a)...)[1, :]
+        a_u = hcat(collect.(a)...)[2, :]
 
-        a_mtx = hcat(collect.(a)...)
-        length(a_mtx[1, :]) == L || error("'a' must be the same size as pd and qd")
 
-        all(a_mtx[1, :] .<= a_mtx[2, :]) || error("for all tuples (l, u), l <= u.")
-
-        return new(a_mtx, copy(pd), copy(qd))
+        return new(hcat(a_l, a_u), copy(pd), copy(qd))
     end
     
 end
@@ -64,7 +63,7 @@ function SimpleLoadScaling(data::Dict, a::Vector{Tuple{Float64, Float64}})
     L = length(data["load"])
     pd = zeros(Float64, L)
     qd = zeros(Float64, L)
-    for i in 1:L 
+    for i in 1:L # vectorizable
         ldata = data["load"]["$i"]
         pd[i] = ldata["pd"]
         qd[i] = ldata["qd"]
@@ -80,17 +79,17 @@ function _sample_loads(rng, ls::SimpleLoadScaling)
     # scaling vector
     α = Vector{Float64}(undef, L)
     # distribution vector
-    # d_pd = Vector{Uniform{Float64}}(undef, L)
-    # d_qd = Vector{Uniform{Float64}}(undef, L)
+    d_pd = Vector{Uniform{Float64}}(undef, L)
+    d_qd = Vector{Uniform{Float64}}(undef, L)
       
     for i in 1:L
         dist = Uniform(l[i], u[i])
         α[i] = rand(rng, dist)
-        # d_pd[i] = dist*ls.pd_ref[i]
-        # d_qd[i] = dist*ls.qd_ref[i]
+        d_pd[i] = dist*ls.pd_ref[i]
+        d_qd[i] = dist*ls.qd_ref[i]
     end
     pd = ls.pd_ref .* α
     qd = ls.qd_ref .* α
 
-    return pd, qd#, d_pd, d_qd
+    return pd, qd, d_pd, d_qd
 end

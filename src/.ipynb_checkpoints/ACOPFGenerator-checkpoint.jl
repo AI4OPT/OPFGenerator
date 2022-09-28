@@ -30,9 +30,9 @@ end
 
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
-    pd, qd = _sample_loads(rng, opf_sampler.load_sampler)#, d_pd, d_qd can be added in
+    pd, qd, d_pd, d_qd = _sample_loads(rng, opf_sampler.load_sampler)
     _set_loads!(data, pd, qd)
-    return data#, d_pd, d_qd
+    return data, d_pd, d_qd
 end
 
 end # module
