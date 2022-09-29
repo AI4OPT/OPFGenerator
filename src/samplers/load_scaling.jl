@@ -18,7 +18,7 @@ where ``\\alpha_{i}``s are sampled i.i.d from \\sim U[l, u]``, and ``\\bar{p}^{d
     are the reference active and reactive demands.
 """
 struct SimpleLoadScaling <: AbstractLoadSampler
-    # d::Uniform{Float64} # Q about generalizing this feature, as well as having r take in only [0,1]
+    # d::Uniform{Float64}
     r::Matrix{Float64}
 
     # Reference active/reactive power demand
