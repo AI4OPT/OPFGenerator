@@ -24,8 +24,8 @@ include("utils.jl")
 include("samplers/load_scaling.jl")
 
 struct SimpleOPFSampler
-    data::Dict        # Original data dictionary
-    load_sampler::SimpleLoadScaling  # Sampler for load 
+    data::Dict
+    load_sampler::SimpleLoadScaling
 end
 
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
