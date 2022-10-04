@@ -22,27 +22,14 @@ abstract type AbstractLoadSampler end
 include("utils.jl")
 
 include("samplers/load_scaling.jl")
-
 include("samplers/scale_log_norm.jl")
 
-struct SimpleOPFSampler
+struct SimpleOPFSampler{LS}
     data::Dict
-    load_sampler::SimpleLoadScaling
-end
-
-struct LNOPFSampler
-    data::Dict
-    load_sampler::ScaleLogNorm
+    load_sampler::LS
 end
 
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
-    data = deepcopy(opf_sampler.data)
-    pd, qd = _sample_loads(rng, opf_sampler.load_sampler)
-    _set_loads!(data, pd, qd)
-    return data
-end
-
-function sample(rng::AbstractRNG, opf_sampler::LNOPFSampler)
     data = deepcopy(opf_sampler.data)
     pd, qd = _sample_loads(rng, opf_sampler.load_sampler)
     _set_loads!(data, pd, qd)
