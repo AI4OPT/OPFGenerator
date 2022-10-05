@@ -3,6 +3,8 @@ module ACOPFGenerator
 using Random
 using StableRNGs
 using Distributions
+using Ipopt
+using JuMP
 
 using CodecBzip2
 using CodecZlib
@@ -14,6 +16,7 @@ const PM = PowerModels
 export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
+export sample_solve
 
 abstract type AbstractOPFSampler end
 
@@ -38,6 +41,20 @@ function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     pd, qd = _sample_loads(rng, opf_sampler.load_sampler)
     _set_loads!(data, pd, qd)
     return data
+end
+
+"""
+    sample_solve(sampler::AbstractOPFSampler, rng::StableRNG)
+
+Adds noise to data in `sampler` based upon sampler Struct type and random seed `rng`.
+"""
+function sample_solve(rng::AbstractRNG, sampler::SimpleOPFSampler)
+    agmtd_data = sample(rng, sampler)
+    sol = solve_ac_opf(agmtd_data, Ipopt.Optimizer)
+    meta = Dict("network" => sampler.data["name"],
+            "seed" => rng,
+            "augment_method" => typeof(sampler.load_sampler))
+    return Dict("agmtd_data" => agmtd_data, "sol" => sol, "meta" => meta)
 end
 
 end # module
