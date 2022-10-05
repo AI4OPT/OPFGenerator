@@ -66,3 +66,23 @@ new_data_uniform["load"]["1"]["pd"]
 new_data_lognorm["load"]["1"]["pd"]
 1.208580250500669
 ```
+
+## Loadding and saving JSON files
+
+Use the `load_json` and `save_json` functions to load/save data to/from JSON files.
+Uncompressed (`.json`) and compressed (`.json.gz` and `.json.bz2`) are supported automatically.
+
+```julia
+using ACOPFGenerator
+
+# Load a dictionary from a JSON file
+d = load_json("my_json_file.json")
+d = load_json("my_json_file.json.gz")
+d = load_json("my_json_file.json.bz2")
+
+# Save a dictionary to JSON file
+save_json("my_new_jsonfile.json", d)
+save_json("my_pretty_jsonfile.json", d, indent=2)  # prettier formatting
+save_json("my_new_jsonfile.json.gz", d)
+save_json("my_new_jsonfile.json.bz2", d)
+```
