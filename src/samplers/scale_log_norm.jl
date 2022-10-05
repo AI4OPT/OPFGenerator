@@ -14,14 +14,14 @@ Load sampler that re-scales loads, then scales by an individual log normal noise
     \\alpha \\times \\eta_{i} \\times \\bar{q}^d_{i}
 \\end{lmatrix}
 ```
-where ``\\alpha is sampled from \\sim U[l, u]``, ``ηᵢ ~ LogNormal[-σᵢ²/2, σᵢ]``, 
+where ``\\alpha is sampled from \\sim U[l, u]``, ``ηᵢ ~ LogNormal[-σᵢ²/2, σᵢ]``,
     and ``\\bar{p}^d, \\bar{q}^d`` are the reference active and reactive demands.
 """
 struct ScaleLogNorm <: AbstractLoadSampler
-    # Upper and lower Uniform bounds
+    # Base load factor bounds
     d0::Uniform{Float64}
 
-    # LogNormal Distributions
+    # LogNormal distributions for per-load noise
     ds::Vector{LogNormal}  # TODO: use MvLogNormal with Diagonal Covariance instead
 
     # Reference active/reactive power demand

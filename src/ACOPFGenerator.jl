@@ -9,7 +9,8 @@ const PM = PowerModels
 using JSON
 using CodecBzip2
 
-export SimpleOPFSampler, SimpleLoadScaling, sample, LNOPFSampler, ScaleLogNorm
+export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
+export sample
 
 abstract type AbstractOPFSampler end
 
