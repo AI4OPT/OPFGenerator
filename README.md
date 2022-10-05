@@ -43,15 +43,26 @@ using StableRNGs
 rng = StableRNG(42)
 
 data = make_basic_network(pglib("3_lmbd"))
-load_sampler = SimpleLoadScaling(data, 0.8, 1.2)
-opf_sampler  = SimpleOPFSampler(data, load_sampler)
+
+# Uncorrelated, uniformly-distributed multiplicative noise
+ls_uniform = SimpleLoadScaling(data, 0.8, 1.2)
+# Correlated scaling + uncorrelated noise
+ls_lognorm = ScaleLogNorm(data, 0.8, 1.2, 0.01)
+
+# Each sampler may be used 
+opf_sampler_uniform  = SimpleOPFSampler(data, ls_uniform)
+opf_sampler_lognorm  = SimpleOPFSampler(data, ls_lognorm)
 
 # Generate a new instance. First we 
-new_data = ACOPFGenerator.sample(rng, opf_sampler)
+new_data_uniform = ACOPFGenerator.sample(rng, opf_sampler_uniform)
+new_data_lognorm = ACOPFGenerator.sample(rng, opf_sampler_lognorm)
 
 data["load"]["1"]["pd"]
 1.1
 
-new_data["load"]["1"]["pd"]
+new_data_uniform["load"]["1"]["pd"]
 1.135426539581486
+
+new_data_lognorm["load"]["1"]["pd"]
+1.208580250500669
 ```

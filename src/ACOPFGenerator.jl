@@ -9,7 +9,8 @@ const PM = PowerModels
 using JSON
 using CodecBzip2
 
-export SimpleOPFSampler, SimpleLoadScaling, sample
+export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
+export sample
 
 abstract type AbstractOPFSampler end
 
@@ -22,10 +23,11 @@ abstract type AbstractLoadSampler end
 include("utils.jl")
 
 include("samplers/load_scaling.jl")
+include("samplers/scale_log_norm.jl")
 
-struct SimpleOPFSampler
+struct SimpleOPFSampler{LS}
     data::Dict
-    load_sampler::SimpleLoadScaling
+    load_sampler::LS
 end
 
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
