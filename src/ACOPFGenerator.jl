@@ -4,11 +4,14 @@ using Random
 using StableRNGs
 using Distributions
 
+using CodecBzip2
+using CodecZlib
+using JSON
+
 using PowerModels
 const PM = PowerModels
-using JSON
-using CodecBzip2
 
+export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
 
