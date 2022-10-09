@@ -16,7 +16,7 @@ const PM = PowerModels
 export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
-export sample_solve
+export bundle_solve, range_save
 
 abstract type AbstractOPFSampler end
 
@@ -26,15 +26,15 @@ end
 
 abstract type AbstractLoadSampler end
 
-include("utils.jl")
-
-include("samplers/load_scaling.jl")
-include("samplers/scale_log_norm.jl")
-
 struct SimpleOPFSampler{LS}
     data::Dict
     load_sampler::LS
 end
+
+include("utils.jl")
+include("solve_save.jl")
+include("samplers/load_scaling.jl")
+include("samplers/scale_log_norm.jl")
 
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
@@ -43,18 +43,4 @@ function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     return data
 end
 
-"""
-    sample_solve(sampler::AbstractOPFSampler, rng::StableRNG)
-
-Adds noise to data in `sampler` based upon sampler Struct type and random seed `rng`.
-"""
-function sample_solve(rng::AbstractRNG, sampler::SimpleOPFSampler)
-    agmtd_data = sample(rng, sampler)
-    sol = solve_ac_opf(agmtd_data, Ipopt.Optimizer)
-    meta = Dict("network" => sampler.data["name"],
-            "seed" => rng,
-            "augment_method" => typeof(sampler.load_sampler))
-    return Dict("agmtd_data" => agmtd_data, "sol" => sol, "meta" => meta)
-end
-
-end # module
+end #module
