@@ -26,7 +26,9 @@ function range_save(iters::AbstractRange, sampler::SimpleOPFSampler, loc::Abstra
 
     for i in iters
         bundle = bundle_solve(i, sampler)
-        fn = bundle["meta"]["network"] * "_" * string(i) * ".json.gz"
+        name_long = bundle["meta"]["network"]
+        name_short = net_name[15:length(net_name)]
+        fn = name_short * "_" * string(i) * ".json.gz"
         save_path = loc * "/" * fn
         save_json(save_path, bundle)
     end 
