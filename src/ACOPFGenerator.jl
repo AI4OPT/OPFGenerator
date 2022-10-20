@@ -3,6 +3,8 @@ module ACOPFGenerator
 using Random
 using StableRNGs
 using Distributions
+using Ipopt
+using JuMP
 
 using CodecBzip2
 using CodecZlib
@@ -14,6 +16,7 @@ const PM = PowerModels
 export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
+export bundle_solve, range_save
 
 abstract type AbstractOPFSampler end
 
@@ -23,15 +26,15 @@ end
 
 abstract type AbstractLoadSampler end
 
-include("utils.jl")
-
-include("samplers/load_scaling.jl")
-include("samplers/scale_log_norm.jl")
-
 struct SimpleOPFSampler{LS}
     data::Dict
     load_sampler::LS
 end
+
+include("utils.jl")
+include("solve_save.jl")
+include("samplers/load_scaling.jl")
+include("samplers/scale_log_norm.jl")
 
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
