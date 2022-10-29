@@ -44,3 +44,4 @@ function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
 end
 
 end # module
+
