@@ -124,3 +124,31 @@ function build_acopf(data::Dict{String,Any}, optimizer)
 
     return model
 end
+
+"""
+    _extract_solution(model, data)
+
+Extract ACOPF solution from optimization model.
+The model must have been solved before.
+"""
+function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
+    # Pre-process data
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+    N = length(ref[:bus])
+    G = length(ref[:gen])
+    E = length(ref[:branch])
+
+    # Build the solution dictionary
+    res = Dict{String,Any}()
+    res["optimizer"] = JuMP.solver_name(model)
+    res["solve_time"] = JuMP.solve_time(model)
+    res["termination_status"] = JuMP.termination_status(model)
+    res["primal_status"] = JuMP.primal_status(model)
+    res["dual_status"] = JuMP.dual_status(model)
+
+    # TODO: extract primal solution
+
+    # TODO: extract dual solution
+
+    return res
+end
