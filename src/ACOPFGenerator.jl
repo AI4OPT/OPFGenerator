@@ -10,6 +10,7 @@ using JSON
 
 using PowerModels
 const PM = PowerModels
+using JuMP
 
 export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
@@ -39,5 +40,7 @@ function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     _set_loads!(data, pd, qd)
     return data
 end
+
+include("acopf.jl")
 
 end # module
