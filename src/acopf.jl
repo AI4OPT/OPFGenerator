@@ -40,7 +40,7 @@ function build_acopf(data::Dict{String,Any}, optimizer)
     JuMP.@variable(model, ref[:bus][i]["vmin"] <= vm[i in 1:N] <= ref[:bus][i]["vmax"], start=1.0)
     # Active and reactive dispatch
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
-    JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"] )
+    JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
     # Bi-directional branch flows
     JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
     JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= qf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
