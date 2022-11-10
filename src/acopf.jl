@@ -53,14 +53,14 @@ function build_acopf(data::Dict{String,Any}, optimizer)
 
     # Nodal power balance
     JuMP.@constraint(model, 
-        power_balance_active[i in 1:N],
+        kirchhoff_active[i in 1:N],
         sum(pf[a] for a in ref[:bus_arcs][i]) ==
         sum(pg[g] for g in ref[:bus_gens][i]) -
         sum(load["pd"] for load in bus_loads[i]) -
         sum(shunt["gs"] for shunt in bus_shunts[i])*vm[i]^2
     )
     JuMP.@constraint(model,
-        power_balance_reactive[i in 1:N],
+        kirchhoff_reactive[i in 1:N],
         sum(qf[a] for a in ref[:bus_arcs][i]) ==
         sum(qg[g] for g in ref[:bus_gens][i]) -
         sum(load["qd"] for load in bus_loads[i]) +
