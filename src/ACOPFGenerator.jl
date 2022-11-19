@@ -17,6 +17,7 @@ export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
 export bundle_solve, range_save
+export build_acopf, _extract_solution
 
 abstract type AbstractOPFSampler end
 
@@ -26,22 +27,25 @@ end
 
 abstract type AbstractLoadSampler end
 
+include("utils.jl")
+
+include("samplers/load_scaling.jl")
+include("samplers/scale_log_norm.jl")
+
 struct SimpleOPFSampler{LS}
     data::Dict
     load_sampler::LS
 end
 
-include("utils.jl")
 include("solve_save.jl")
-include("samplers/load_scaling.jl")
-include("samplers/scale_log_norm.jl")
-
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
     pd, qd = _sample_loads(rng, opf_sampler.load_sampler)
     _set_loads!(data, pd, qd)
     return data
 end
+
+include("acopf.jl")
 
 end # module
 
