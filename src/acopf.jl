@@ -137,64 +137,62 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
 
     # Build the solution dictionary
     res = Dict{String,Any}()
+    res["objective"] = JuMP.objective_value(model)
     res["optimizer"] = JuMP.solver_name(model)
     res["solve_time"] = JuMP.solve_time(model)
     res["termination_status"] = JuMP.termination_status(model)
     res["primal_status"] = JuMP.primal_status(model)
     res["dual_status"] = JuMP.dual_status(model)
+    res["lam_slack_bus"] = dual(model[:slack_bus])
 
-    # TODO: extract primal solution
-    res["bus"] = Dict(
-                    "$bus" => Dict(
-                        "vm" => value(model[:vm][bus]),
-                        "va" => value(model[:va][bus])
-                        )
-                    for (bus, load) in ref[:bus_loads] if load != []
-                    )
-    res["branch"] = Dict(
-                    "$l" => Dict(
-                        "pf" => -value(model[:pf][(l,i,j)]),
-                        "pt" => value(model[:pf][(l,i,j)]),
-                        "qf" => value(model[:qf][(l,j,i)]),
-                        "qt" => -value(model[:qf][(l,j,i)])
-                        )
-                    for (l, i, j) in ref[:arcs]
-                    )
-    res["gen"] = Dict(
-                    "$gen" => Dict(
-                        "pg" => value(model[:pg][gen]),
-                        "qg" => value(model[:qg][gen])
-                        )
-                    for (gen, meta) in ref[:gen] if meta != []
-                    )
-    
-    # # TODO: extract dual solution
+    ### populate branches, gens, buses ###
 
-    res["dual"] = Dict{String,Any}()
-    lam = res["dual"]
+    res["bus"] = Dict{String,Any}()
+    res["branch"] = Dict{String,Any}()
+    res["gen"] = Dict{String,Any}()
 
-    lam["power_balance"] = Dict(
-                    "$bus" => Dict(
-                        "active" => dual(model[:kirchhoff_active][bus]),
-                        "reactive" => dual(model[:kirchhoff_reactive][bus])
-                        )
-                    for (bus, load) in ref[:bus_loads] if load != []
-                    )
+    for bus in 1:N
+        if ref[:bus_loads][bus] != []
+            res["bus"]["$bus"] = Dict(
+                "vm" => value(model[:vm][bus]),
+                "va" => value(model[:va][bus]),
+                # dual vars
+                "lam_pl" => dual(model[:kirchhoff_active][bus]),
+                "lam_ql" => dual(model[:kirchhoff_reactive][bus]),
+                "lam_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
+                "lam_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
+            )
+        end 
+    end
+
+    for b in 1:E 
+        res["branch"]["$b"] = Dict(
+            "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+            "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+            "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+            "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+            # dual vars
+            "lam_th_lim_to" => dual(model[:thermal_limit_to][b]),
+            "lam_th_lim_fr" => dual(model[:thermal_limit_fr][b]),
+            "lam_v_diff" => dual(model[:voltage_difference_limit][b]),
+            "lam_ohm_p_fr" => dual(model[:ohm_active_fr][b]),
+            "lam_ohm_p_to" => dual(model[:ohm_active_to][b]),
+            "lam_ohm_q_fr" => dual(model[:ohm_reactive_fr][b]),
+            "lam_ohm_q_to" => dual(model[:ohm_reactive_to][b])
+        )   
+    end 
     
-    lam["physics"] = Dict(
-                "$l" => Dict(
-                    "th_lim_to" => dual(model[:thermal_limit_to][l]),
-                    "th_lim_fr" => dual(model[:thermal_limit_fr][l]),
-                    "v_diff" => dual(model[:voltage_difference_limit][l]),
-                    "ohm_act_fr" => dual(model[:ohm_active_fr][l]),
-                    "ohm_act_to" => dual(model[:ohm_active_to][l]),
-                    "ohm_re_fr" => dual(model[:ohm_reactive_fr][l]),
-                    "ohm_re_to" => dual(model[:ohm_reactive_to][l])
-                    )
-                for (l, i, j) in ref[:arcs]
-                )  
-    
-    lam["slack_bus"] = dual(model[:slack_bus])
+    for g in 1:G
+        res["gen"]["$g"] = Dict(
+            "pg" => value(model[:pg][g]),
+            "qg" => value(model[:qg][g]),
+            # dual vars
+            "lam_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
+            "lam_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
+            "lam_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
+            "lam_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
+        )
+    end 
     
     return res
 end
