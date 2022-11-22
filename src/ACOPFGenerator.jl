@@ -3,6 +3,8 @@ module ACOPFGenerator
 using Random
 using StableRNGs
 using Distributions
+using Ipopt
+using JuMP
 
 using CodecBzip2
 using CodecZlib
@@ -10,11 +12,12 @@ using JSON
 
 using PowerModels
 const PM = PowerModels
-using JuMP
 
 export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
+export bundle_solve, range_save
+export build_acopf, _extract_solution
 
 abstract type AbstractOPFSampler end
 
@@ -34,6 +37,7 @@ struct SimpleOPFSampler{LS}
     load_sampler::LS
 end
 
+include("solve_save.jl")
 function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
     pd, qd = _sample_loads(rng, opf_sampler.load_sampler)
@@ -44,3 +48,4 @@ end
 include("acopf.jl")
 
 end # module
+
