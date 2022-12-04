@@ -160,10 +160,10 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
                 "vm" => value(model[:vm][bus]),
                 "va" => value(model[:va][bus]),
                 # dual vars
-                "lam_pl" => dual(model[:kirchhoff_active][bus]),
-                "lam_ql" => dual(model[:kirchhoff_reactive][bus]),
-                "lam_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
-                "lam_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
+                "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
+                "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
+                "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
+                "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
             )
         end 
     end
@@ -175,13 +175,13 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
             "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
             "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
             # dual vars
-            "lam_th_lim_to" => dual(model[:thermal_limit_to][b]),
-            "lam_th_lim_fr" => dual(model[:thermal_limit_fr][b]),
-            "lam_v_diff" => dual(model[:voltage_difference_limit][b]),
-            "lam_ohm_p_fr" => dual(model[:ohm_active_fr][b]),
-            "lam_ohm_p_to" => dual(model[:ohm_active_to][b]),
-            "lam_ohm_q_fr" => dual(model[:ohm_reactive_fr][b]),
-            "lam_ohm_q_to" => dual(model[:ohm_reactive_to][b])
+            "mu_sm_to" => dual(model[:thermal_limit_to][b]),
+            "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
+            "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
+            "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
+            "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
+            "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
+            "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
         )   
     end 
     
@@ -190,10 +190,10 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
             "pg" => value(model[:pg][g]),
             "qg" => value(model[:qg][g]),
             # dual vars
-            "lam_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
-            "lam_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
-            "lam_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
-            "lam_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
+            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
+            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
+            "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
+            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
         )
     end 
     
