@@ -140,15 +140,64 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
 
     # Build the solution dictionary
     res = Dict{String,Any}()
+    res["objective"] = JuMP.objective_value(model)
+    res["objective_lb"] = -Inf
     res["optimizer"] = JuMP.solver_name(model)
     res["solve_time"] = JuMP.solve_time(model)
     res["termination_status"] = JuMP.termination_status(model)
     res["primal_status"] = JuMP.primal_status(model)
     res["dual_status"] = JuMP.dual_status(model)
+    res["solution"] = sol = Dict{String,Any}()
 
-    # TODO: extract primal solution
+    sol["per_unit"] = get(data, "per_unit", false)
+    sol["baseMVA"]  = get(data, "baseMVA", 100.0)
 
-    # TODO: extract dual solution
+    ### populate branches, gens, buses ###
 
+    sol["bus"] = Dict{String,Any}()
+    sol["branch"] = Dict{String,Any}()
+    sol["gen"] = Dict{String,Any}()
+
+    for bus in 1:N
+        sol["bus"]["$bus"] = Dict(
+            "vm" => value(model[:vm][bus]),
+            "va" => value(model[:va][bus]),
+            # dual vars
+            "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
+            "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
+            "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
+            "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
+        )
+    end
+
+    for b in 1:E 
+        sol["branch"]["$b"] = Dict(
+            "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+            "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+            "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+            "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+            # dual vars
+            "mu_sm_to" => dual(model[:thermal_limit_to][b]),
+            "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
+            "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
+            "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
+            "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
+            "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
+            "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
+        )
+    end 
+    
+    for g in 1:G
+        sol["gen"]["$g"] = Dict(
+            "pg" => value(model[:pg][g]),
+            "qg" => value(model[:qg][g]),
+            # dual vars
+            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
+            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
+            "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
+            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
+        )
+    end 
+    
     return res
 end
