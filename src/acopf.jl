@@ -184,7 +184,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
             "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
             "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
             "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
-        )   
+        )
     end 
     
     for g in 1:G
