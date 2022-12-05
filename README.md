@@ -3,6 +3,11 @@ Copyright Georgia Tech 2022
 # ACOPFGenerator
 Instance generator for ACOPF problem
 
+- [ACOPFGenerator](#acopfgenerator)
+  - [Installation instructions](#installation-instructions)
+  - [Quick start](#quick-start)
+  - [Loading and saving JSON files](#loading-and-saving-json-files)
+
 ## Installation instructions
 
 This repository is a non-registered Julia package.
@@ -67,7 +72,7 @@ new_data_lognorm["load"]["1"]["pd"]
 1.208580250500669
 ```
 
-## Loadding and saving JSON files
+## Loading and saving JSON files
 
 Use the `load_json` and `save_json` functions to load/save data to/from JSON files.
 Uncompressed (`.json`) and compressed (`.json.gz` and `.json.bz2`) are supported automatically.
