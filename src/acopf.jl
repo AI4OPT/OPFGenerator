@@ -141,35 +141,37 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
     # Build the solution dictionary
     res = Dict{String,Any}()
     res["objective"] = JuMP.objective_value(model)
+    res["objective_lb"] = -Inf
     res["optimizer"] = JuMP.solver_name(model)
     res["solve_time"] = JuMP.solve_time(model)
     res["termination_status"] = JuMP.termination_status(model)
     res["primal_status"] = JuMP.primal_status(model)
     res["dual_status"] = JuMP.dual_status(model)
-    res["lam_slack_bus"] = dual(model[:slack_bus])
+    res["solution"] = sol = Dict{String,Any}()
+
+    sol["per_unit"] = get(data, "per_unit", false)
+    sol["baseMVA"]  = get(data, "baseMVA", 100.0)
 
     ### populate branches, gens, buses ###
 
-    res["bus"] = Dict{String,Any}()
-    res["branch"] = Dict{String,Any}()
-    res["gen"] = Dict{String,Any}()
+    sol["bus"] = Dict{String,Any}()
+    sol["branch"] = Dict{String,Any}()
+    sol["gen"] = Dict{String,Any}()
 
     for bus in 1:N
-        if ref[:bus_loads][bus] != []
-            res["bus"]["$bus"] = Dict(
-                "vm" => value(model[:vm][bus]),
-                "va" => value(model[:va][bus]),
-                # dual vars
-                "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
-                "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
-                "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
-                "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
-            )
-        end 
+        sol["bus"]["$bus"] = Dict(
+            "vm" => value(model[:vm][bus]),
+            "va" => value(model[:va][bus]),
+            # dual vars
+            "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
+            "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
+            "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
+            "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
+        )
     end
 
     for b in 1:E 
-        res["branch"]["$b"] = Dict(
+        sol["branch"]["$b"] = Dict(
             "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
             "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
             "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
@@ -186,7 +188,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
     end 
     
     for g in 1:G
-        res["gen"]["$g"] = Dict(
+        sol["gen"]["$g"] = Dict(
             "pg" => value(model[:pg][g]),
             "qg" => value(model[:qg][g]),
             # dual vars
