@@ -16,17 +16,16 @@ export load_json, save_json
 export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
 export sample
 
+include("utils.jl")
+
+# Load samplers
+include("load/load.jl")
+
 abstract type AbstractOPFSampler end
 
 function sample(::AbstractRNG, ::AbstractOPFSampler)
     error("`sample` function not implemented for $(typeof(s)).")
 end
-
-abstract type AbstractLoadSampler end
-
-include("utils.jl")
-
-include("samplers/load.jl")
 
 struct SimpleOPFSampler{LS}
     data::Dict
