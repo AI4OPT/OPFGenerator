@@ -50,29 +50,36 @@ PowerModels.silence()
 using StableRNGs
 rng = StableRNG(42)
 
-data = make_basic_network(pglib("3_lmbd"))
+old_data = make_basic_network(pglib("3_lmbd"))
 
-# Uncorrelated, uniformly-distributed multiplicative noise
-ls_uniform = SimpleLoadScaling(data, 0.8, 1.2)
-# Correlated scaling + uncorrelated noise
-ls_lognorm = ScaleLogNorm(data, 0.8, 1.2, 0.01)
+# Load scaler using global scaling + uncorrelated LogNormal noise
+load_scaler = LoadScaler(
+    old_data,
+    Dict(
+        "noise_type" => "ScaledLogNormal",
+        "l" => 0.8,
+        "u" => 1.2,
+        "sigma" => 0.05,        
+    )
+)
+opf_sampler  = SimpleOPFSampler(old_data, load_scaler)
 
-# Each sampler may be used 
-opf_sampler_uniform  = SimpleOPFSampler(data, ls_uniform)
-opf_sampler_lognorm  = SimpleOPFSampler(data, ls_lognorm)
+# Generate a new instance
+new_data = ACOPFGenerator.sample(rng, opf_sampler)
 
-# Generate a new instance. First we 
-new_data_uniform = ACOPFGenerator.sample(rng, opf_sampler_uniform)
-new_data_lognorm = ACOPFGenerator.sample(rng, opf_sampler_lognorm)
-
-data["load"]["1"]["pd"]
+old_data["load"]["1"]["pd"]  # old 
 1.1
 
-new_data_uniform["load"]["1"]["pd"]
-1.135426539581486
+new_data["load"]["1"]["pd"]  # new
+1.1596456429775048
+```
 
-new_data_lognorm["load"]["1"]["pd"]
-1.208580250500669
+To generate multiple instances, run the above code in a loop
+```julia
+dataset = [
+    ACOPFGenerator.sample(rng, opf_sampler)
+    for i in 1:100
+]
 ```
 
 ## Solution format
