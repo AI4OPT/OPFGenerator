@@ -13,21 +13,19 @@ const PM = PowerModels
 using JuMP
 
 export load_json, save_json
-export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
+export SimpleOPFSampler, LoadScaler, ScaledLogNormal
 export sample
+
+include("utils.jl")
+
+# Load samplers
+include("load/load.jl")
 
 abstract type AbstractOPFSampler end
 
 function sample(::AbstractRNG, ::AbstractOPFSampler)
     error("`sample` function not implemented for $(typeof(s)).")
 end
-
-abstract type AbstractLoadSampler end
-
-include("utils.jl")
-
-include("samplers/load_scaling.jl")
-include("samplers/scale_log_norm.jl")
 
 struct SimpleOPFSampler{LS}
     data::Dict
