@@ -26,6 +26,7 @@ abstract type AbstractLoadSampler end
 
 include("utils.jl")
 
+include("samplers/load.jl")
 
 struct SimpleOPFSampler{LS}
     data::Dict
