@@ -26,8 +26,6 @@ abstract type AbstractLoadSampler end
 
 include("utils.jl")
 
-include("samplers/load_scaling.jl")
-include("samplers/scale_log_norm.jl")
 
 struct SimpleOPFSampler{LS}
     data::Dict
