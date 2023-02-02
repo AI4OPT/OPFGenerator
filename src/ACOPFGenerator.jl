@@ -13,7 +13,7 @@ const PM = PowerModels
 using JuMP
 
 export load_json, save_json
-export SimpleOPFSampler, SimpleLoadScaling, ScaleLogNorm
+export SimpleOPFSampler, LoadScaler, ScaledLogNormal
 export sample
 
 include("utils.jl")
