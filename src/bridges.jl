@@ -1,5 +1,14 @@
 using Graphs
 
+"""
+    bridges(data)
+
+Identify whether each branch is a bridge.
+
+A branch is a bridge if removing it renders the network disconnected.
+Returns a dictionary `res::Dict{String,Bool}` such that
+    `res[br]` is true if branch `br` is a bridge, and `false` otherwise.
+"""
 function bridges(data::Dict)
     N::Int = length(data["bus"])
     E::Int = length(data["branch"])
