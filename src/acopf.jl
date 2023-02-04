@@ -19,7 +19,7 @@ function build_acopf(data::Dict{String,Any}, optimizer)
     # Grab some data
     N = length(ref[:bus])
     G = length(ref[:gen])
-    E = length(ref[:branch])
+    E = length(data["branch"])
     L = length(ref[:load])
     bus_loads = [
         [ref[:load][l] for l in ref[:bus_loads][i]]
@@ -77,6 +77,8 @@ function build_acopf(data::Dict{String,Any}, optimizer)
     model[:ohm_reactive_fr] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_to] = Vector{JuMP.ConstraintRef}(undef, E)
     for (i,branch) in ref[:branch]
+        data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
+
         f_idx = (i, branch["f_bus"], branch["t_bus"])
         t_idx = (i, branch["t_bus"], branch["f_bus"])
 
@@ -136,7 +138,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
     G = length(ref[:gen])
-    E = length(ref[:branch])
+    E = length(data["branch"])
 
     # Build the solution dictionary
     res = Dict{String,Any}()
@@ -170,21 +172,39 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
         )
     end
 
-    for b in 1:E 
-        sol["branch"]["$b"] = Dict(
-            "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
-            "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-            "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
-            "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-            # dual vars
-            "mu_sm_to" => dual(model[:thermal_limit_to][b]),
-            "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
-            "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
-            "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
-            "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
-            "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
-            "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
-        )
+    for b in 1:E
+        if data["branch"]["$b"]["br_status"] == 0
+            # branch is under outage --> we set everything to zero
+            sol["branch"]["$b"] = Dict(
+                "pf" => 0.0,
+                "pt" => 0.0,
+                "qf" => 0.0,
+                "qt" => 0.0,
+                # dual vars
+                "mu_sm_to" => 0.0,
+                "mu_sm_fr" => 0.0,
+                "mu_va_diff" => 0.0,
+                "lam_ohm_active_fr" => 0.0,
+                "lam_ohm_active_to" => 0.0,
+                "lam_ohm_reactive_fr" => 0.0,
+                "lam_ohm_reactive_to" => 0.0,
+            )
+        else
+            sol["branch"]["$b"] = Dict(
+                "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+                "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+                "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+                "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+                # dual vars
+                "mu_sm_to" => dual(model[:thermal_limit_to][b]),
+                "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
+                "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
+                "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
+                "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
+                "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
+                "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
+            )
+        end
     end 
     
     for g in 1:G
