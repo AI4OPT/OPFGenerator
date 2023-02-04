@@ -5,11 +5,18 @@ using Graphs
 
 Identify whether each branch is a bridge.
 
+The input data must be in basic format.
+
 A branch is a bridge if removing it renders the network disconnected.
 Returns a dictionary `res::Dict{String,Bool}` such that
     `res[br]` is true if branch `br` is a bridge, and `false` otherwise.
 """
 function bridges(data::Dict)
+    get(data, "basic_network", false) || error(
+        """Invalid data: network data must be in basic format.
+        Call `make_basic_network(data)` before calling this function"""
+    )
+
     N::Int = length(data["bus"])
     E::Int = length(data["branch"])
 
