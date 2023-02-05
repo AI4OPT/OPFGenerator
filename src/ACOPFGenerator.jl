@@ -12,9 +12,10 @@ using PowerModels
 const PM = PowerModels
 using JuMP
 
+import Random: rand
+
 export load_json, save_json
 export SimpleOPFSampler, LoadScaler, ScaledLogNormal
-export sample
 
 include("utils.jl")
 include("bridges.jl")
@@ -24,8 +25,8 @@ include("load/load.jl")
 
 abstract type AbstractOPFSampler end
 
-function sample(::AbstractRNG, ::AbstractOPFSampler)
-    error("`sample` function not implemented for $(typeof(s)).")
+function Random.rand(::AbstractRNG, ::AbstractOPFSampler)
+    error("`rand` function not implemented for $(typeof(s)).")
 end
 
 struct SimpleOPFSampler{LS}
@@ -33,9 +34,10 @@ struct SimpleOPFSampler{LS}
     load_sampler::LS
 end
 
-function sample(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
+function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
-    pd, qd = _sample_loads(rng, opf_sampler.load_sampler)
+    # Sample and update loads
+    pd, qd = rand(rng, opf_sampler.load_sampler)
     _set_loads!(data, pd, qd)
     return data
 end

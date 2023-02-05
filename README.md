@@ -65,7 +65,7 @@ load_scaler = LoadScaler(
 opf_sampler  = SimpleOPFSampler(old_data, load_scaler)
 
 # Generate a new instance
-new_data = ACOPFGenerator.sample(rng, opf_sampler)
+new_data = rand(rng, opf_sampler)
 
 old_data["load"]["1"]["pd"]  # old 
 1.1
@@ -77,7 +77,7 @@ new_data["load"]["1"]["pd"]  # new
 To generate multiple instances, run the above code in a loop
 ```julia
 dataset = [
-    ACOPFGenerator.sample(rng, opf_sampler)
+    ACOPFGenerator.rand(rng, opf_sampler)
     for i in 1:100
 ]
 ```
