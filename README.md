@@ -53,16 +53,15 @@ rng = StableRNG(42)
 old_data = make_basic_network(pglib("3_lmbd"))
 
 # Load scaler using global scaling + uncorrelated LogNormal noise
-load_scaler = LoadScaler(
-    old_data,
-    Dict(
+config = Dict(
+    "load" => Dict(
         "noise_type" => "ScaledLogNormal",
         "l" => 0.8,
         "u" => 1.2,
         "sigma" => 0.05,        
     )
 )
-opf_sampler  = SimpleOPFSampler(old_data, load_scaler)
+opf_sampler  = SimpleOPFSampler(old_data, config)
 
 # Generate a new instance
 new_data = rand(rng, opf_sampler)

@@ -34,6 +34,17 @@ struct SimpleOPFSampler{LS}
     load_sampler::LS
 end
 
+function SimpleOPFSampler(data::Dict, config::Dict)
+    data = deepcopy(data)
+
+    # Instantiate load sampler
+    load_sampler = LoadScaler(data, config["load"])
+    # Instantiate other stuff
+    # TODO
+
+    return SimpleOPFSampler(data, load_sampler)
+end
+
 function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
     # Sample and update loads
