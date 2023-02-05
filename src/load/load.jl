@@ -16,7 +16,7 @@ struct LoadScaler{D} <: AbstractLoadSampler
     qd_ref::Vector{Float64}
 end
 
-function _sample_loads(rng, ls::LoadScaler)
+function Random.rand(rng::AbstractRNG, ls::LoadScaler)
     ϵ = rand(rng, ls.d)  # sample multiplicative noise
 
     pd = ϵ .* ls.pd_ref
