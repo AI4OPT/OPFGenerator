@@ -43,21 +43,23 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     export_dir = config["export_dir"]
 
-    # Load reference data
-    data = make_basic_network(pglib(config["ref"]))
-    # Setup OPF sampler
-    opf_sampler = ACOPFGenerator.SimpleOPFSampler(data, config["sampler"])
-
     # Dummy run (for pre-compilation)
-    main(StableRNG(42), opf_sampler, config)
+    data0 = make_basic_network(pglib("14_ieee"))
+    opf_sampler0 = ACOPFGenerator.SimpleOPFSampler(data0, config["sampler"])
+    main(StableRNG(1), opf_sampler0, config)
 
+    # Load reference data and setup OPF sampler
+    data = make_basic_network(pglib(config["ref"]))
+    opf_sampler = ACOPFGenerator.SimpleOPFSampler(data, config["sampler"])
+    
     # Data generation
     @info "Generating ACOPF instances for case $ref\nSeed range: [$smin, $smax]"
     for s in smin:smax
         rng = StableRNG(s)
-        d = main(rng, opf_sampler, config)
+        tgen = @elapsed d = main(rng, opf_sampler, config)
         d["meta"]["seed"] = s
-        save_json(joinpath(export_dir, config["ref"] * "_s$s.json.gz"), d)
+        twrite = @elapsed save_json(joinpath(export_dir, config["ref"] * "_s$s.json.gz"), d)
+        @info "Seed $s" tgen twrite
     end
 
     return nothing
