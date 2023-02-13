@@ -133,6 +133,50 @@ Dual variables are stored together with each component's primal solution.
 |           | `"mu_qg_lb"` | Reactive power generation lower bound
 |           | `"mu_qg_ub"` | Reactive power generation upper bound
 
+## Datasets
+
+Each dataset is stored in an `.h5` file, organized as follows:
+```
+/
+|-- meta
+    |-- ref
+    |-- seed
+|-- input
+    |-- pd
+    |-- qd
+    |-- br_status
+|-- solution
+    |-- meta
+        |-- termination_status
+        |-- primal_status
+        |-- dual_status
+        |-- solve_time
+    |-- primal
+        |-- vm
+        |-- va
+        |-- pg
+        |-- qg
+        |-- pf
+        |-- qf
+        |-- pt
+        |-- qt
+    |-- dual
+        |-- mu_vm_lb
+        |-- mu_vm_ub
+        |-- lam_kircchoff_active
+        |-- lam_kircchoff_reactive
+        |-- mu_pg_lb
+        |-- mu_pg_ub
+        |-- mu_qg_lb
+        |-- mu_qg_ub
+        |-- mu_sm_fr
+        |-- mu_sm_to
+        |-- lam_ohm_active_fr
+        |-- lam_ohm_active_to
+        |-- lam_ohm_reactive_fr
+        |-- lam_ohm_reactive_to
+        |-- mu_va_diff
+```
 
 ## Loading and saving JSON files
 
