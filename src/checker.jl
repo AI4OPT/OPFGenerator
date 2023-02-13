@@ -19,6 +19,8 @@ function check_dataset(D, result_folder; S::Int=0)
         local d = load_json(joinpath(result_folder, ref * "_s$(s).json.gz"))
         data = d["data"]
         sol  = d["res"]["solution"]
+
+        @assert d["meta"]["seed"] == s
         
         # check inputs
         @assert D["input"]["pd"][:, j] == [d["data"]["load"]["$l"]["pd"] for l in 1:L] s
