@@ -1,3 +1,6 @@
+jobs/
+logs/
+slurm/
 *.log
 *.txt
 *.out
