@@ -19,6 +19,7 @@ export SimpleOPFSampler, LoadScaler, ScaledLogNormal
 
 include("utils.jl")
 include("bridges.jl")
+include("checker.jl")
 
 # Load samplers
 include("load/load.jl")
