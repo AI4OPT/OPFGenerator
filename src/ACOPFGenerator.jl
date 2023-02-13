@@ -10,6 +10,7 @@ using JSON
 
 using PowerModels
 const PM = PowerModels
+using PGLib
 using JuMP
 
 import Random: rand
@@ -20,6 +21,7 @@ export SimpleOPFSampler, LoadScaler, ScaledLogNormal
 include("utils.jl")
 include("bridges.jl")
 include("checker.jl")
+include("process.jl")
 
 # Load samplers
 include("load/load.jl")
