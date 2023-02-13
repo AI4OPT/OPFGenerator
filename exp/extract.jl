@@ -8,6 +8,14 @@ PowerModels.silence()
 using PGLib
 using ACOPFGenerator
 
+"""
+    initialize_res(data)
+
+Create an empty dataset for original instance `data`.
+
+This function outputs a dictionary `D` that is meant to be passed to
+    [`add_datapoint!`](@ref).
+"""
 function initialize_res(data)
     # initialize dataset
     D = Dict{String,Any}(
@@ -240,6 +248,17 @@ function save_h5(filename, D)
     return nothing
 end
 
+"""
+    convert_to_h5!(D)
+
+Convert dataset `D` from list-of-list to h5-compatible format.
+
+The input dictionary `D` should be the output of [`initialize_res`](@ref),
+    to which an arbitrary number of datapoints have been added.
+This function replaces non h5-compatible arrays (namely vectors of vectors)
+    with contiguous arrays (`Matrix`).
+The dataset `D` is modified in-place.
+"""
 function convert_to_h5!(D::Dict)
     # Input data
     dat  = D["input"]
@@ -366,6 +385,14 @@ function _merge_h5!(D, args...)
     return nothing
 end
 
+"""
+    _sort_h5!(D)
+
+Sort dataset `D` in increasing order of random seeds.
+
+The dictionary `D` should be in h5-compatible format.
+It is modified in-place.
+"""
 function _sort_h5!(D::Dict{String,Any})
     p = sortperm(D["meta"]["seed"])
 
