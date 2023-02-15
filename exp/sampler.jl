@@ -9,6 +9,7 @@ using PGLib
 using ACOPFGenerator
 using JuMP
 using Ipopt
+using MathOptSymbolicAD
 
 function main(rng, opf_sampler, config)
 
@@ -24,8 +25,8 @@ function main(rng, opf_sampler, config)
         "max_wall_time" => get(config["solver"], "max_wall_time", 3600),
     )
     acopf = ACOPFGenerator.build_acopf(data_, solver)
-    set_silent(acopf)
-    optimize!(acopf)
+    # Symbolic AD is most useful for large systems
+    optimize!(acopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
     # ... and export solution
     res = ACOPFGenerator._extract_solution(acopf, data_)
     d["res"] = res
