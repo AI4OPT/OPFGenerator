@@ -6,9 +6,14 @@ Instance generator for ACOPF problem
 - [ACOPFGenerator](#acopfgenerator)
   - [Installation instructions](#installation-instructions)
   - [Quick start](#quick-start)
+  - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
     - [Primal variables](#primal-variables)
     - [Dual variables](#dual-variables)
+  - [Datasets](#datasets)
+    - [Format](#format)
+    - [Loading from julia](#loading-from-julia)
+    - [Loading from python](#loading-from-python)
   - [Loading and saving JSON files](#loading-and-saving-json-files)
 
 ## Installation instructions
@@ -135,6 +140,8 @@ Dual variables are stored together with each component's primal solution.
 
 ## Datasets
 
+### Format
+
 Each dataset is stored in an `.h5` file, organized as follows:
 ```
 /
@@ -176,6 +183,71 @@ Each dataset is stored in an `.h5` file, organized as follows:
         |-- lam_ohm_reactive_fr
         |-- lam_ohm_reactive_to
         |-- mu_va_diff
+```
+
+### Loading from julia
+
+```julia
+using HDF5
+
+D = h5read("dataset.h5", "/")  # read all the dataset into a dictionary
+```
+
+### Loading from python
+
+The following code provides a starting point to load h5 datasets in python
+```py
+import numpy as np
+import h5py
+
+def add_h5_to_dict(h5_group, sub_dict, mask=None):
+    """Recursive function to fill a dictionary with data in an HDF5 view, with the same tree structure.
+
+    Args:
+        h5_group: an HDF5 file/view.
+        sub_dict: the dictionary to fill.
+        mask: a numpy array of indices indicating which instances (rows) to extract
+    """
+    for key, value in h5_group.items():
+        if isinstance(value, h5py.Dataset):
+            if key == "ref" or mask is None:
+                sub_dict[key] = value[()]
+            else:
+                sub_dict[key] = value[mask]
+        else:
+            sub_dict[key] = {}
+            add_h5_to_dict(h5_group[key], sub_dict[key], mask)
+
+
+def h5_to_dict(file_path, n_instance=None):
+    """Load solutions data from a HDF5 file, and construct a dict with the same structure. Only load data of at most
+    n_instance solved instances.
+
+    Args:
+        file_path: the path of the solution HDF5 file.
+        n_instance: the maximum number of instances/solutions to load.
+
+    Returns: data_dict: a dict with the same structure as the original HDF5 file, containing data of only solved
+    instances, with at most n_instance rows.
+    """
+    data_dict = {}
+    with h5py.File(file_path, "r") as f:
+        n_instance_total = len(f["input"]["pd"])
+        if n_instance is None:
+            n_instance = n_instance_total
+
+        sol_meta_data = f["solution"]["meta"]
+        termination_status = sol_meta_data["termination_status"][:]
+        primal_status = sol_meta_data["primal_status"][:]
+        dual_status = sol_meta_data["dual_status"][:]
+        solved_mask = np.where([termination_status[i] == b"LOCALLY_SOLVED" and
+                                primal_status[i] == b"FEASIBLE_POINT" and
+                                dual_status[i] == b"FEASIBLE_POINT"
+                                for i in range(n_instance_total)])[0][slice(n_instance)]
+
+        add_h5_to_dict(f, data_dict, solved_mask)
+
+    return data_dict
 ```
 
 ## Loading and saving JSON files
