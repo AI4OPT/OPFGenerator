@@ -1,4 +1,5 @@
 using Random
+using LinearAlgebra
 using StableRNGs
 using TOML
 
@@ -9,7 +10,11 @@ using PGLib
 using ACOPFGenerator
 using JuMP
 using Ipopt
+using HSL
+
 using MathOptSymbolicAD
+
+const LIB_COINHSL = HSL.libcoinhsl
 
 function main(rng, opf_sampler, config)
 
@@ -21,10 +26,13 @@ function main(rng, opf_sampler, config)
     # ... solve it...
     get(config["solver"], "name", "Ipopt") == "Ipopt" || error("Only Ipopt is supported as ACOPF solver.")
     solver = optimizer_with_attributes(Ipopt.Optimizer,
+        "hsllib" => LIB_COINHSL,
         "tol" => get(config["solver"], "tol", 1e-6),
-        "max_wall_time" => get(config["solver"], "max_wall_time", 3600),
+        "max_wall_time" => get(config["solver"], "max_wall_time", 3600.0),
+        "linear_solver" => get(config["solver"], "linear_solver", "mumps")
     )
     acopf = ACOPFGenerator.build_acopf(data_, solver)
+    set_silent(acopf)
     # Symbolic AD is most useful for large systems
     optimize!(acopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
     # ... and export solution
