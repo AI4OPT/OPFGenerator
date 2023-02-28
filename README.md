@@ -5,6 +5,7 @@ Instance generator for ACOPF problem
 
 - [ACOPFGenerator](#acopfgenerator)
   - [Installation instructions](#installation-instructions)
+    - [Using HSL solvers](#using-hsl-solvers-ma27-ma57)
   - [Quick start](#quick-start)
   - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
@@ -44,6 +45,25 @@ This repository is a non-registered Julia package.
     using Revise
     using ACOPFGenerator
     ```
+
+### Using HSL solvers (ma27, ma57)
+
+HSL solvers are supported via the [HSL.jl](https://github.com/JuliaSmoothOptimizers/HSL.jl) package (only v0.3.6 and above).
+Follow installation instructions there.
+
+To use HSL linear solvers with Ipopt, use the following:
+```julia
+using HSL
+const LIB_COINHSL = HSL.libcoinhsl
+
+using JuMP
+
+solver = optimizer_with_attributes(Ipopt.Optimizer,
+    "hsllib" => LIB_COINHSL,
+    "linear_solver" => "ma27"  # or solver of your choice
+)
+acopf = ACOPFGenerator.build_acopf(data, solver)
+```
 
 ## Quick start
 
