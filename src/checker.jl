@@ -9,10 +9,10 @@ function check_dataset(D, result_folder; S::Int=0)
     G = length(data0["gen"])
     L = length(data0["load"])
 
-    Random.seed!(42)
+    rng = MersenneTwister(42)
     nseeds = length(D["meta"]["seed"])
     S = (S <= 0) ? nseeds : min(S, nseeds)
-    J = sort(D["meta"]["seed"][randperm(nseeds)[1:S]])
+    J = sort(D["meta"]["seed"][randperm(rng, nseeds)[1:S]])
 
     for j in J
         s = D["meta"]["seed"][j]
