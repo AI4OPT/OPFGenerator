@@ -329,14 +329,23 @@ function parse_result_folder(result_folder::String, export_folder::String;
 
         # Process all files by chunks
         L = ReentrantLock()
+        num_read_error = Threads.Atomic{Int}(0)
         @threads for fname in files
-            local d = load_json(joinpath(result_folder, fname))
+            next!(p)
+            local d = try
+                load_json(joinpath(result_folder, fname))
+            catch err
+                @info "Error while reading $(fname)" err
+                num_read_error[] += 1
+                continue
+            end
             lock(L) do
                 add_datapoint!(D, d)
             end
-            next!(p)
         end
-        
+
+        (num_read_error[] > 0) && @info "$(num_read_error[]) errors importing JSON files while processing batch $b."
+        @info "Saving batch $b to disk"
         convert_to_h5!(D)
         save_h5(f5name, D)
         GC.gc()  # helps keep memory under control
