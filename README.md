@@ -1,5 +1,10 @@
 Copyright Georgia Tech 2022
 
+[![Build][build-img]][build-url]
+
+[build-img]: https://github.com/ai4opt/ACOPFGenerator/workflows/CI/badge.svg?branch=main
+[build-url]: https://github.com/ai4opt/ACOPFGenerator/actions?query=workflow%3ACI
+
 # ACOPFGenerator
 Instance generator for ACOPF problem
 
