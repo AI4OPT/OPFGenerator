@@ -74,7 +74,7 @@ function initialize_res(data)
                 "lam_kirchhoff" => Vector{Float64}[],
                 "mu_pg_lb" => Vector{Float64}[],
                 "mu_pg_ub" => Vector{Float64}[],
-                "lam_ohm_eq" => Vector{Float64}[],
+                "lam_ohm" => Vector{Float64}[],
                 "mu_va_diff" => Vector{Float64}[],
             ),
         ),
