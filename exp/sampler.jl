@@ -7,7 +7,7 @@ using PowerModels
 PowerModels.silence()
 using PGLib
 
-using ACOPFGenerator
+using OPFGenerator
 using JuMP
 using Ipopt
 using HSL
@@ -31,13 +31,19 @@ function main(rng, opf_sampler, config)
         "max_wall_time" => get(config["solver"], "max_wall_time", 3600.0),
         "linear_solver" => get(config["solver"], "linear_solver", "mumps")
     )
-    acopf = ACOPFGenerator.build_acopf(data_, solver)
+    acopf = OPFGenerator.build_acopf(data_, solver)
     set_silent(acopf)
     # Symbolic AD is most useful for large systems
     optimize!(acopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
     # ... and export solution
-    res = ACOPFGenerator._extract_solution(acopf, data_)
-    d["res"] = res
+    acopf_res = OPFGenerator._extract_acopf_solution(acopf, data_)
+    d["acopf_res"] = acopf_res
+
+    dcopf = OPFGenerator.build_dcopf(data_, solver)
+    set_silent(dcopf)
+    optimize!(dcopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
+    dcopf_res = OPFGenerator._extract_dcopf_solution(dcopf, data_)
+    d["dcopf_res"] = dcopf_res
 
     # Done
     return d
@@ -54,15 +60,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))
-    opf_sampler0 = ACOPFGenerator.SimpleOPFSampler(data0, config["sampler"])
+    opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
     main(StableRNG(1), opf_sampler0, config)
 
     # Load reference data and setup OPF sampler
     data = make_basic_network(pglib(config["ref"]))
-    opf_sampler = ACOPFGenerator.SimpleOPFSampler(data, config["sampler"])
+    opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
     
     # Data generation
-    @info "Generating ACOPF instances for case $ref\nSeed range: [$smin, $smax]"
+    @info "Generating ACOPF & DCOPF instances for case $ref\nSeed range: [$smin, $smax]"
     for s in smin:smax
         rng = StableRNG(s)
         tgen = @elapsed d = main(rng, opf_sampler, config)

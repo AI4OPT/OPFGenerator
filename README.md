@@ -2,13 +2,13 @@ Copyright Georgia Tech 2022
 
 [![Build][build-img]][build-url]
 
-[build-img]: https://github.com/ai4opt/ACOPFGenerator/workflows/CI/badge.svg?branch=main
-[build-url]: https://github.com/ai4opt/ACOPFGenerator/actions?query=workflow%3ACI
+[build-img]: https://github.com/ai4opt/OPFGenerator/workflows/CI/badge.svg?branch=main
+[build-url]: https://github.com/ai4opt/OPFGenerator/actions?query=workflow%3ACI
 
-# ACOPFGenerator
+# OPFGenerator
 Instance generator for ACOPF problem
 
-- [ACOPFGenerator](#acopfgenerator)
+- [OPFGenerator](#OPFGenerator)
   - [Installation instructions](#installation-instructions)
     - [Using HSL solvers](#using-hsl-solvers-ma27-ma57)
   - [Quick start](#quick-start)
@@ -29,26 +29,26 @@ This repository is a non-registered Julia package.
 * Option 1: install as a Julia package. You can use it, but not modify the code
     ```julia
     using Pkg
-    Pkg.add("git@github.com:AI4OPT/ACOPFGenerator.git")
+    Pkg.add("git@github.com:AI4OPT/OPFGenerator.git")
     ```
 
 * Option 2: clone the repository. Use this if you want to change the code
     ```bash
-    git clone git@github.com:AI4OPT/ACOPFGenerator.git
+    git clone git@github.com:AI4OPT/OPFGenerator.git
     ```
     To use the package after cloning the repo
     ```bash
-    $ cd ACOPFGenerator
+    $ cd OPFGenerator
     $ julia --project=.
-    julia> using ACOPFGenerator
+    julia> using OPFGenerator
     ```
 
     If you are modifying the source code, it is recommened to use the package [`Revise.jl`](https://github.com/timholy/Revise.jl)
     so that you can use the changes without having to start Julia.
-    Make sure you load `Revise` before loading `ACOPFGenerator` in your julia session.
+    Make sure you load `Revise` before loading `OPFGenerator` in your julia session.
     ```julia
     using Revise
-    using ACOPFGenerator
+    using OPFGenerator
     ```
 
 ### Using HSL solvers (ma27, ma57)
@@ -67,14 +67,14 @@ solver = optimizer_with_attributes(Ipopt.Optimizer,
     "hsllib" => LIB_COINHSL,
     "linear_solver" => "ma27"  # or solver of your choice
 )
-acopf = ACOPFGenerator.build_acopf(data, solver)
+acopf = OPFGenerator.build_acopf(data, solver)
 ```
 
 ## Quick start
 
 ```julia
 using Random, PGLib, PowerModels
-using ACOPFGenerator
+using OPFGenerator
 PowerModels.silence()
 
 using StableRNGs
@@ -106,7 +106,7 @@ new_data["load"]["1"]["pd"]  # new
 To generate multiple instances, run the above code in a loop
 ```julia
 dataset = [
-    ACOPFGenerator.rand(rng, opf_sampler)
+    OPFGenerator.rand(rng, opf_sampler)
     for i in 1:100
 ]
 ```
@@ -281,7 +281,7 @@ Use the `load_json` and `save_json` functions to load/save data to/from JSON fil
 Uncompressed (`.json`) and compressed (`.json.gz` and `.json.bz2`) are supported automatically.
 
 ```julia
-using ACOPFGenerator
+using OPFGenerator
 
 # Load a dictionary from a JSON file
 d = load_json("my_json_file.json")
