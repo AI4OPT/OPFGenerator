@@ -6,7 +6,7 @@ Copyright Georgia Tech 2022
 [build-url]: https://github.com/ai4opt/OPFGenerator/actions?query=workflow%3ACI
 
 # OPFGenerator
-Instance generator for ACOPF problem
+Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
 
 - [OPFGenerator](#OPFGenerator)
   - [Installation instructions](#installation-instructions)
