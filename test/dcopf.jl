@@ -35,14 +35,14 @@ function _test_dcopf(data::Dict)
         :va => Float64[sol_pm["bus"]["$i"]["va"] for i in 1:N],
         :pf => Float64[sol_pm["branch"]["$e"]["pf"] for e in 1:E],
     )
-    
     # reorder pf according to branch order in our model
     dcopf_branch_order = [key[1][1] for key in keys(dcopf[:pf])][1:E]
     var2val_pm[:pf] = var2val_pm[:pf][dcopf_branch_order]
+    var2val_pm[:pf] = vcat(var2val_pm[:pf], -var2val_pm[:pf])
 
     @constraint(dcopf, var2val_pm[:pg] .<= dcopf[:pg] .<= var2val_pm[:pg])
     @constraint(dcopf, var2val_pm[:va] .<= dcopf[:va] .<= var2val_pm[:va])
-    
+    @constraint(dcopf, var2val_pm[:pf] .<= dcopf[:pf] .<= var2val_pm[:pf])
 
     optimize!(dcopf)
     @test termination_status(dcopf) ∈ [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
