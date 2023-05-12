@@ -2,6 +2,7 @@
 ref = "pglib_opf_case300_ieee"
 # Directory where instance/solution files are exported
 # must be a valid directory
+name = "ACDC_300_ieee"
 export_dir = "data/ieee300"
 
 [sampler]
@@ -18,3 +19,4 @@ name = "Ipopt"                  # only "Ipopt" is supported at the moment
 tol = 1e-6                      # numerical tolerance (leave it at 1e-6 unless you know what you're doing)
 print_level = 0                 # set this to zero to disable Ipopt output
 max_wall_time = 60.0            # time limit, in seconds
+linear_solver = "ma27"
