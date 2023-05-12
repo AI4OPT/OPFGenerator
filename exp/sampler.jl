@@ -56,7 +56,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
 
-    export_dir = config["export_dir"]
+    export_dir = joinpath(config["export_dir"], "res_json")
 
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))

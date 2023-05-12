@@ -51,4 +51,4 @@ optimize!(dcopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
 dcopf_res = OPFGenerator._extract_dcopf_solution(dcopf, data)
 d["dcopf_res"] = dcopf_res
 
-OPFGenerator.save_json("$(export_dir)/../$(casename).ref.json", d)
+OPFGenerator.save_json("$(export_dir)/$(casename).ref.json", d)
