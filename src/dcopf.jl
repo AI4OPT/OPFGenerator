@@ -48,8 +48,7 @@ function build_dcopf(data::Dict{String,Any}, optimizer)
     pf_expr = [((l,i,j), pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from]]
     pf_expr = vcat(pf_expr, [((l,j,i), -1.0*pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from]])
 
-    model[:pf] = JuMP.Containers.DenseAxisArray(collect(getfield.(pf_expr, 2)), collect(getfield.(pf_expr, 1)))
-    pf = model[:pf]
+    model[:pf] = pf = JuMP.Containers.DenseAxisArray(collect(getfield.(pf_expr, 2)), collect(getfield.(pf_expr, 1)))
 
     #
     #   II. Constraints
