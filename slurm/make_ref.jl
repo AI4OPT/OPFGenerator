@@ -22,6 +22,7 @@ const LIB_COINHSL = HSL.libcoinhsl
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 casename = config["ref"]
+name = config["name"]
 export_dir = config["export_dir"]
 
 data = make_basic_network(pglib(casename))
@@ -51,4 +52,4 @@ optimize!(dcopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
 dcopf_res = OPFGenerator._extract_dcopf_solution(dcopf, data)
 d["dcopf_res"] = dcopf_res
 
-OPFGenerator.save_json("$(export_dir)/$(casename).ref.json", d)
+OPFGenerator.save_json("$(export_dir)/$(name).ref.json", d)
