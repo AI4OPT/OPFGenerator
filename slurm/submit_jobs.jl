@@ -8,6 +8,7 @@ B, r = divrem(S, J)
 B = B + (r > 0)
 
 queue = "embers"
+charge_account = "gts-phentenryck3-ai4opt"
 
 using TOML
 config_file = ARGS[1]
@@ -67,13 +68,13 @@ end
 
 sampler_sbatch = "#!/bin/bash
 #SBATCH --job-name=OPF                      # Job name
-#SBATCH --account=gts-phentenryck3-ai4opt   # charge account
+#SBATCH --account=$(charge_account)         # charge account
 #SBATCH --nodes=1                           # Use one node
 #SBATCH --ntasks=1                          # Run a single task
 #SBATCH --cpus-per-task=24                  # Give 24 CPUs to each task
 #SBATCH --mem-per-cpu=7gb                   # Memory per processor
 #SBATCH --time=08:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/OPF.%A-%a.out         # Combined output and error messages file
+#SBATCH -o $(name_dir)/slurm/OPF.%A-%a.out  # Combined output and error messages file
 #SBATCH -q$(queue)
 #SBATCH --array=1-$(J)
 
@@ -89,13 +90,13 @@ end
 
 extract_sbatch = "#!/bin/bash
 #SBATCH --job-name=extract_OPF              # Job name
-#SBATCH --account=gts-phentenryck3-ai4opt   # charge account
+#SBATCH --account=$(charge_account)         # charge account
 #SBATCH --nodes=1                           # Use one node
 #SBATCH --ntasks=1                          # Run a single task
 #SBATCH --cpus-per-task=24                  # Give 128 CPUs to each task
 #SBATCH --mem=7gb                           # Memory per processor
 #SBATCH --time=08:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/extract.out         # Combined output and error messages file
+#SBATCH -o $(name_dir)/slurm/extract.out    # Combined output and error messages file
 #SBATCH -q$(queue)
 
 cd $(opfgenerator_dir)
@@ -109,13 +110,13 @@ end
 
 ref_sbatch = "#!/bin/bash
 #SBATCH --job-name=ref_OPF                  # Job name
-#SBATCH --account=gts-phentenryck3-ai4opt   # charge account
+#SBATCH --account=$(charge_account)         # charge account
 #SBATCH --nodes=1                           # Use one node
 #SBATCH --ntasks=1                          # Run a single task
 #SBATCH --cpus-per-task=1                   # Give 24 CPUs to each task
 #SBATCH --mem-per-cpu=7gb                   # Memory per processor
 #SBATCH --time=01:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/ref.out         # Combined output and error messages file
+#SBATCH -o $(name_dir)/slurm/ref.out        # Combined output and error messages file
 #SBATCH -q$(queue)
 
 cd $(opfgenerator_dir)
@@ -128,13 +129,13 @@ end
 
 sysimage_sbatch = "#!/bin/bash
 #SBATCH --job-name=sysimage_OPF             # Job name
-#SBATCH --account=gts-phentenryck3-ai4opt   # charge account
+#SBATCH --account=$(charge_account)         # charge account
 #SBATCH --nodes=1                           # Use one node
 #SBATCH --ntasks=1                          # Run a single task
 #SBATCH --cpus-per-task=1                   # Give 1 CPU
 #SBATCH --mem-per-cpu=7gb                   # Memory per processor
 #SBATCH --time=01:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/sysimage.out         # Combined output and error messages file
+#SBATCH -o $(name_dir)/slurm/sysimage.out   # Combined output and error messages file
 #SBATCH -q$(queue)
 
 cd $(opfgenerator_dir)
