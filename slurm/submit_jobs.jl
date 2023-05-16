@@ -101,7 +101,7 @@ extract_sbatch = "#!/bin/bash
 cd $(opfgenerator_dir)
 
 julia --project=. -t24 $(extract_script) $(res_json_dir) $(res_h5_dir) 256
-julia --project=. slurm/merge.jl $(config_file)"
+julia --project=. -t24 slurm/merge.jl $(config_file)"
 
 open("$(name_dir)/extract.sbatch", "w") do io
     println(io, extract_sbatch)
