@@ -128,7 +128,7 @@ where
 
 The solution dictionary follows the [PowerModels result data format](https://lanl-ansi.github.io/PowerModels.jl/stable/result-data/).
 
-### Primal variables
+### ACOPF Primal variables
 
 | Component | Key | Description |
 |:---------:|:----|:------------|
@@ -141,7 +141,7 @@ The solution dictionary follows the [PowerModels result data format](https://lan
 | generator | `"pg"` | Active power generation
 |           | `"qg"` | Reactive power generation
 
-### Dual variables
+### ACOPF Dual variables
 
 As a convention, dual variables of equality constraints are named `lam_<constraint_ref>`, and dual variables of inequality constraints are named `mu_<constraint_ref>`.
 Dual variables are stored together with each component's primal solution.
@@ -158,10 +158,29 @@ Dual variables are stored together with each component's primal solution.
 |           | `"lam_ohm_active_to"` | Ohm's law; active power (to)
 |           | `"lam_ohm_reactive_fr"` | Ohm's law; reactive power (fr)
 |           | `"lam_ohm_reactive_to"` | Ohm's law; reactive power (to)
+|           | `"mu_va_diff"` | Voltage angle difference
 | generator | `"mu_pg_lb"` | Active power generation lower bound
 |           | `"mu_pg_ub"` | Active power generation upper bound
 |           | `"mu_qg_lb"` | Reactive power generation lower bound
 |           | `"mu_qg_ub"` | Reactive power generation upper bound
+
+### DCOPF Primal variables
+
+| Component | Key | Description |
+|:---------:|:----|:------------|
+| bus       | `"va"` | Voltage angle
+| generator | `"pg"` | Power generation
+| branch    | `"pf"` | Power flow
+
+### DCOPF Dual variables
+
+| Component | Key | Constraint  |
+|:---------:|:----|:------------|
+| bus       | `"lam_kirchhoff"` | Power balance
+| generator | `"mu_pg_lb"` | Power generation lower bound
+|           | `"mu_pg_ub"` | Power generation upper bound
+| branch    | `"lam_ohm"` | Ohm's law
+|           | `"mu_va_diff"` | Voltage angle difference
 
 ## Datasets
 
@@ -177,7 +196,7 @@ Each dataset is stored in an `.h5` file, organized as follows:
     |-- pd
     |-- qd
     |-- br_status
-|-- solution
+|-- acopf_solution
     |-- meta
         |-- termination_status
         |-- primal_status
@@ -208,6 +227,23 @@ Each dataset is stored in an `.h5` file, organized as follows:
         |-- lam_ohm_reactive_fr
         |-- lam_ohm_reactive_to
         |-- mu_va_diff
+|-- dcopf_solution
+    |-- meta
+        |-- termination_status
+        |-- primal_status
+        |-- dual_status
+        |-- solve_time
+    |-- primal
+        |-- va
+        |-- pg
+        |-- pf
+    |-- dual
+        |-- lam_kirchhoff
+        |-- mu_pg_lb
+        |-- mu_pg_ub
+        |-- lam_ohm
+        |-- mu_va_diff
+
 ```
 
 ### Loading from julia
@@ -222,57 +258,50 @@ D = h5read("dataset.h5", "/")  # read all the dataset into a dictionary
 
 The following code provides a starting point to load h5 datasets in python
 ```py
-import numpy as np
+
 import h5py
+import numpy as np
 
-def add_h5_to_dict(h5_group, sub_dict, mask=None):
-    """Recursive function to fill a dictionary with data in an HDF5 view, with the same tree structure.
 
-    Args:
-        h5_group: an HDF5 file/view.
-        sub_dict: the dictionary to fill.
-        mask: a numpy array of indices indicating which instances (rows) to extract
-    """
-    for key, value in h5_group.items():
-        if isinstance(value, h5py.Dataset):
-            if key == "ref" or mask is None:
-                sub_dict[key] = value[()]
-            else:
-                sub_dict[key] = value[mask]
+def parse_hdf5(path: str, preserve_shape: bool=False):
+    dat = dict()
+
+    def read_direct(dataset: h5py.Dataset):
+        arr = np.empty(dataset.shape, dtype=dataset.dtype)
+        dataset.read_direct(arr)
+        return arr
+
+    def store(name: str, obj):
+        if isinstance(obj, h5py.Group):
+            return
+        elif isinstance(obj, h5py.Dataset):
+            dat[name] = read_direct(obj)
         else:
-            sub_dict[key] = {}
-            add_h5_to_dict(h5_group[key], sub_dict[key], mask)
+            raise ValueError(f"Unexcepted type: {type(obj)} under name {name}. Expected h5py.Group or h5py.Dataset.")
 
+    with h5py.File(path, "r") as f:
+        f.visititems(store)
 
-def h5_to_dict(file_path, n_instance=None):
-    """Load solutions data from a HDF5 file, and construct a dict with the same structure. Only load data of at most
-    n_instance solved instances.
+    if preserve_shape:
+        # recursively correct the shape of the dictionary
+        ret = dict()
 
-    Args:
-        file_path: the path of the solution HDF5 file.
-        n_instance: the maximum number of instances/solutions to load.
+        def r_correct_shape(d: dict, ret: dict):
+            for k in list(d.keys()):
+                if "/" in k:
+                    k1, k2 = k.split("/", 1)
+                    if k1 not in ret:
+                        ret[k1] = dict()
+                    r_correct_shape({k2: d[k]}, ret[k1])
+                    del d[k]
+                else:
+                    ret[k] = d[k]
 
-    Returns: data_dict: a dict with the same structure as the original HDF5 file, containing data of only solved
-    instances, with at most n_instance rows.
-    """
-    data_dict = {}
-    with h5py.File(file_path, "r") as f:
-        n_instance_total = len(f["input"]["pd"])
-        if n_instance is None:
-            n_instance = n_instance_total
+        r_correct_shape(dat, ret)
 
-        sol_meta_data = f["solution"]["meta"]
-        termination_status = sol_meta_data["termination_status"][:]
-        primal_status = sol_meta_data["primal_status"][:]
-        dual_status = sol_meta_data["dual_status"][:]
-        solved_mask = np.where([termination_status[i] == b"LOCALLY_SOLVED" and
-                                primal_status[i] == b"FEASIBLE_POINT" and
-                                dual_status[i] == b"FEASIBLE_POINT"
-                                for i in range(n_instance_total)])[0][slice(n_instance)]
-
-        add_h5_to_dict(f, data_dict, solved_mask)
-
-    return data_dict
+        return ret
+    else:
+        return dat
 ```
 
 ## Loading and saving JSON files
