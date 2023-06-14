@@ -1,5 +1,6 @@
 using Base.Iterators
 using Base.Threads
+using Mustache
 
 S = 65536  # total number of instances
 J = 45     # number of jobs
@@ -66,88 +67,64 @@ for (j, seed_range) in enumerate(partition(missing_seeds, B))
     end
 end
 
-sampler_sbatch = "#!/bin/bash
-#SBATCH --job-name=OPF                      # Job name
-#SBATCH --account=$(charge_account)         # charge account
-#SBATCH --nodes=1                           # Use one node
-#SBATCH --ntasks=1                          # Run a single task
-#SBATCH --cpus-per-task=24                  # Give 24 CPUs to each task
-#SBATCH --mem-per-cpu=7gb                   # Memory per processor
-#SBATCH --time=08:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/OPF.%A-%a.out  # Combined output and error messages file
-#SBATCH -q$(queue)
-#SBATCH --array=1-$(J)
-
-module load parallel
-
-cd $(opfgenerator_dir)
-
-srun parallel -j24 --resume-failed --joblog $(name_dir)/jobs/jobs_\${SLURM_ARRAY_TASK_ID}.log {} < $(name_dir)/jobs/jobs_\${SLURM_ARRAY_TASK_ID}.txt"
-
-open("$(name_dir)/sampler.sbatch", "w") do io
-    println(io, sampler_sbatch)
+sysimage_sbatch = Mustache.render(
+    Mustache.load("$(@__DIR__)/sysimage_template.sbatch"),
+    (
+        charge_account=charge_account,
+        name_dir=name_dir,
+        queue=queue,
+        opfgenerator_dir=opfgenerator_dir,
+        sampler_script=sampler_script,
+        config_file=config_file
+    )
+)
+open("$(name_dir)/sysimage.sbatch", "w") do io
+    println(io, sysimage_sbatch)
 end
 
-extract_sbatch = "#!/bin/bash
-#SBATCH --job-name=extract_OPF              # Job name
-#SBATCH --account=$(charge_account)         # charge account
-#SBATCH --nodes=1                           # Use one node
-#SBATCH --ntasks=1                          # Run a single task
-#SBATCH --cpus-per-task=24                  # Give 128 CPUs to each task
-#SBATCH --mem-per-cpu=7gb                           # Memory per processor
-#SBATCH --time=08:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/extract.out    # Combined output and error messages file
-#SBATCH -q$(queue)
-
-cd $(opfgenerator_dir)
-
-julia --project=. -t24 $(extract_script) $(res_json_dir) $(res_h5_dir) 256
-julia --project=. -t24 slurm/merge.jl $(config_file)"
-
-open("$(name_dir)/extract.sbatch", "w") do io
-    println(io, extract_sbatch)
-end
-
-ref_sbatch = "#!/bin/bash
-#SBATCH --job-name=ref_OPF                  # Job name
-#SBATCH --account=$(charge_account)         # charge account
-#SBATCH --nodes=1                           # Use one node
-#SBATCH --ntasks=1                          # Run a single task
-#SBATCH --cpus-per-task=1                   # Give 24 CPUs to each task
-#SBATCH --mem-per-cpu=7gb                   # Memory per processor
-#SBATCH --time=01:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/ref.out        # Combined output and error messages file
-#SBATCH -q$(queue)
-
-cd $(opfgenerator_dir)
-
-julia --project=. -t1 $(opfgenerator_dir)/slurm/make_ref.jl $(config_file)"
-
+ref_sbatch = Mustache.render(
+    Mustache.load("$(@__DIR__)/ref_template.sbatch"),
+    (
+        charge_account=charge_account,
+        name_dir=name_dir,
+        queue=queue,
+        opfgenerator_dir=opfgenerator_dir,
+        config_file=config_file
+    )
+)
 open("$(name_dir)/ref.sbatch", "w") do io
     println(io, ref_sbatch)
 end
 
-sysimage_sbatch = "#!/bin/bash
-#SBATCH --job-name=sysimage_OPF             # Job name
-#SBATCH --account=$(charge_account)         # charge account
-#SBATCH --nodes=1                           # Use one node
-#SBATCH --ntasks=1                          # Run a single task
-#SBATCH --cpus-per-task=1                   # Give 1 CPU
-#SBATCH --mem-per-cpu=7gb                   # Memory per processor
-#SBATCH --time=01:00:00                     # Time limit hrs:min:sec
-#SBATCH -o $(name_dir)/slurm/sysimage.out   # Combined output and error messages file
-#SBATCH -q$(queue)
+extract_sbatch = Mustache.render(
+    Mustache.load("$(@__DIR__)/extract_template.sbatch"),
+    (
+        charge_account=charge_account, 
+        name_dir=name_dir, 
+        queue=queue, 
+        opfgenerator_dir=opfgenerator_dir, 
+        extract_script=extract_script, 
+        res_json_dir=res_json_dir, 
+        res_h5_dir=res_h5_dir, 
+        config_file=config_file
+    )
+)
+open("$(name_dir)/extract.sbatch", "w") do io
+    println(io, extract_sbatch)
+end
 
-cd $(opfgenerator_dir)
-
-mkdir app
-
-julia --project=. -t1 --trace-compile=app/precompile.jl $(sampler_script) $(config_file) 1 1
-
-julia --project=. slurm/make_sysimage.jl"
-
-open("$(name_dir)/sysimage.sbatch", "w") do io
-    println(io, sysimage_sbatch)
+sampler_sbatch = Mustache.render(
+    Mustache.load("$(@__DIR__)/sampler_template.sbatch"),
+    (
+        charge_account=charge_account,
+        name_dir=name_dir,
+        queue=queue,
+        J=J,
+        opfgenerator_dir=opfgenerator_dir
+    )
+)
+open("$(name_dir)/sampler.sbatch", "w") do io
+    println(io, sampler_sbatch)
 end
 
 
