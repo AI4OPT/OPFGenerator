@@ -33,9 +33,7 @@ solver = optimizer_with_attributes(Ipopt.Optimizer,
     "hsllib" => LIB_COINHSL,
     "tol" => get(config["solver"], "tol", 1e-6),
     "max_wall_time" => get(config["solver"], "max_wall_time", 3600.0),
-    "linear_solver" => get(config["solver"], "linear_solver", "mumps"),
-    "mu_target" => get(config["solver"], "mu_target", 0.0),
-    "mu_init" => get(config["solver"], "mu_init", 0.1)
+    "linear_solver" => get(config["solver"], "linear_solver", "mumps")
 )
 
 acopf = OPFGenerator.build_acopf(data, solver)
