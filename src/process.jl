@@ -23,7 +23,7 @@ function initialize_res(data)
             "qd"        => Vector{Float64}[],
             "br_status" => Vector{Bool}[],
         ),
-        "solution" => Dict{String,Any}(
+        "acopf_solution" => Dict{String,Any}(
             "meta" => Dict{String,Any}(
                 "termination_status" => String[],
                 "primal_status" => String[],
@@ -58,6 +58,26 @@ function initialize_res(data)
                 "mu_va_diff" => Vector{Float64}[],
             ),
         ),
+        "dcopf_solution" => Dict{String,Any}(
+            "meta" => Dict{String,Any}(
+                "termination_status" => String[],
+                "primal_status" => String[],
+                "dual_status" => String[],
+                "solve_time" => Float64[],
+            ),
+            "primal" => Dict{String,Any}(
+                "va" => Vector{Float64}[],
+                "pg" => Vector{Float64}[],
+                "pf" => Vector{Float64}[],
+            ),
+            "dual" => Dict{String,Any}(
+                "lam_kirchhoff" => Vector{Float64}[],
+                "mu_pg_lb" => Vector{Float64}[],
+                "mu_pg_ub" => Vector{Float64}[],
+                "lam_ohm" => Vector{Float64}[],
+                "mu_va_diff" => Vector{Float64}[],
+            ),
+        ),
     )
 
     return D
@@ -65,12 +85,8 @@ end
 
 function add_datapoint!(D, d)
     D_input::Dict{String,Any}    = D["input"]
-    D_solution::Dict{String,Any} = D["solution"]
-
     meta::Dict{String,Any} = d["meta"]
     data::Dict{String,Any} = d["data"]
-    res::Dict{String,Any}  = d["res"]
-    sol::Dict{String,Any}  = res["solution"]
 
     N = length(data["bus"])
     E = length(data["branch"])
@@ -91,13 +107,18 @@ function add_datapoint!(D, d)
     push!(D_input["qd"], qd)
     push!(D_input["br_status"], br)
 
-    # Solution meta data
-    push!(D["solution"]["meta"]["termination_status"], res["termination_status"])
-    push!(D["solution"]["meta"]["primal_status"], res["primal_status"])
-    push!(D["solution"]["meta"]["dual_status"], res["dual_status"])
-    push!(D["solution"]["meta"]["solve_time"], res["solve_time"])
+    # Add ACOPF Solution
+    D_acopf_solution::Dict{String,Any} = D["acopf_solution"]
+    acopf_res::Dict{String,Any}  = d["acopf_res"]
+    acopf_sol::Dict{String,Any}  = acopf_res["solution"]
 
-    # Primal
+    # ACOPF Solution meta data
+    push!(D_acopf_solution["meta"]["termination_status"], acopf_res["termination_status"])
+    push!(D_acopf_solution["meta"]["primal_status"], acopf_res["primal_status"])
+    push!(D_acopf_solution["meta"]["dual_status"], acopf_res["dual_status"])
+    push!(D_acopf_solution["meta"]["solve_time"], acopf_res["solve_time"])
+
+    # ACOPF Primal
     vm                     = zeros(Float64, N)
     va                     = zeros(Float64, N)
     pg                     = zeros(Float64, G)
@@ -106,7 +127,7 @@ function add_datapoint!(D, d)
     qf                     = zeros(Float64, E)
     pt                     = zeros(Float64, E)
     qt                     = zeros(Float64, E)
-    # Dual
+    # ACOPF Dual
     mu_vm_lb               = zeros(Float64, N)
     mu_vm_ub               = zeros(Float64, N)
     lam_kircchoff_active   = zeros(Float64, N)
@@ -123,9 +144,9 @@ function add_datapoint!(D, d)
     lam_ohm_reactive_to    = zeros(Float64, E)
     mu_va_diff             = zeros(Float64, E)
 
-    # extract from solution
+    # extract from ACOPF solution
     for i in 1:N
-        bsol = sol["bus"]["$i"]
+        bsol = acopf_sol["bus"]["$i"]
 
         vm[i] = bsol["vm"]
         va[i] = bsol["va"]
@@ -136,7 +157,7 @@ function add_datapoint!(D, d)
         lam_kircchoff_reactive[i] = bsol["lam_pb_reactive"]
     end
     for g in 1:G
-        gsol = sol["gen"]["$g"]
+        gsol = acopf_sol["gen"]["$g"]
 
         pg[g] = gsol["pg"]
         qg[g] = gsol["qg"]
@@ -147,7 +168,7 @@ function add_datapoint!(D, d)
         mu_qg_ub[g] = gsol["mu_qg_ub"]
     end
     for e in 1:E
-        bsol = sol["branch"]["$e"]
+        bsol = acopf_sol["branch"]["$e"]
 
         pf[e] = bsol["pf"]
         qf[e] = bsol["qf"]
@@ -163,30 +184,87 @@ function add_datapoint!(D, d)
         mu_va_diff[e] = bsol["mu_va_diff"]
     end
 
-    # add to Dataset
-    push!(D_solution["primal"]["vm"], vm)
-    push!(D_solution["primal"]["va"], va)
-    push!(D_solution["primal"]["pg"], pg)
-    push!(D_solution["primal"]["qg"], qg)
-    push!(D_solution["primal"]["pf"], pf)
-    push!(D_solution["primal"]["qf"], qf)
-    push!(D_solution["primal"]["pt"], pt)
-    push!(D_solution["primal"]["qt"], qt)
-    push!(D_solution["dual"]["mu_vm_lb"], mu_vm_lb)
-    push!(D_solution["dual"]["mu_vm_ub"], mu_vm_ub)
-    push!(D_solution["dual"]["lam_kircchoff_active"], lam_kircchoff_active)
-    push!(D_solution["dual"]["lam_kircchoff_reactive"], lam_kircchoff_reactive)
-    push!(D_solution["dual"]["mu_pg_lb"], mu_pg_lb)
-    push!(D_solution["dual"]["mu_pg_ub"], mu_pg_ub)
-    push!(D_solution["dual"]["mu_qg_lb"], mu_qg_lb)
-    push!(D_solution["dual"]["mu_qg_ub"], mu_qg_ub)
-    push!(D_solution["dual"]["mu_sm_fr"], mu_sm_fr)
-    push!(D_solution["dual"]["mu_sm_to"], mu_sm_to)
-    push!(D_solution["dual"]["lam_ohm_active_fr"], lam_ohm_active_fr)
-    push!(D_solution["dual"]["lam_ohm_active_to"], lam_ohm_active_to)
-    push!(D_solution["dual"]["lam_ohm_reactive_fr"], lam_ohm_reactive_fr)
-    push!(D_solution["dual"]["lam_ohm_reactive_to"], lam_ohm_reactive_to)
-    push!(D_solution["dual"]["mu_va_diff"], mu_va_diff)
+    # add ACOPF to Dataset
+    push!(D_acopf_solution["primal"]["vm"], vm)
+    push!(D_acopf_solution["primal"]["va"], va)
+    push!(D_acopf_solution["primal"]["pg"], pg)
+    push!(D_acopf_solution["primal"]["qg"], qg)
+    push!(D_acopf_solution["primal"]["pf"], pf)
+    push!(D_acopf_solution["primal"]["qf"], qf)
+    push!(D_acopf_solution["primal"]["pt"], pt)
+    push!(D_acopf_solution["primal"]["qt"], qt)
+    push!(D_acopf_solution["dual"]["mu_vm_lb"], mu_vm_lb)
+    push!(D_acopf_solution["dual"]["mu_vm_ub"], mu_vm_ub)
+    push!(D_acopf_solution["dual"]["lam_kircchoff_active"], lam_kircchoff_active)
+    push!(D_acopf_solution["dual"]["lam_kircchoff_reactive"], lam_kircchoff_reactive)
+    push!(D_acopf_solution["dual"]["mu_pg_lb"], mu_pg_lb)
+    push!(D_acopf_solution["dual"]["mu_pg_ub"], mu_pg_ub)
+    push!(D_acopf_solution["dual"]["mu_qg_lb"], mu_qg_lb)
+    push!(D_acopf_solution["dual"]["mu_qg_ub"], mu_qg_ub)
+    push!(D_acopf_solution["dual"]["mu_sm_fr"], mu_sm_fr)
+    push!(D_acopf_solution["dual"]["mu_sm_to"], mu_sm_to)
+    push!(D_acopf_solution["dual"]["lam_ohm_active_fr"], lam_ohm_active_fr)
+    push!(D_acopf_solution["dual"]["lam_ohm_active_to"], lam_ohm_active_to)
+    push!(D_acopf_solution["dual"]["lam_ohm_reactive_fr"], lam_ohm_reactive_fr)
+    push!(D_acopf_solution["dual"]["lam_ohm_reactive_to"], lam_ohm_reactive_to)
+    push!(D_acopf_solution["dual"]["mu_va_diff"], mu_va_diff)
+
+    # Add DCOPF solution
+    D_dcopf_solution::Dict{String,Any} = D["dcopf_solution"]
+    dcopf_res::Dict{String,Any}  = d["dcopf_res"]
+    dcopf_sol::Dict{String,Any}  = dcopf_res["solution"]
+
+    # DCOPF solution meta data
+    push!(D_dcopf_solution["meta"]["termination_status"], dcopf_res["termination_status"])
+    push!(D_dcopf_solution["meta"]["primal_status"], dcopf_res["primal_status"])
+    push!(D_dcopf_solution["meta"]["dual_status"], dcopf_res["dual_status"])
+    push!(D_dcopf_solution["meta"]["solve_time"], dcopf_res["solve_time"])
+
+    # DCOPF Primal
+    va            = zeros(Float64, N)
+    pg            = zeros(Float64, G)
+    pf            = zeros(Float64, E)
+    # DCOPF Dual
+    lam_kirchhoff = zeros(Float64, N)
+    mu_pg_lb      = zeros(Float64, G)
+    mu_pg_ub      = zeros(Float64, G)
+    lam_ohm       = zeros(Float64, E)
+    mu_va_diff    = zeros(Float64, E)
+
+    # extract from DCOPF solution
+    for i in 1:N
+        bsol = dcopf_sol["bus"]["$i"]
+
+        va[i] = bsol["va"]
+
+        lam_kirchhoff[i] = bsol["lam_pb"]
+    end
+    for g in 1:G
+        gsol = dcopf_sol["gen"]["$g"]
+
+        pg[g] = gsol["pg"]
+
+        mu_pg_lb[g] = gsol["mu_pg_lb"]
+        mu_pg_ub[g] = gsol["mu_pg_ub"]
+    end
+    for e in 1:E
+        bsol = dcopf_sol["branch"]["$e"]
+
+        pf[e] = bsol["pf"]
+
+        lam_ohm[e] = bsol["lam_ohm"]
+        mu_va_diff[e] = bsol["mu_va_diff"]
+    end
+
+    # DCOPF add to Dataset
+    push!(D_dcopf_solution["primal"]["va"], va)
+    push!(D_dcopf_solution["primal"]["pg"], pg)
+    push!(D_dcopf_solution["primal"]["pf"], pf)
+    push!(D_dcopf_solution["dual"]["lam_kirchhoff"], lam_kirchhoff)
+    push!(D_dcopf_solution["dual"]["mu_pg_lb"], mu_pg_lb)
+    push!(D_dcopf_solution["dual"]["mu_pg_ub"], mu_pg_ub)
+    push!(D_dcopf_solution["dual"]["lam_ohm"], lam_ohm)
+    push!(D_dcopf_solution["dual"]["mu_va_diff"], mu_va_diff)
 
     return D
 end
@@ -204,41 +282,62 @@ function save_h5(filename, D)
         dat["qd"] = D["input"]["qd"]
         dat["br_status"] = D["input"]["br_status"]
         
-        # Solution data
-        sol  = create_group(file, "solution")
-        sol_meta = create_group(sol, "meta")
-        sol_meta["termination_status"] = D["solution"]["meta"]["termination_status"]
-        sol_meta["primal_status"] = D["solution"]["meta"]["primal_status"]
-        sol_meta["dual_status"] = D["solution"]["meta"]["dual_status"]
-        sol_meta["solve_time"] = D["solution"]["meta"]["solve_time"]
+        # ACOPF Solution data
+        acopf_sol  = create_group(file, "acopf_solution")
+        acopf_sol_meta = create_group(acopf_sol, "meta")
+        acopf_sol_meta["termination_status"] = D["acopf_solution"]["meta"]["termination_status"]
+        acopf_sol_meta["primal_status"] = D["acopf_solution"]["meta"]["primal_status"]
+        acopf_sol_meta["dual_status"] = D["acopf_solution"]["meta"]["dual_status"]
+        acopf_sol_meta["solve_time"] = D["acopf_solution"]["meta"]["solve_time"]
         
         # The primal/dual solutions are lists of lists, which we convert to matrices for h5
-        primal = create_group(sol, "primal")
-        primal["vm"] = D["solution"]["primal"]["vm"]
-        primal["va"] = D["solution"]["primal"]["va"]
-        primal["pg"] = D["solution"]["primal"]["pg"]
-        primal["qg"] = D["solution"]["primal"]["qg"]
-        primal["pf"] = D["solution"]["primal"]["pf"]
-        primal["qf"] = D["solution"]["primal"]["qf"]
-        primal["pt"] = D["solution"]["primal"]["pt"]
-        primal["qt"] = D["solution"]["primal"]["qt"]
+        acopf_primal = create_group(acopf_sol, "primal")
+        acopf_primal["vm"] = D["acopf_solution"]["primal"]["vm"]
+        acopf_primal["va"] = D["acopf_solution"]["primal"]["va"]
+        acopf_primal["pg"] = D["acopf_solution"]["primal"]["pg"]
+        acopf_primal["qg"] = D["acopf_solution"]["primal"]["qg"]
+        acopf_primal["pf"] = D["acopf_solution"]["primal"]["pf"]
+        acopf_primal["qf"] = D["acopf_solution"]["primal"]["qf"]
+        acopf_primal["pt"] = D["acopf_solution"]["primal"]["pt"]
+        acopf_primal["qt"] = D["acopf_solution"]["primal"]["qt"]
 
-        dual   = create_group(sol, "dual")
-        dual["mu_sm_to"] = D["solution"]["dual"]["mu_sm_to"]
-        dual["mu_vm_ub"] = D["solution"]["dual"]["mu_vm_ub"]
-        dual["mu_pg_ub"] = D["solution"]["dual"]["mu_pg_ub"]
-        dual["lam_kircchoff_active"] = D["solution"]["dual"]["lam_kircchoff_active"]
-        dual["lam_ohm_reactive_fr"] = D["solution"]["dual"]["lam_ohm_reactive_fr"]
-        dual["mu_qg_ub"] = D["solution"]["dual"]["mu_qg_ub"]
-        dual["mu_vm_lb"] = D["solution"]["dual"]["mu_vm_lb"]
-        dual["mu_sm_fr"] = D["solution"]["dual"]["mu_sm_fr"]
-        dual["lam_ohm_active_to"] = D["solution"]["dual"]["lam_ohm_active_to"]
-        dual["mu_pg_lb"] = D["solution"]["dual"]["mu_pg_lb"]
-        dual["lam_ohm_active_fr"] = D["solution"]["dual"]["lam_ohm_active_fr"]
-        dual["mu_qg_lb"] = D["solution"]["dual"]["mu_qg_lb"]
-        dual["mu_va_diff"] = D["solution"]["dual"]["mu_va_diff"]
-        dual["lam_kircchoff_reactive"] = D["solution"]["dual"]["lam_kircchoff_reactive"]
-        dual["lam_ohm_reactive_to"] = D["solution"]["dual"]["lam_ohm_reactive_to"]
+        acopf_dual   = create_group(acopf_sol, "dual")
+        acopf_dual["mu_sm_to"] = D["acopf_solution"]["dual"]["mu_sm_to"]
+        acopf_dual["mu_vm_ub"] = D["acopf_solution"]["dual"]["mu_vm_ub"]
+        acopf_dual["mu_pg_ub"] = D["acopf_solution"]["dual"]["mu_pg_ub"]
+        acopf_dual["lam_kircchoff_active"] = D["acopf_solution"]["dual"]["lam_kircchoff_active"]
+        acopf_dual["lam_ohm_reactive_fr"] = D["acopf_solution"]["dual"]["lam_ohm_reactive_fr"]
+        acopf_dual["mu_qg_ub"] = D["acopf_solution"]["dual"]["mu_qg_ub"]
+        acopf_dual["mu_vm_lb"] = D["acopf_solution"]["dual"]["mu_vm_lb"]
+        acopf_dual["mu_sm_fr"] = D["acopf_solution"]["dual"]["mu_sm_fr"]
+        acopf_dual["lam_ohm_active_to"] = D["acopf_solution"]["dual"]["lam_ohm_active_to"]
+        acopf_dual["mu_pg_lb"] = D["acopf_solution"]["dual"]["mu_pg_lb"]
+        acopf_dual["lam_ohm_active_fr"] = D["acopf_solution"]["dual"]["lam_ohm_active_fr"]
+        acopf_dual["mu_qg_lb"] = D["acopf_solution"]["dual"]["mu_qg_lb"]
+        acopf_dual["mu_va_diff"] = D["acopf_solution"]["dual"]["mu_va_diff"]
+        acopf_dual["lam_kircchoff_reactive"] = D["acopf_solution"]["dual"]["lam_kircchoff_reactive"]
+        acopf_dual["lam_ohm_reactive_to"] = D["acopf_solution"]["dual"]["lam_ohm_reactive_to"]
+
+        # DCOPF Solution data
+        dcopf_sol  = create_group(file, "dcopf_solution")
+        dcopf_sol_meta = create_group(dcopf_sol, "meta")
+        dcopf_sol_meta["termination_status"] = D["dcopf_solution"]["meta"]["termination_status"]
+        dcopf_sol_meta["primal_status"] = D["dcopf_solution"]["meta"]["primal_status"]
+        dcopf_sol_meta["dual_status"] = D["dcopf_solution"]["meta"]["dual_status"]
+        dcopf_sol_meta["solve_time"] = D["dcopf_solution"]["meta"]["solve_time"]
+        
+        # The primal/dual solutions are lists of lists, which we convert to matrices for h5
+        dcopf_primal = create_group(dcopf_sol, "primal")
+        dcopf_primal["va"] = D["dcopf_solution"]["primal"]["va"]
+        dcopf_primal["pf"] = D["dcopf_solution"]["primal"]["pf"]
+        dcopf_primal["pg"] = D["dcopf_solution"]["primal"]["pg"]
+
+        dcopf_dual   = create_group(dcopf_sol, "dual")
+        dcopf_dual["lam_kirchhoff"] = D["dcopf_solution"]["dual"]["lam_kirchhoff"]
+        dcopf_dual["mu_va_diff"] = D["dcopf_solution"]["dual"]["mu_va_diff"]
+        dcopf_dual["lam_ohm"] = D["dcopf_solution"]["dual"]["lam_ohm"]
+        dcopf_dual["mu_pg_lb"] = D["dcopf_solution"]["dual"]["mu_pg_lb"]
+        dcopf_dual["mu_pg_ub"] = D["dcopf_solution"]["dual"]["mu_pg_ub"]
     end
     return nothing
 end
@@ -261,36 +360,52 @@ function convert_to_h5!(D::Dict)
     dat["qd"] = _vecvec2mat(D["input"]["qd"])
     dat["br_status"] = _vecvec2mat(D["input"]["br_status"])
         
-    # Solution data
-    sol  = D["solution"]
+    # ACOPF Solution data
+    acopf_sol  = D["acopf_solution"]
         
     # The primal/dual solutions are lists of lists, which we convert to matrices for h5
-    primal = sol["primal"]
-    primal["vm"] = _vecvec2mat(D["solution"]["primal"]["vm"])
-    primal["va"] = _vecvec2mat(D["solution"]["primal"]["va"])
-    primal["pg"] = _vecvec2mat(D["solution"]["primal"]["pg"])
-    primal["qg"] = _vecvec2mat(D["solution"]["primal"]["qg"])
-    primal["pf"] = _vecvec2mat(D["solution"]["primal"]["pf"])
-    primal["qf"] = _vecvec2mat(D["solution"]["primal"]["qf"])
-    primal["pt"] = _vecvec2mat(D["solution"]["primal"]["pt"])
-    primal["qt"] = _vecvec2mat(D["solution"]["primal"]["qt"])
+    acopf_primal = acopf_sol["primal"]
+    acopf_primal["vm"] = _vecvec2mat(D["acopf_solution"]["primal"]["vm"])
+    acopf_primal["va"] = _vecvec2mat(D["acopf_solution"]["primal"]["va"])
+    acopf_primal["pg"] = _vecvec2mat(D["acopf_solution"]["primal"]["pg"])
+    acopf_primal["qg"] = _vecvec2mat(D["acopf_solution"]["primal"]["qg"])
+    acopf_primal["pf"] = _vecvec2mat(D["acopf_solution"]["primal"]["pf"])
+    acopf_primal["qf"] = _vecvec2mat(D["acopf_solution"]["primal"]["qf"])
+    acopf_primal["pt"] = _vecvec2mat(D["acopf_solution"]["primal"]["pt"])
+    acopf_primal["qt"] = _vecvec2mat(D["acopf_solution"]["primal"]["qt"])
 
-    dual   = sol["dual"]
-    dual["mu_sm_to"] = _vecvec2mat(D["solution"]["dual"]["mu_sm_to"])
-    dual["mu_vm_ub"] = _vecvec2mat(D["solution"]["dual"]["mu_vm_ub"])
-    dual["mu_pg_ub"] = _vecvec2mat(D["solution"]["dual"]["mu_pg_ub"])
-    dual["lam_kircchoff_active"] = _vecvec2mat(D["solution"]["dual"]["lam_kircchoff_active"])
-    dual["lam_ohm_reactive_fr"] = _vecvec2mat(D["solution"]["dual"]["lam_ohm_reactive_fr"])
-    dual["mu_qg_ub"] = _vecvec2mat(D["solution"]["dual"]["mu_qg_ub"])
-    dual["mu_vm_lb"] = _vecvec2mat(D["solution"]["dual"]["mu_vm_lb"])
-    dual["mu_sm_fr"] = _vecvec2mat(D["solution"]["dual"]["mu_sm_fr"])
-    dual["lam_ohm_active_to"] = _vecvec2mat(D["solution"]["dual"]["lam_ohm_active_to"])
-    dual["mu_pg_lb"] = _vecvec2mat(D["solution"]["dual"]["mu_pg_lb"])
-    dual["lam_ohm_active_fr"] = _vecvec2mat(D["solution"]["dual"]["lam_ohm_active_fr"])
-    dual["mu_qg_lb"] = _vecvec2mat(D["solution"]["dual"]["mu_qg_lb"])
-    dual["mu_va_diff"] = _vecvec2mat(D["solution"]["dual"]["mu_va_diff"])
-    dual["lam_kircchoff_reactive"] = _vecvec2mat(D["solution"]["dual"]["lam_kircchoff_reactive"])
-    dual["lam_ohm_reactive_to"] = _vecvec2mat(D["solution"]["dual"]["lam_ohm_reactive_to"])
+    acopf_dual   = acopf_sol["dual"]
+    acopf_dual["mu_sm_to"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_sm_to"])
+    acopf_dual["mu_vm_ub"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_vm_ub"])
+    acopf_dual["mu_pg_ub"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_pg_ub"])
+    acopf_dual["lam_kircchoff_active"] = _vecvec2mat(D["acopf_solution"]["dual"]["lam_kircchoff_active"])
+    acopf_dual["lam_ohm_reactive_fr"] = _vecvec2mat(D["acopf_solution"]["dual"]["lam_ohm_reactive_fr"])
+    acopf_dual["mu_qg_ub"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_qg_ub"])
+    acopf_dual["mu_vm_lb"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_vm_lb"])
+    acopf_dual["mu_sm_fr"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_sm_fr"])
+    acopf_dual["lam_ohm_active_to"] = _vecvec2mat(D["acopf_solution"]["dual"]["lam_ohm_active_to"])
+    acopf_dual["mu_pg_lb"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_pg_lb"])
+    acopf_dual["lam_ohm_active_fr"] = _vecvec2mat(D["acopf_solution"]["dual"]["lam_ohm_active_fr"])
+    acopf_dual["mu_qg_lb"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_qg_lb"])
+    acopf_dual["mu_va_diff"] = _vecvec2mat(D["acopf_solution"]["dual"]["mu_va_diff"])
+    acopf_dual["lam_kircchoff_reactive"] = _vecvec2mat(D["acopf_solution"]["dual"]["lam_kircchoff_reactive"])
+    acopf_dual["lam_ohm_reactive_to"] = _vecvec2mat(D["acopf_solution"]["dual"]["lam_ohm_reactive_to"])
+
+    # DCOPF Solution data
+    dcopf_sol  = D["dcopf_solution"]
+    
+    # The primal/dual solutions are lists of lists, which we convert to matrices for h5
+    dcopf_primal = dcopf_sol["primal"]
+    dcopf_primal["va"] = _vecvec2mat(D["dcopf_solution"]["primal"]["va"])
+    dcopf_primal["pg"] = _vecvec2mat(D["dcopf_solution"]["primal"]["pg"])
+    dcopf_primal["pf"] = _vecvec2mat(D["dcopf_solution"]["primal"]["pf"])
+
+    dcopf_dual   = dcopf_sol["dual"]
+    dcopf_dual["lam_kirchhoff"] = _vecvec2mat(D["dcopf_solution"]["dual"]["lam_kirchhoff"])
+    dcopf_dual["mu_va_diff"] = _vecvec2mat(D["dcopf_solution"]["dual"]["mu_va_diff"])
+    dcopf_dual["lam_ohm"] = _vecvec2mat(D["dcopf_solution"]["dual"]["lam_ohm"])
+    dcopf_dual["mu_pg_lb"] = _vecvec2mat(D["dcopf_solution"]["dual"]["mu_pg_lb"])
+    dcopf_dual["mu_pg_ub"] = _vecvec2mat(D["dcopf_solution"]["dual"]["mu_pg_ub"])
 
     return nothing
 end

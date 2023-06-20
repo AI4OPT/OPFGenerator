@@ -18,9 +18,9 @@ function _test_acopf(data::Dict)
     sol_pm = res_pm["solution"]
 
     # build and solve ACOPF 
-    acopf = ACOPFGenerator.build_acopf(data, solver)
+    acopf = OPFGenerator.build_acopf(data, solver)
     optimize!(acopf)
-    res = ACOPFGenerator._extract_solution(acopf, data)
+    res = OPFGenerator._extract_acopf_solution(acopf, data)
     sol = res["solution"]
 
     # Check that we get consistent results with PowerModels

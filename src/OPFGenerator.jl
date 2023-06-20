@@ -1,4 +1,4 @@
-module ACOPFGenerator
+module OPFGenerator
 
 using Random
 using StableRNGs
@@ -57,5 +57,5 @@ function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
 end
 
 include("acopf.jl")
-
+include("dcopf.jl")
 end # module
