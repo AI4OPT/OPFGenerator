@@ -3,6 +3,8 @@ using PowerModels
 PowerModels.silence()
 using PGLib
 
+using OPFGenerator
+
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 casename = config["ref"]
