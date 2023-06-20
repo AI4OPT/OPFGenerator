@@ -36,18 +36,4 @@ solver = optimizer_with_attributes(Ipopt.Optimizer,
     "linear_solver" => get(config["solver"], "linear_solver", "mumps")
 )
 
-acopf = OPFGenerator.build_acopf(data, solver)
-set_silent(acopf)
-# Symbolic AD is most useful for large systems
-optimize!(acopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
-# ... and export solution
-acopf_res = OPFGenerator._extract_acopf_solution(acopf, data)
-d["acopf_res"] = acopf_res
-
-dcopf = OPFGenerator.build_dcopf(data, solver)
-set_silent(dcopf)
-optimize!(dcopf; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
-dcopf_res = OPFGenerator._extract_dcopf_solution(dcopf, data)
-d["dcopf_res"] = dcopf_res
-
 OPFGenerator.save_json("$(export_dir)/$(name).ref.json", d)
