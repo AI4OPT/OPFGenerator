@@ -16,9 +16,9 @@ config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
 case = config["ref"]
-name = config["name"]
-
 result_dir = config["export_dir"]
+
+name = splitdir(result_dir)[end]
 res_json_dir = joinpath(result_dir, "res_json")
 res_h5_dir = joinpath(result_dir, "res_h5")
 

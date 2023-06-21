@@ -6,8 +6,8 @@ using Base.Threads
 
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
-name = config["name"]
 export_dir = config["export_dir"]
+name = splitdir(export_dir)[end]
 
 function read_files(export_dir)
     h5_files = [f for f in readdir("$(export_dir)/res_h5/", join=true) if endswith(f, ".h5")]
