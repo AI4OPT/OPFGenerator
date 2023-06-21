@@ -2,6 +2,7 @@
 ref = "pglib_opf_case300_ieee"
 # Directory where instance/solution files are exported
 # must be a valid directory
+name = "ACDC_300_ieee"
 export_dir = "data/ieee300"
 
 [sampler]
