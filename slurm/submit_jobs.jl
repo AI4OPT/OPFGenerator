@@ -68,7 +68,7 @@ for (j, seed_range) in enumerate(partition(missing_seeds, B))
 end
 
 sysimage_sbatch = Mustache.render(
-    Mustache.load("$(@__DIR__)/sysimage_template.sbatch"),
+    Mustache.load("$(@__DIR__)/template/sysimage.sbatch"),
     (
         charge_account=charge_account,
         name_dir=name_dir,
@@ -83,7 +83,7 @@ open("$(name_dir)/sysimage.sbatch", "w") do io
 end
 
 ref_sbatch = Mustache.render(
-    Mustache.load("$(@__DIR__)/ref_template.sbatch"),
+    Mustache.load("$(@__DIR__)/template/ref.sbatch"),
     (
         charge_account=charge_account,
         name_dir=name_dir,
@@ -97,7 +97,7 @@ open("$(name_dir)/ref.sbatch", "w") do io
 end
 
 extract_sbatch = Mustache.render(
-    Mustache.load("$(@__DIR__)/extract_template.sbatch"),
+    Mustache.load("$(@__DIR__)/template/extract.sbatch"),
     (
         charge_account=charge_account, 
         name_dir=name_dir, 
@@ -114,7 +114,7 @@ open("$(name_dir)/extract.sbatch", "w") do io
 end
 
 sampler_sbatch = Mustache.render(
-    Mustache.load("$(@__DIR__)/sampler_template.sbatch"),
+    Mustache.load("$(@__DIR__)/template/sampler.sbatch"),
     (
         charge_account=charge_account,
         name_dir=name_dir,
