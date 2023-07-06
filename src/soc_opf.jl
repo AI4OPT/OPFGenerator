@@ -136,3 +136,98 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
 
     return model
 end
+
+"""
+    _extract_solution(model, data)
+
+Extract SOC-OPF solution from optimization model.
+The model must have been solved before.
+"""
+function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
+    # Pre-process data
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+    N = length(ref[:bus])
+    G = length(ref[:gen])
+    E = length(data["branch"])
+
+    # Build the solution dictionary
+    res = Dict{String,Any}()
+    res["objective"] = JuMP.objective_value(model)
+    res["objective_lb"] = -Inf
+    res["optimizer"] = JuMP.solver_name(model)
+    res["solve_time"] = JuMP.solve_time(model)
+    res["termination_status"] = JuMP.termination_status(model)
+    res["primal_status"] = JuMP.primal_status(model)
+    res["dual_status"] = JuMP.dual_status(model)
+    res["solution"] = sol = Dict{String,Any}()
+
+    sol["per_unit"] = get(data, "per_unit", false)
+    sol["baseMVA"]  = get(data, "baseMVA", 100.0)
+
+    ### populate branches, gens, buses ###
+
+    sol["bus"] = Dict{String,Any}()
+    sol["branch"] = Dict{String,Any}()
+    sol["gen"] = Dict{String,Any}()
+
+    for bus in 1:N
+        sol["bus"]["$bus"] = Dict(
+            "vm" => value(model[:vm][bus]),
+            "va" => value(model[:va][bus]),
+            # dual vars
+            "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
+            "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
+            "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
+            "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
+        )
+    end
+
+    for b in 1:E
+        if data["branch"]["$b"]["br_status"] == 0
+            # branch is under outage --> we set everything to zero
+            sol["branch"]["$b"] = Dict(
+                "pf" => 0.0,
+                "pt" => 0.0,
+                "qf" => 0.0,
+                "qt" => 0.0,
+                # dual vars
+                "mu_sm_to" => 0.0,
+                "mu_sm_fr" => 0.0,
+                "mu_va_diff" => 0.0,
+                "lam_ohm_active_fr" => 0.0,
+                "lam_ohm_active_to" => 0.0,
+                "lam_ohm_reactive_fr" => 0.0,
+                "lam_ohm_reactive_to" => 0.0,
+            )
+        else
+            sol["branch"]["$b"] = Dict(
+                "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+                "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+                "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+                "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+                # dual vars
+                "mu_sm_to" => dual(model[:thermal_limit_to][b]),
+                "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
+                "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
+                "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
+                "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
+                "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
+                "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
+            )
+        end
+    end 
+    
+    for g in 1:G
+        sol["gen"]["$g"] = Dict(
+            "pg" => value(model[:pg][g]),
+            "qg" => value(model[:qg][g]),
+            # dual vars
+            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
+            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
+            "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
+            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
+        )
+    end 
+    
+    return res
+end
