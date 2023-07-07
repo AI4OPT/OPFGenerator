@@ -73,8 +73,8 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
     # We pre-allocate constraint containers for simplicity
     model[:thermal_limit_fr] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:thermal_limit_to] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:voltage_difference_limit_max] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:voltage_difference_limit_min] = Vector{JuMP.ConstraintRef}(undef, E)
+    model[:voltage_difference_limit_ub] = Vector{JuMP.ConstraintRef}(undef, E)
+    model[:voltage_difference_limit_lb] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_active_fr] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_active_to] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_fr] = Vector{JuMP.ConstraintRef}(undef, E)
@@ -113,8 +113,8 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
         model[:ohm_reactive_to][i] = JuMP.@NLconstraint(model, q_to == -(b+b_to)*w_to - (-b*tr+g*ti)/ttm*(wr_br) + (-g*tr-b*ti)/ttm*(-wi_br) )
 
         # Voltage angle difference limit
-        model[:voltage_difference_limit_max][i] = JuMP.@constraint(model, wi_br <= tan(branch["angmax"])*wr_br)
-        model[:voltage_difference_limit_min][i] = JuMP.@constraint(model, wi_br >= tan(branch["angmin"])*wr_br)
+        model[:voltage_difference_limit_ub][i] = JuMP.@constraint(model, wi_br <= tan(branch["angmax"])*wr_br)
+        model[:voltage_difference_limit_lb][i] = JuMP.@constraint(model, wi_br >= tan(branch["angmin"])*wr_br)
 
         # Apparent power limit, from side and to side
         model[:thermal_limit_fr][i] = JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
@@ -172,13 +172,12 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
 
     for bus in 1:N
         sol["bus"]["$bus"] = Dict(
-            "vm" => value(model[:vm][bus]),
-            "va" => value(model[:va][bus]),
+            "w" => value(model[:w][bus]),
             # dual vars
             "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
             "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
-            "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
-            "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
+            "mu_w_lb" => dual(LowerBoundRef(model[:w][bus])),
+            "mu_w_ub" => dual(UpperBoundRef(model[:w][bus]))
         )
     end
 
@@ -193,22 +192,37 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
                 # dual vars
                 "mu_sm_to" => 0.0,
                 "mu_sm_fr" => 0.0,
-                "mu_va_diff" => 0.0,
+                "mu_va_diff_ub" => 0.0,
+                "mu_va_diff_lb" => 0.0,
+                "mu_w_ij_lb" => 0.0,
+                "mu_wr_lb" => 0.0,
+                "mu_wr_ub" => 0.0,
+                "mu_wi_lb" => 0.0,
+                "mu_wi_ub" => 0.0,
                 "lam_ohm_active_fr" => 0.0,
                 "lam_ohm_active_to" => 0.0,
                 "lam_ohm_reactive_fr" => 0.0,
                 "lam_ohm_reactive_to" => 0.0,
             )
         else
+            bp = (ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"])
             sol["branch"]["$b"] = Dict(
                 "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+                "wr" => value(model[:wr][bp]),
+                "wi" => value(model[:wi][bp]),
                 # dual vars
                 "mu_sm_to" => dual(model[:thermal_limit_to][b]),
                 "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
-                "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
+                "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
+                "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
+                "mu_w_ij_lb" => dual(model[:w_ij_lower_bound][bp]),
+                "mu_wr_lb" => dual(LowerBoundRef(model[:wr][bp])),
+                "mu_wr_ub" => dual(UpperBoundRef(model[:wr][bp])),
+                "mu_wi_lb" => dual(LowerBoundRef(model[:wi][bp])),
+                "mu_wi_ub" => dual(UpperBoundRef(model[:wi][bp])),
                 "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
                 "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
                 "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
@@ -227,7 +241,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
             "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
             "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
         )
-    end 
+    end
     
     return res
 end
