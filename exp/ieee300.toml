@@ -18,3 +18,4 @@ name = "Ipopt"                  # only "Ipopt" is supported at the moment
 tol = 1e-6                      # numerical tolerance (leave it at 1e-6 unless you know what you're doing)
 print_level = 0                 # set this to zero to disable Ipopt output
 max_wall_time = 60.0            # time limit, in seconds
+linear_solver = "ma27"

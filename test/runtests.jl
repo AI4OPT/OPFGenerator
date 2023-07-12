@@ -8,6 +8,8 @@ const PM = PowerModels
 PM.silence()
 using PGLib
 
-using ACOPFGenerator
+using OPFGenerator
 
 include("acopf.jl")
+include("dcopf.jl")
+include("soc_opf.jl")

@@ -4,3 +4,4 @@ slurm/
 *.log
 *.txt
 *.out
+*.sbatch
