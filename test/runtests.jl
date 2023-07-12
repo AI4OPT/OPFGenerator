@@ -12,3 +12,4 @@ using OPFGenerator
 
 include("acopf.jl")
 include("dcopf.jl")
+include("soc_opf.jl")
