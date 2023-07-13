@@ -184,11 +184,15 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
     for b in 1:E
         if data["branch"]["$b"]["br_status"] == 0
             # branch is under outage --> we set everything to zero
+            # The variables `wr` and `wi` don't really have a meaning anymore,
+            #   so we set them to zero by convention.
             sol["branch"]["$b"] = Dict(
                 "pf" => 0.0,
                 "pt" => 0.0,
                 "qf" => 0.0,
                 "qt" => 0.0,
+                "wr" => 0.0,
+                "wi" => 0.0,
                 # dual vars
                 "mu_sm_to" => 0.0,
                 "mu_sm_fr" => 0.0,
