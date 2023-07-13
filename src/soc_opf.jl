@@ -13,15 +13,12 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
-    # ref = PM.build_ref(data)[:it][_PM.pm_it_sym][:nw][nw_id_default]
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     
     # Grab some data
     N = length(ref[:bus])
     G = length(ref[:gen])
-    # E = length(data["branch"])
     E = length(ref[:branch])
-    # L = length(ref[:load])
     bus_loads = [
         [ref[:load][l] for l in ref[:bus_loads][i]]
         for i in 1:N
@@ -178,7 +175,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
             "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
             "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
             "mu_w_lb" => dual(LowerBoundRef(model[:w][bus])),
-            "mu_w_ub" => dual(UpperBoundRef(model[:w][bus]))
+            "mu_w_ub" => dual(UpperBoundRef(model[:w][bus])),
         )
     end
 
@@ -231,7 +228,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
                 "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
                 "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
                 "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
-                "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
+                "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b]),
             )
         end
     end 
@@ -244,7 +241,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
             "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
             "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
             "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
-            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
+            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g])),
         )
     end
     
