@@ -121,10 +121,11 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
         model[:thermal_limit_to][i] = JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)
     end
     
-    # Voltage product relaxation lower bound
-    JuMP.@constraint(model, w_ij_lower_bound[(i, j) in keys(ref[:buspairs])], wr[(i,j)]^2 + wi[(i,j)]^2 <= w[i]*w[j])
-
-    # In this formulation, we do not include the voltage product relaxation upper bound
+    # Voltage product relaxation (quadratic form)
+    JuMP.@constraint(model,
+        voltage_prod_quadratic[(i, j) in keys(ref[:buspairs])],
+        wr[(i,j)]^2 + wi[(i,j)]^2 <= w[i]*w[j]
+    )
 
     #
     #   III. Objective
@@ -198,7 +199,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
                 "mu_sm_fr" => 0.0,
                 "mu_va_diff_ub" => 0.0,
                 "mu_va_diff_lb" => 0.0,
-                "mu_w_ij_lb" => 0.0,
+                "mu_voltage_prod_quad" => 0.0,
                 "mu_wr_lb" => 0.0,
                 "mu_wr_ub" => 0.0,
                 "mu_wi_lb" => 0.0,
@@ -222,7 +223,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
                 "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
                 "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
                 "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
-                "mu_w_ij_lb" => dual(model[:w_ij_lower_bound][bp]),
+                "mu_voltage_prod_quad" => dual(model[:voltage_prod_quadratic][bp]),
                 "mu_wr_lb" => dual(LowerBoundRef(model[:wr][bp])),
                 "mu_wr_ub" => dual(UpperBoundRef(model[:wr][bp])),
                 "mu_wi_lb" => dual(LowerBoundRef(model[:wi][bp])),
