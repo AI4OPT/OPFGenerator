@@ -105,12 +105,12 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
         b_to = branch["b_to"]
 
         # From side of the branch flow
-        model[:ohm_active_fr][i] = JuMP.@NLconstraint(model, p_fr ==  (g+g_fr)/ttm*w_fr + (-g*tr+b*ti)/ttm*(wr_br) + (-b*tr-g*ti)/ttm*(wi_br) )
-        model[:ohm_reactive_fr][i] = JuMP.@NLconstraint(model, q_fr == -(b+b_fr)/ttm*w_fr - (-b*tr-g*ti)/ttm*(wr_br) + (-g*tr+b*ti)/ttm*(wi_br) )
+        model[:ohm_active_fr][i] = JuMP.@constraint(model, p_fr ==  (g+g_fr)/ttm*w_fr + (-g*tr+b*ti)/ttm*(wr_br) + (-b*tr-g*ti)/ttm*(wi_br) )
+        model[:ohm_reactive_fr][i] = JuMP.@constraint(model, q_fr == -(b+b_fr)/ttm*w_fr - (-b*tr-g*ti)/ttm*(wr_br) + (-g*tr+b*ti)/ttm*(wi_br) )
 
         # To side of the branch flow
-        model[:ohm_active_to][i] = JuMP.@NLconstraint(model, p_to ==  (g+g_to)*w_to + (-g*tr-b*ti)/ttm*(wr_br) + (-b*tr+g*ti)/ttm*(-wi_br) )
-        model[:ohm_reactive_to][i] = JuMP.@NLconstraint(model, q_to == -(b+b_to)*w_to - (-b*tr+g*ti)/ttm*(wr_br) + (-g*tr-b*ti)/ttm*(-wi_br) )
+        model[:ohm_active_to][i] = JuMP.@constraint(model, p_to ==  (g+g_to)*w_to + (-g*tr-b*ti)/ttm*(wr_br) + (-b*tr+g*ti)/ttm*(-wi_br) )
+        model[:ohm_reactive_to][i] = JuMP.@constraint(model, q_to == -(b+b_to)*w_to - (-b*tr+g*ti)/ttm*(wr_br) + (-g*tr-b*ti)/ttm*(-wi_br) )
 
         # Voltage angle difference limit
         model[:voltage_difference_limit_ub][i] = JuMP.@constraint(model, wi_br <= tan(branch["angmax"])*wr_br)
