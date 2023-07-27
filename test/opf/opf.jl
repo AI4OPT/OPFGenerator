@@ -1,5 +1,5 @@
 @testset "OPF" begin
-    include("acopf.jl")
-    include("dcopf.jl")
+    include("acp.jl")
+    include("dcp.jl")
     include("socwr.jl")
 end

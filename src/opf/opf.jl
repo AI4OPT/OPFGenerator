@@ -5,6 +5,6 @@ end
 
 function build_opf(data, ::Type{<:PM.AbstractPowerModel}) end
 
-include("acopf.jl")  # ACCPPowerModel
-include("dcopf.jl")  # DCPPowerModel
+include("acp.jl")    # ACCPPowerModel
+include("dcp.jl")    # DCPPowerModel
 include("socwr.jl")  # SOCWRPowerModel
