@@ -18,9 +18,11 @@ function _test_dcopf(data::Dict)
     sol_pm = res_pm["solution"]
 
     # build and solve DCOPF 
-    dcopf = OPFGenerator.build_dcopf(data, solver)
-    optimize!(dcopf)
-    res = OPFGenerator._extract_dcopf_solution(dcopf, data)
+    dcopf = OPFGenerator.build_opf(PM.DCPPowerModel, data, solver)
+    model = dcopf.model
+    optimize!(model)
+    res = OPFGenerator.extract_result(dcopf)
+    @test res["opf_model"] == "DCPPowerModel"
     sol = res["solution"]
 
     # Check that we get consistent results with PowerModels
@@ -36,17 +38,17 @@ function _test_dcopf(data::Dict)
         :pf => Float64[sol_pm["branch"]["$e"]["pf"] for e in 1:E],
     )
     # reorder pf according to branch order in our model
-    dcopf_branch_order = [key[1][1] for key in keys(dcopf[:pf])][1:E]
+    dcopf_branch_order = [key[1][1] for key in keys(model[:pf])][1:E]
     var2val_pm[:pf] = var2val_pm[:pf][dcopf_branch_order]
     var2val_pm[:pf] = vcat(var2val_pm[:pf], -var2val_pm[:pf])
 
-    @constraint(dcopf, var2val_pm[:pg] .<= dcopf[:pg] .<= var2val_pm[:pg])
-    @constraint(dcopf, var2val_pm[:va] .<= dcopf[:va] .<= var2val_pm[:va])
-    @constraint(dcopf, var2val_pm[:pf] .<= dcopf[:pf] .<= var2val_pm[:pf])
+    @constraint(model, var2val_pm[:pg] .<= model[:pg] .<= var2val_pm[:pg])
+    @constraint(model, var2val_pm[:va] .<= model[:va] .<= var2val_pm[:va])
+    @constraint(model, var2val_pm[:pf] .<= model[:pf] .<= var2val_pm[:pf])
 
-    optimize!(dcopf)
-    @test termination_status(dcopf) ∈ [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
-    @test primal_status(dcopf) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
+    optimize!(model)
+    @test termination_status(model) ∈ [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
+    @test primal_status(model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
 
     return nothing
 end
