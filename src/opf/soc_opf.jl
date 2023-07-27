@@ -141,7 +141,7 @@ end
 Extract SOC-OPF solution from optimization model.
 The model must have been solved before.
 """
-function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
+function _extract_socwr_solution(model::JuMP.Model, data::Dict{String,Any})
     # Pre-process data
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
