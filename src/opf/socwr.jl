@@ -6,7 +6,7 @@ Build an SOC-OPF model.
 This implementation is based on the SOC-OPF formulation of PMAnnex.jl
     https://github.com/lanl-ansi/PMAnnex.jl/blob/f303f3c3c61e2d1a050ee7651fa6e8abc4055b55/src/model/opf.jl
 """
-function build_opf(::Type{PM.SOCWRPowerModel}, data::Dict{String,Any}, optimizer)
+function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
     @assert !haskey(data, "multinetwork")
     @assert !haskey(data, "conductors")
 
@@ -29,7 +29,7 @@ function build_opf(::Type{PM.SOCWRPowerModel}, data::Dict{String,Any}, optimizer
     ]
 
     model = JuMP.Model(optimizer)
-    model.ext[:opf_model] = PM.SOCWRPowerModel
+    model.ext[:opf_model] = OPF
 
     #
     #   I. Variables
@@ -115,15 +115,27 @@ function build_opf(::Type{PM.SOCWRPowerModel}, data::Dict{String,Any}, optimizer
         model[:voltage_difference_limit_lb][i] = JuMP.@constraint(model, wi_br >= tan(branch["angmin"])*wr_br)
 
         # Apparent power limit, from side and to side
-        model[:thermal_limit_fr][i] = JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
-        model[:thermal_limit_to][i] = JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)
+        if OPF == PM.SOCWRPowerModel
+            model[:thermal_limit_fr][i] = JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
+            model[:thermal_limit_to][i] = JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)
+        elseif OPF == PM.SOCWRConicPowerModel
+            model[:thermal_limit_fr][i] = JuMP.@constraint(model, [branch["rate_a"], p_fr, q_fr] in JuMP.SecondOrderCone())
+            model[:thermal_limit_to][i] = JuMP.@constraint(model, [branch["rate_a"], p_to, q_to] in JuMP.SecondOrderCone())
+        end
     end
     
     # Voltage product relaxation (quadratic form)
-    JuMP.@constraint(model,
-        voltage_prod_quadratic[(i, j) in keys(ref[:buspairs])],
-        wr[(i,j)]^2 + wi[(i,j)]^2 <= w[i]*w[j]
-    )
+    if OPF == PM.SOCWRPowerModel
+        JuMP.@constraint(model,
+            voltage_prod_quadratic[(i, j) in keys(ref[:buspairs])],
+            wr[(i,j)]^2 + wi[(i,j)]^2 <= w[i]*w[j]
+        )
+    elseif OPF == PM.SOCWRConicPowerModel
+        JuMP.@constraint(model,
+            voltage_prod_conic[(i, j) in keys(ref[:buspairs])],
+            [w[i] / sqrt(2), w[j] / sqrt(2), wr[(i,j)], wi[(i,j)]] in JuMP.RotatedSecondOrderCone()
+        )
+    end
 
     #
     #   III. Objective
@@ -133,7 +145,7 @@ function build_opf(::Type{PM.SOCWRPowerModel}, data::Dict{String,Any}, optimizer
         for (i,gen) in ref[:gen]
     ))
 
-    return OPFModel{PM.SOCWRPowerModel}(data, model)
+    return OPFModel{OPF}(data, model)
 end
 
 """
@@ -142,7 +154,7 @@ end
 Extract SOC-OPF solution from optimization model.
 The model must have been solved before.
 """
-function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
+function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
     data  = opf.data
     model = opf.model
 
@@ -189,7 +201,7 @@ function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
             # branch is under outage --> we set everything to zero
             # The variables `wr` and `wi` don't really have a meaning anymore,
             #   so we set them to zero by convention.
-            sol["branch"]["$b"] = Dict(
+            sol["branch"]["$b"] = brsol = Dict(
                 "pf" => 0.0,
                 "pt" => 0.0,
                 "qf" => 0.0,
@@ -197,11 +209,8 @@ function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
                 "wr" => 0.0,
                 "wi" => 0.0,
                 # dual vars
-                "mu_sm_to" => 0.0,
-                "mu_sm_fr" => 0.0,
                 "mu_va_diff_ub" => 0.0,
                 "mu_va_diff_lb" => 0.0,
-                "mu_voltage_prod_quad" => 0.0,
                 "mu_wr_lb" => 0.0,
                 "mu_wr_ub" => 0.0,
                 "mu_wi_lb" => 0.0,
@@ -211,9 +220,26 @@ function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
                 "lam_ohm_reactive_fr" => 0.0,
                 "lam_ohm_reactive_to" => 0.0,
             )
+            if OPF == PM.SOCWRPowerModel
+                brsol["mu_sm_to"] = 0.0
+                brsol["mu_sm_fr"] = 0.0
+                brsol["mu_voltage_prod_quad"] = 0.0
+            elseif OPF == PM.SOCWRConicPowerModel
+                # conic duals (unrolled)
+                brsol["nu_voltage_prod_soc_1"] = 0.0
+                brsol["nu_voltage_prod_soc_2"] = 0.0
+                brsol["nu_voltage_prod_soc_3"] = 0.0
+                brsol["nu_voltage_prod_soc_4"] = 0.0
+                brsol["nu_sm_to_1"] = 0.0
+                brsol["nu_sm_to_2"] = 0.0
+                brsol["nu_sm_to_3"] = 0.0
+                brsol["nu_sm_fr_1"] = 0.0
+                brsol["nu_sm_fr_2"] = 0.0
+                brsol["nu_sm_fr_3"] = 0.0
+            end
         else
             bp = (ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"])
-            sol["branch"]["$b"] = Dict(
+            sol["branch"]["$b"] = brsol = Dict(
                 "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
@@ -221,11 +247,8 @@ function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
                 "wr" => value(model[:wr][bp]),
                 "wi" => value(model[:wi][bp]),
                 # dual vars
-                "mu_sm_to" => dual(model[:thermal_limit_to][b]),
-                "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
                 "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
                 "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
-                "mu_voltage_prod_quad" => dual(model[:voltage_prod_quadratic][bp]),
                 "mu_wr_lb" => dual(LowerBoundRef(model[:wr][bp])),
                 "mu_wr_ub" => dual(UpperBoundRef(model[:wr][bp])),
                 "mu_wi_lb" => dual(LowerBoundRef(model[:wi][bp])),
@@ -235,8 +258,30 @@ function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
                 "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
                 "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b]),
             )
+            
+            # The following dual variables depend on whether we have a QCP or SOC form,
+            #   so they are handled separately
+            if OPF == PM.SOCWRPowerModel
+                brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
+                brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
+                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp])
+            elseif OPF == PM.SOCWRConicPowerModel
+                nu_voltage_prod_soc = dual(model[:voltage_prod_conic][bp])
+                brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1]
+                brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2]
+                brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3]
+                brsol["nu_voltage_prod_soc_4"] = nu_voltage_prod_soc[4]
+                nu_sm_to = dual(model[:thermal_limit_to][b])
+                brsol["nu_sm_to_1"] = nu_sm_to[1]
+                brsol["nu_sm_to_2"] = nu_sm_to[2]
+                brsol["nu_sm_to_3"] = nu_sm_to[3]
+                nu_sm_fr = dual(model[:thermal_limit_fr][b])
+                brsol["nu_sm_fr_1"] = nu_sm_fr[1]
+                brsol["nu_sm_fr_2"] = nu_sm_fr[2]
+                brsol["nu_sm_fr_3"] = nu_sm_fr[3]
+            end
         end
-    end 
+    end
     
     for g in 1:G
         sol["gen"]["$g"] = Dict(
