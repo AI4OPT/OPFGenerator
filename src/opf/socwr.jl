@@ -6,7 +6,7 @@ Build an SOC-OPF model.
 This implementation is based on the SOC-OPF formulation of PMAnnex.jl
     https://github.com/lanl-ansi/PMAnnex.jl/blob/f303f3c3c61e2d1a050ee7651fa6e8abc4055b55/src/model/opf.jl
 """
-function build_soc_opf(data::Dict{String,Any}, optimizer)
+function build_opf(::Type{PM.SOCWRPowerModel}, data::Dict{String,Any}, optimizer)
     @assert !haskey(data, "multinetwork")
     @assert !haskey(data, "conductors")
 
@@ -29,6 +29,7 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
     ]
 
     model = JuMP.Model(optimizer)
+    model.ext[:opf_model] = PM.SOCWRPowerModel
 
     #
     #   I. Variables
@@ -132,7 +133,7 @@ function build_soc_opf(data::Dict{String,Any}, optimizer)
         for (i,gen) in ref[:gen]
     ))
 
-    return model
+    return OPFModel{PM.SOCWRPowerModel}(data, model)
 end
 
 """
@@ -141,7 +142,10 @@ end
 Extract SOC-OPF solution from optimization model.
 The model must have been solved before.
 """
-function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
+function extract_result(opf::OPFModel{PM.SOCWRPowerModel})
+    data  = opf.data
+    model = opf.model
+
     # Pre-process data
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
@@ -150,6 +154,7 @@ function _extract_solution(model::JuMP.Model, data::Dict{String,Any})
 
     # Build the solution dictionary
     res = Dict{String,Any}()
+    res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
     res["objective_lb"] = -Inf
     res["optimizer"] = JuMP.solver_name(model)

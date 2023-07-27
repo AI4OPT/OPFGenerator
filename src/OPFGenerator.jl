@@ -56,8 +56,6 @@ function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     return data
 end
 
-include("acopf.jl")
-include("dcopf.jl")
-include("soc_opf.jl")
+include("opf/opf.jl")
 
 end # module

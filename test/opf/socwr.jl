@@ -1,11 +1,11 @@
-_test_acopf(casename::String) = _test_acopf(PM.make_basic_network(pglib(casename)))
+_test_soc_opf(casename::String) = _test_soc_opf(PM.make_basic_network(pglib(casename)))
 
 """
-    _test_acopf(data)
+    _test_soc_opf(data)
 
 Solve ACOPF problem and compare to PowerModels' solution.
 """
-function _test_acopf(data::Dict)
+function _test_soc_opf(data::Dict)
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
     E = length(data["branch"])
@@ -14,13 +14,15 @@ function _test_acopf(data::Dict)
     solver = optimizer_with_attributes(Ipopt.Optimizer,
         "print_level" => 0,
     )
-    res_pm = solve_ac_opf(data, solver)
+    res_pm = solve_opf(data, SOCWRPowerModel, solver)
     sol_pm = res_pm["solution"]
 
-    # build and solve ACOPF 
-    acopf = OPFGenerator.build_acopf(data, solver)
-    optimize!(acopf)
-    res = OPFGenerator._extract_acopf_solution(acopf, data)
+    # build and solve SOC-OPF 
+    socp = OPFGenerator.build_opf(PM.SOCWRPowerModel, data, solver)
+    model = socp.model
+    optimize!(model)
+    res = OPFGenerator.extract_result(socp)
+    @test res["opf_model"] == "SOCWRPowerModel"
     sol = res["solution"]
 
     # Check that we get consistent results with PowerModels
@@ -33,25 +35,24 @@ function _test_acopf(data::Dict)
     var2val_pm = Dict(
         :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
         :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
-        :va => Float64[sol_pm["bus"]["$i"]["va"] for i in 1:N],
-        :vm => Float64[sol_pm["bus"]["$i"]["vm"] for i in 1:N],
+        :w  => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N],
     )
-    for varname in [:pg, :qg, :va, :vm]
-        x = acopf[varname]
+    for varname in [:pg, :qg, :w]
+        x = model[varname]
         v = var2val_pm[varname]
-        @constraint(acopf, v .<= x .<= v)
+        @constraint(model, v .<= x .<= v)
     end
 
-    optimize!(acopf)
-    @test termination_status(acopf) ∈ [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
-    @test primal_status(acopf) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
+    optimize!(model)
+    @test termination_status(model) ∈ [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
+    @test primal_status(model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
 
     return nothing
 end
 
-@testset "ACOPF" begin
+@testset "SOC-OPF" begin
     @testset "$casename" for casename in ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
-        _test_acopf("pglib_opf_case$(casename)")
+        _test_soc_opf("pglib_opf_case$(casename)")
     end
 end
 
