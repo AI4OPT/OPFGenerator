@@ -3,7 +3,7 @@
 
 Build a DC-OPF model.
 """
-function build_dcopf(data::Dict{String,Any}, optimizer)
+function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
@@ -28,6 +28,7 @@ function build_dcopf(data::Dict{String,Any}, optimizer)
     ]
 
     model = JuMP.Model(optimizer)
+    model.ext[:opf_model] = PM.DCPPowerModel  # for internal checks
 
     #
     #   I. Variables
@@ -97,7 +98,7 @@ function build_dcopf(data::Dict{String,Any}, optimizer)
         for (i,gen) in ref[:gen]
     ))
 
-    return model
+    return OPFModel{PM.DCPPowerModel}(data, model)
 end
 
 """
@@ -106,7 +107,10 @@ end
 Extract DCOPF solution from optimization model.
 The model must have been solved before.
 """
-function _extract_dcopf_solution(model::JuMP.Model, data::Dict{String,Any})
+function extract_result(opf::OPFModel{PM.DCPPowerModel})
+    data  = opf.data
+    model = opf.model
+
     # Pre-process data
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
@@ -115,6 +119,7 @@ function _extract_dcopf_solution(model::JuMP.Model, data::Dict{String,Any})
 
     # Build the solution dictionary
     res = Dict{String,Any}()
+    res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
     res["objective_lb"] = -Inf
     res["optimizer"] = JuMP.solver_name(model)
