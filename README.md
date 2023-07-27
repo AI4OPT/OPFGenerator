@@ -8,14 +8,18 @@ Copyright Georgia Tech 2022
 # OPFGenerator
 Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
 
-- [OPFGenerator](#OPFGenerator)
+- [OPFGenerator](#opfgenerator)
   - [Installation instructions](#installation-instructions)
-    - [Using HSL solvers](#using-hsl-solvers-ma27-ma57)
+    - [Using HSL solvers (ma27, ma57)](#using-hsl-solvers-ma27-ma57)
   - [Quick start](#quick-start)
+    - [Generating random instances](#generating-random-instances)
+    - [Building and solving OPF problems](#building-and-solving-opf-problems)
   - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
-    - [Primal variables](#primal-variables)
-    - [Dual variables](#dual-variables)
+    - [ACOPF Primal variables](#acopf-primal-variables)
+    - [ACOPF Dual variables](#acopf-dual-variables)
+    - [DCOPF Primal variables](#dcopf-primal-variables)
+    - [DCOPF Dual variables](#dcopf-dual-variables)
   - [Datasets](#datasets)
     - [Format](#format)
     - [Loading from julia](#loading-from-julia)
@@ -72,6 +76,8 @@ acopf = OPFGenerator.build_acopf(data, solver)
 
 ## Quick start
 
+### Generating random instances
+
 ```julia
 using Random, PGLib, PowerModels
 using OPFGenerator
@@ -109,6 +115,27 @@ dataset = [
     OPFGenerator.rand(rng, opf_sampler)
     for i in 1:100
 ]
+```
+
+### Building and solving OPF problems
+
+`OPFGenerator` supports multiple OPF formulations, based on [PowerModels](https://lanl-ansi.github.io/PowerModels.jl/stable/).
+
+```julia
+using PowerModels
+using PGLib
+
+using JuMP
+using Ipopt
+
+using OPFGenerator
+
+data = make_basic_network(pglib("14_ieee"))
+acopf = OPFGenerator.build_opf(PowerModels.ACPPowerModel, data, Ipopt.Optimizer)
+optimize!(acopf.model)
+res = OPFGenerator.extract_result(acopf)
+
+res["objective"]  # should be close to 2178.08041
 ```
 
 ## Generating datasets
