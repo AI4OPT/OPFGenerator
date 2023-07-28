@@ -1,6 +1,6 @@
 const SOCWRPowerModel = Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}
 
-function _test_opf_detailed(opf::OPFModel{OPF}, res::Dict, res_pm::Dict) where {OPF <: SOCPowerModel}
+function _test_opf_detailed(opf::OPFModel{OPF}, res::Dict, res_pm::Dict) where {OPF <: SOCWRPowerModel}
     data = opf.data
     N = length(data["bus"])
     E = length(data["branch"])
