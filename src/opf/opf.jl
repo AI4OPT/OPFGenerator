@@ -1,5 +1,4 @@
 # Contains a list of all supported OPF models
-# This array is initialized as emtpy
 const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
     PowerModels.ACPPowerModel,
     PowerModels.DCPPowerModel,
@@ -10,8 +9,10 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
 # A name --> type dictionary
 # Used for passing the OPF type as a string (e.g. through config file)
 const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
-    string(OPF) => OPF
-    for OPF in SUPPORTED_OPF_MODELS
+    "ACPPowerModel" => PowerModels.ACPPowerModel,
+    "DCPPowerModel" => PowerModels.DCPPowerModel,
+    "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
+    "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
 )
 
 mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
