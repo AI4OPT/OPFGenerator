@@ -40,19 +40,25 @@ function test_opf(::Type{OPF}, data::Dict) where{OPF <: PM.AbstractPowerModel}
     return opf, res, res_pm
 end
 
-function _test_opf_detailed(opf, res, res_pm)
-    @test_broken false  # flag missing implementation
+function _test_opf_detailed(opf::OPFModel{OPF}, res, res_pm) where{OPF<:PM.AbstractPowerModel}
+    error("""Detailed tests not implemented for OPF formulation $(OPF)
+    You must implement a function with the following signature:
+        function _test_opf_detailed(opf::OPFModel{OPF}, res::Dict, res_pm::Dict) where{OPF <: $(OPF)}
+            # unit tests ...
+            return nothing
+        end
+    """)
+    return nothing
 end
 
 include("acp.jl")
 include("dcp.jl")
 include("socwr.jl")
 
-const OPF_MODELS  = [PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel, PM.DCPPowerModel]
 const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
 @testset "OPF" begin
-    @testset "$(OPF)" for OPF in OPF_MODELS
+    @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         @testset "$(casename)" for casename in PGLIB_CASES
             test_opf(OPF, "pglib_opf_case$(casename)")
         end
