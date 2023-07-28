@@ -93,8 +93,10 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
     #
     #   III. Objective
     #
+    l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
+    (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
     JuMP.@objective(model, Min, sum(
-        gen["cost"][1]*pg[i]^2 + gen["cost"][2]*pg[i] + gen["cost"][3]
+        gen["cost"][2]*pg[i] + gen["cost"][3]
         for (i,gen) in ref[:gen]
     ))
 
