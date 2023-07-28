@@ -57,21 +57,31 @@ This repository is a non-registered Julia package.
 
 ### Using HSL solvers (ma27, ma57)
 
-HSL solvers are supported via the [HSL.jl](https://github.com/JuliaSmoothOptimizers/HSL.jl) package (only v0.3.6 and above).
-Follow installation instructions there.
+The recommended way to use Ipopt with HSL solvers is via [JuliaHSL](https://licences.stfc.ac.uk/product/julia-hsl).
+This webpage includes installation steps for multiple platforms, source code and precompiled binaries.
 
-To use HSL linear solvers with Ipopt, use the following:
-```julia
-using HSL
-const LIB_COINHSL = HSL.libcoinhsl
+Follow these steps for installing `JuliaHSL` (assumes Linux machine and academic license)
+1. Request a JuliaHSL academic licence from [JuliaHSL](https://licences.stfc.ac.uk/product/julia-hsl)
+2. Once approved, download the compiled library.
+   If you're on Linux and have Julia 1.9 and above (recommended), download the file called `lbt_HSL_jll.jl-2023.5.26.tar.gz` (or more recent version is available)
+3. Create a `deps` directory, move the tarball there and extract it
+   ```bash
+   mkdir deps
+   mv <path/to/download/lbt_HSL_jll.jl-2023.5.26.tar.gz deps/>
+   cd deps
+   tar -xzf lbt_HSL_jll.jl-2023.5.26.tar.gz
+   cd ..
+   ```
+4. Dev the package
+    ```bash
+    julia --project=. -e 'using Pkg; Pkg.develop(path="deps/HSL_jll.jl-2023.5.26");'
+    ```
 
-using JuMP
-
-solver = optimizer_with_attributes(Ipopt.Optimizer,
-    "hsllib" => LIB_COINHSL,
-    "linear_solver" => "ma27"  # or solver of your choice
-)
-acopf = OPFGenerator.build_acopf(data, solver)
+To use HSL linear solvers when solving OPF instances, set the parameter "linear_solver" to "ma27" or "ma57" in the config file.
+The recommended solver for Ipopt is `ma27`.
+```toml
+[solver.Ipopt]
+    linear_solver = "ma27"
 ```
 
 ## Quick start
