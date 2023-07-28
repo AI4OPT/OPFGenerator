@@ -55,6 +55,9 @@ include("acp.jl")
 include("dcp.jl")
 include("socwr.jl")
 
+# other tests
+include("quad_obj.jl")
+
 const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
 @testset "OPF" begin
@@ -62,5 +65,8 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
         @testset "$(casename)" for casename in PGLIB_CASES
             test_opf(OPF, "pglib_opf_case$(casename)")
         end
+
+        @testset "QuadObj" begin test_quad_obj_warn(OPF) end
     end
 end
+
