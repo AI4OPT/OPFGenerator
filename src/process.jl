@@ -93,29 +93,35 @@ function add_datapoint!(D, d)
     return D
 end
 
-function save_h5(filename, D)
-    config = D["meta"]["config"]
-
+function save_h5(filename::AbstractString, D)
     h5open(filename, "w") do file
-        meta = create_group(file, "meta")
-        meta["ref"] = D["meta"]["ref"]
+        save_h5(file, D)
+    end
+    return nothing
+end
 
-        # Input data
-        dat  = create_group(file, "input")
-        for (k, v) in D["input"]
-            dat[k] = v
-        end
+function save_h5(file::HDF5.File, D::Dict)
+    for (k, v) in D
+        @assert isa(v, Dict)
+        gr = create_group(file, k)
+        save_h5(gr, v)
+    end
+    return nothing
+end
 
-        # OPF solutions
-        opf_formulations = sort(collect(keys(config["OPF"])))
-        for opf_formulation in opf_formulations
-            opf_h5 = create_group(file, opf_formulation)
-            for cat in ["meta", "primal", "dual"]
-                gr = create_group(opf_h5, cat)
-                for (k, v) in D[opf_formulation][cat]
-                    gr[k] = v
-                end
-            end
+function save_h5(gr::HDF5.Group, D::Dict)
+    for (k, v) in D
+        if isa(v, Array)
+            gr[k] = v
+        elseif isa(v, AbstractString)
+            gr[k] = string(v)
+        elseif isa(v, Union{Int64,Float64})
+            gr[k] = v
+        elseif isa(v, Dict)
+            gr_ = create_group(gr, k)
+            save_h5(gr_, v)
+        else
+            error("Unsupported data type for writing to a group: $k::$(typeof(v))")
         end
     end
     return nothing
@@ -259,7 +265,7 @@ The dictionary `D` should be in h5-compatible format.
 It is modified in-place.
 """
 function _sort_h5!(D::Dict{String,Any})
-    p = sortperm(D["meta"]["seed"])
+    p = sortperm(D["input"]["seed"])
 
     _sort_h5!(D, p)
     return nothing
