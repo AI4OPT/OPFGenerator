@@ -3,6 +3,8 @@ using LinearAlgebra
 using StableRNGs
 using TOML
 
+BLAS.set_num_threads(1)
+
 using PowerModels
 PowerModels.silence()
 using PGLib
@@ -38,13 +40,15 @@ function main(data, config)
             config["solver"][opf_solver]...
         )
 
-        opf = OPFGenerator.build_opf(OPF, data, solver)
+        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver)
        
         # Solve OPF model
         set_silent(opf.model)
         optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
 
-        res = OPFGenerator.extract_result(opf)
+        tsol = @elapsed res = OPFGenerator.extract_result(opf)
+        res["time_build"] = tbuild
+        res["time_extract"] = tsol
         d[opf_str] = res
     end
 
@@ -59,8 +63,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
 
-    export_dir = joinpath(config["export_dir"], "res_json")
-    mkpath(export_dir)
+    resdir_json = joinpath(config["export_dir"], "res_json")
+    mkpath(resdir_json)
 
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))
@@ -76,12 +80,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @info "Generating ACOPF & DCOPF instances for case $ref\nSeed range: [$smin, $smax]"
     for s in smin:smax
         rng = StableRNG(s)
-        data_ = rand(rng, opf_sampler)
-        tgen = @elapsed d = main(data_, config)
+        tgen = @elapsed data_ = rand(rng, opf_sampler)
+        tsolve = @elapsed d = main(data_, config)
         d["meta"]["seed"] = s
-        twrite = @elapsed save_json(joinpath(export_dir, config["ref"] * "_s$s.json.gz"), d)
-        @info "Seed $s" tgen twrite
+        twrite = @elapsed save_json(joinpath(resdir_json, config["ref"] * "_s$s.json.gz"), d)
+        @info "Seed $s" tgen tsolve twrite
     end
+
+    @info "All instances completed."
 
     return nothing
 end
