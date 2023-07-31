@@ -191,8 +191,8 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
         sol["bus"]["$bus"] = Dict(
             "w" => value(model[:w][bus]),
             # dual vars
-            "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
-            "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
+            "lam_kirchhoff_active" => dual(model[:kirchhoff_active][bus]),
+            "lam_kirchhoff_reactive" => dual(model[:kirchhoff_reactive][bus]),
             "mu_w_lb" => dual(LowerBoundRef(model[:w][bus])),
             "mu_w_ub" => dual(UpperBoundRef(model[:w][bus])),
         )
@@ -298,4 +298,136 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
     end
     
     return res
+end
+
+function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+    sol = res["solution"]
+    N = length(sol["bus"])
+    E = length(sol["branch"])
+    G = length(sol["gen"])
+
+    res_h5 = Dict{String,Any}(
+        "meta" => Dict{String,Any}(
+            "termination_status" => res["termination_status"],
+            "primal_status" => res["primal_status"],
+            "dual_status" => res["dual_status"],
+            "solve_time" => res["solve_time"],
+        ),
+    )
+
+    res_h5["primal"] = pres_h5 = Dict{String,Any}(
+        "w"  => zeros(Float64, N),
+        "pg" => zeros(Float64, G),
+        "qg" => zeros(Float64, G),
+        "pf" => zeros(Float64, E),
+        "qf" => zeros(Float64, E),
+        "pt" => zeros(Float64, E),
+        "qt" => zeros(Float64, E),
+        "wr" => zeros(Float64, E),
+        "wi" => zeros(Float64, E),
+    )
+    res_h5["dual"] = dres_h5 = Dict{String,Any}(
+        "mu_w_lb"                => zeros(Float64, N),
+        "mu_w_ub"                => zeros(Float64, N),
+        "lam_kirchhoff_active"   => zeros(Float64, N),
+        "lam_kirchhoff_reactive" => zeros(Float64, N),
+        "mu_pg_lb"               => zeros(Float64, G),
+        "mu_pg_ub"               => zeros(Float64, G),
+        "mu_qg_lb"               => zeros(Float64, G),
+        "mu_qg_ub"               => zeros(Float64, G),
+        # branhc dual vars
+        "mu_va_diff_lb"          => zeros(Float64, E),
+        "mu_va_diff_ub"          => zeros(Float64, E),
+        "mu_wr_lb"               => zeros(Float64, E),
+        "mu_wr_lb"               => zeros(Float64, E),
+        "mu_wi_lb"               => zeros(Float64, E),
+        "mu_wi_lb"               => zeros(Float64, E),
+        "lam_ohm_active_fr"      => zeros(Float64, E),
+        "lam_ohm_active_to"      => zeros(Float64, E),
+        "lam_ohm_reactive_fr"    => zeros(Float64, E),
+        "lam_ohm_reactive_to"    => zeros(Float64, E),
+    )
+    # The following dual variables depend on whether we have a SOC or QCP form
+    if OPF == PM.SOCWRPowerModel
+        dres_h5["mu_sm_to"] = zeros(Float64, E)
+        dres_h5["mu_sm_fr"] = zeros(Float64, E)
+        dres_h5["mu_voltage_prod_quad"] = zeros(Float64, E)
+    elseif OPF == PM.SOCWRConicPowerModel
+        # conic duals (unrolled)
+        dres_h5["nu_voltage_prod_soc_1"] = zeros(Float64, E)
+        dres_h5["nu_voltage_prod_soc_2"] = zeros(Float64, E)
+        dres_h5["nu_voltage_prod_soc_3"] = zeros(Float64, E)
+        dres_h5["nu_voltage_prod_soc_4"] = zeros(Float64, E)
+        dres_h5["nu_sm_to_1"] = zeros(Float64, E)
+        dres_h5["nu_sm_to_2"] = zeros(Float64, E)
+        dres_h5["nu_sm_to_3"] = zeros(Float64, E)
+        dres_h5["nu_sm_fr_1"] = zeros(Float64, E)
+        dres_h5["nu_sm_fr_2"] = zeros(Float64, E)
+        dres_h5["nu_sm_fr_3"] = zeros(Float64, E)
+    end
+
+    # extract from ACOPF solution
+    for i in 1:N
+        bsol = sol["bus"]["$i"]
+
+        pres_h5["w"][i] = bsol["w"]
+
+        dres_h5["mu_w_lb"][i] = bsol["mu_w_lb"]
+        dres_h5["mu_w_ub"][i] = bsol["mu_w_ub"]
+        dres_h5["lam_kirchhoff_active"][i] = bsol["lam_kirchhoff_active"]
+        dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_kirchhoff_reactive"]
+    end
+    for g in 1:G
+        gsol = sol["gen"]["$g"]
+
+        pres_h5["pg"][g] = gsol["pg"]
+        pres_h5["qg"][g] = gsol["qg"]
+
+        dres_h5["mu_pg_lb"][g] = gsol["mu_pg_lb"]
+        dres_h5["mu_pg_ub"][g] = gsol["mu_pg_ub"]
+        dres_h5["mu_qg_lb"][g] = gsol["mu_qg_lb"]
+        dres_h5["mu_qg_ub"][g] = gsol["mu_qg_ub"]
+    end
+    for e in 1:E
+        brsol = sol["branch"]["$e"]
+
+        for pvar in ["pf", "qf", "pt", "qt", "wr", "wi"]
+            pres_h5[pvar][e] = brsol[pvar]
+        end
+        for dvar in [
+            "mu_va_diff_lb",
+            "mu_va_diff_ub",
+            "mu_wr_lb",
+            "mu_wr_lb",
+            "mu_wi_lb",
+            "mu_wi_lb",
+            "lam_ohm_active_fr",
+            "lam_ohm_active_to",
+            "lam_ohm_reactive_fr",
+            "lam_ohm_reactive_to",
+        ]
+            dres_h5[dvar][e] = brsol[dvar]
+        end
+        
+        # The following dual variables depend on whether we have a SOC or QCP form
+        if OPF == PM.SOCWRPowerModel
+            dres_h5["mu_sm_to"][e] = brsol["mu_sm_to"]
+            dres_h5["mu_sm_fr"][e] = brsol["mu_sm_fr"]
+            dres_h5["mu_voltage_prod_quad"][e] = brsol["mu_voltage_prod_quad"]
+        elseif OPF == PM.SOCWRConicPowerModel
+            # conic duals (unrolled)
+            dres_h5["nu_voltage_prod_soc_1"][e] = brsol["nu_voltage_prod_soc_1"]
+            dres_h5["nu_voltage_prod_soc_2"][e] = brsol["nu_voltage_prod_soc_2"]
+            dres_h5["nu_voltage_prod_soc_3"][e] = brsol["nu_voltage_prod_soc_3"]
+            dres_h5["nu_voltage_prod_soc_4"][e] = brsol["nu_voltage_prod_soc_4"]
+            dres_h5["nu_sm_to_1"][e] = brsol["nu_sm_to_1"]
+            dres_h5["nu_sm_to_2"][e] = brsol["nu_sm_to_2"]
+            dres_h5["nu_sm_to_3"][e] = brsol["nu_sm_to_3"]
+            dres_h5["nu_sm_fr_1"][e] = brsol["nu_sm_fr_1"]
+            dres_h5["nu_sm_fr_2"][e] = brsol["nu_sm_fr_2"]
+            dres_h5["nu_sm_fr_3"][e] = brsol["nu_sm_fr_3"]
+        end
+    end
+
+    return res_h5
 end
