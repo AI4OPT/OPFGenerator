@@ -3,6 +3,8 @@ using LinearAlgebra
 using StableRNGs
 using TOML
 
+BLAS.set_num_threads(1)
+
 using PowerModels
 PowerModels.silence()
 using PGLib
