@@ -84,8 +84,11 @@ function add_datapoint!(D, d)
         for cat in ["meta", "primal", "dual"]
             get!(Dsol, cat, Dict{String,Any}())
             for (k, v) in resh5[cat]
-                get!(Dsol[cat], k, [v])  # Make sure that all relevant keys exist
-                push!(Dsol[cat][k], v)
+                if !haskey(Dsol[cat], k)
+                    Dsol[cat][k] = [v]  # Make sure that all relevant keys exist
+                else
+                    push!(Dsol[cat][k], v)
+                end
             end
         end
     end
