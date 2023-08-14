@@ -144,7 +144,7 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
         sol["bus"]["$bus"] = Dict(
             "va" => value(model[:va][bus]),
             # dual vars
-            "lam_pb" => dual(model[:kirchhoff][bus])
+            "lam_kirchhoff" => dual(model[:kirchhoff][bus])
         )
     end
 
@@ -155,14 +155,21 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
                 "pf" => 0.0,
                 # dual vars
                 "mu_va_diff" => 0.0,
-                "lam_ohm" => 0.0,
+                "lam_ohm"    => 0.0,
+                "mu_sm_lb"   => 0.0,
+                "mu_sm_ub"   => 0.0,
             )
         else
+            branch = ref[:branch][b]
+            f_idx = (b, branch["f_bus"], branch["t_bus"])
+
             sol["branch"]["$b"] = Dict(
-                "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
+                "pf" => value(model[:pf][f_idx]),
                 # dual vars
                 "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
-                "lam_ohm" => dual(model[:ohm_eq][b]),
+                "lam_ohm"    => dual(model[:ohm_eq][b]),
+                "mu_sm_lb"   => dual(LowerBoundRef(model[:pf][f_idx])),
+                "mu_sm_ub"   => dual(UpperBoundRef(model[:pf][f_idx])),
             )
         end
     end
@@ -172,9 +179,69 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
             "pg" => value(model[:pg][g]),
             # dual vars
             "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
-            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g]))
+            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
         )
     end
 
     return res
+end
+
+function json2h5(::Type{PM.DCPPowerModel}, res)
+    sol = res["solution"]
+    N = length(sol["bus"])
+    E = length(sol["branch"])
+    G = length(sol["gen"])
+
+    res_h5 = Dict{String,Any}(
+        "meta" => Dict{String,Any}(
+            "termination_status" => res["termination_status"],
+            "primal_status" => res["primal_status"],
+            "dual_status" => res["dual_status"],
+            "solve_time" => res["solve_time"],
+        ),
+    )
+
+    res_h5["primal"] = pres_h5 = Dict{String,Any}(
+        "va" => zeros(Float64, N),
+        "pg" => zeros(Float64, G),
+        "pf" => zeros(Float64, E),
+    )
+    res_h5["dual"] = dres_h5 = Dict{String,Any}(
+        "lam_kirchhoff"   => zeros(Float64, N),
+        "mu_pg_lb"               => zeros(Float64, G),
+        "mu_pg_ub"               => zeros(Float64, G),
+        "lam_ohm"                => zeros(Float64, E),
+        "mu_sm_lb"               => zeros(Float64, E),
+        "mu_sm_ub"               => zeros(Float64, E),
+        "mu_va_diff"             => zeros(Float64, E),
+    )
+
+    # extract from solution
+    for i in 1:N
+        bsol = sol["bus"]["$i"]
+
+        pres_h5["va"][i] = bsol["va"]
+
+        dres_h5["lam_kirchhoff"][i] = bsol["lam_kirchhoff"]
+    end
+    for g in 1:G
+        gsol = sol["gen"]["$g"]
+
+        pres_h5["pg"][g] = gsol["pg"]
+
+        dres_h5["mu_pg_lb"][g] = gsol["mu_pg_lb"]
+        dres_h5["mu_pg_ub"][g] = gsol["mu_pg_ub"]
+    end
+    for e in 1:E
+        brsol = sol["branch"]["$e"]
+
+        pres_h5["pf"][e] = brsol["pf"]
+        
+        dres_h5["lam_ohm"][e] = brsol["lam_ohm"]
+        dres_h5["mu_sm_lb"][e] = brsol["mu_sm_lb"]
+        dres_h5["mu_sm_ub"][e] = brsol["mu_sm_ub"]
+        dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
+    end
+
+    return res_h5
 end
