@@ -12,10 +12,19 @@ l          = 0.8                # Lower bound of base load factor
 u          = 1.05               # Upper bound of base load factor
 sigma      = 0.05               # Relative (multiplicative) noise level.
 
+[OPF]
+ACPPowerModel = "Ipopt"
+DCPPowerModel = "Mosek"
+SOCWRConicPowerModel = "Mosek"
+
 [solver]
-# Optimization solver options
-name = "Ipopt"                  # only "Ipopt" is supported at the moment
-tol = 1e-6                      # numerical tolerance (leave it at 1e-6 unless you know what you're doing)
-print_level = 0                 # set this to zero to disable Ipopt output
-max_wall_time = 60.0            # time limit, in seconds
+
+[solver.Ipopt]
+tol = 1e-6
+print_level = 0
+max_wall_time = 60.0
 linear_solver = "ma27"
+
+[solver.Mosek]
+MSK_IPAR_NUM_THREADS = 1
+MSK_DPAR_OPTIMIZER_MAX_TIME = 60.0
