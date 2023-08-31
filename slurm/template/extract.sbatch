@@ -11,5 +11,5 @@
 
 cd {{{:opfgenerator_dir}}}
 
-julia --project=. -t24 {{{:extract_script}}} {{{:res_json_dir}}} {{{:res_h5_dir}}} 256
+julia --project=. -t24 {{{:extract_script}}} {{{:config_file}}}
 julia --project=. -t24 slurm/merge.jl {{{:config_file}}}
