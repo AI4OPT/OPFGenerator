@@ -8,14 +8,17 @@ Copyright Georgia Tech 2022
 # OPFGenerator
 Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
 
-- [OPFGenerator](#OPFGenerator)
+- [OPFGenerator](#opfgenerator)
   - [Installation instructions](#installation-instructions)
-    - [Using HSL solvers](#using-hsl-solvers-ma27-ma57)
+    - [Using HSL solvers (ma27, ma57)](#using-hsl-solvers-ma27-ma57)
   - [Quick start](#quick-start)
+    - [Generating random instances](#generating-random-instances)
+    - [Building and solving OPF problems](#building-and-solving-opf-problems)
   - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
-    - [Primal variables](#primal-variables)
-    - [Dual variables](#dual-variables)
+    - [ACPPowerModel](#acppowermodel)
+    - [DCPPowerModel](#dcppowermodel)
+    - [SOCWRPowerModel](#socwrpowermodel)
   - [Datasets](#datasets)
     - [Format](#format)
     - [Loading from julia](#loading-from-julia)
@@ -53,24 +56,36 @@ This repository is a non-registered Julia package.
 
 ### Using HSL solvers (ma27, ma57)
 
-HSL solvers are supported via the [HSL.jl](https://github.com/JuliaSmoothOptimizers/HSL.jl) package (only v0.3.6 and above).
-Follow installation instructions there.
+The recommended way to use Ipopt with HSL solvers is via [JuliaHSL](https://licences.stfc.ac.uk/product/julia-hsl).
+This webpage includes installation steps for multiple platforms, source code and precompiled binaries.
 
-To use HSL linear solvers with Ipopt, use the following:
-```julia
-using HSL
-const LIB_COINHSL = HSL.libcoinhsl
+Follow these steps for installing `JuliaHSL` (assumes Linux machine and academic license)
+1. Request a JuliaHSL academic licence from [JuliaHSL](https://licences.stfc.ac.uk/product/julia-hsl)
+2. Once approved, download the compiled library.
+   If you're on Linux and have Julia 1.9 and above (recommended), download the file called `lbt_HSL_jll.jl-2023.5.26.tar.gz` (or more recent version is available)
+3. Create a `deps` directory, move the tarball there and extract it
+   ```bash
+   mkdir deps
+   mv <path/to/download/lbt_HSL_jll.jl-2023.5.26.tar.gz deps/>
+   cd deps
+   tar -xzf lbt_HSL_jll.jl-2023.5.26.tar.gz
+   cd ..
+   ```
+4. Dev the package
+    ```bash
+    julia --project=. -e 'using Pkg; Pkg.develop(path="deps/HSL_jll.jl-2023.5.26");'
+    ```
 
-using JuMP
-
-solver = optimizer_with_attributes(Ipopt.Optimizer,
-    "hsllib" => LIB_COINHSL,
-    "linear_solver" => "ma27"  # or solver of your choice
-)
-acopf = OPFGenerator.build_acopf(data, solver)
+To use HSL linear solvers when solving OPF instances, set the parameter "linear_solver" to "ma27" or "ma57" in the config file.
+The recommended solver for Ipopt is `ma27`.
+```toml
+[solver.Ipopt]
+    linear_solver = "ma27"
 ```
 
 ## Quick start
+
+### Generating random instances
 
 ```julia
 using Random, PGLib, PowerModels
@@ -111,6 +126,27 @@ dataset = [
 ]
 ```
 
+### Building and solving OPF problems
+
+`OPFGenerator` supports multiple OPF formulations, based on [PowerModels](https://lanl-ansi.github.io/PowerModels.jl/stable/).
+
+```julia
+using PowerModels
+using PGLib
+
+using JuMP
+using Ipopt
+
+using OPFGenerator
+
+data = make_basic_network(pglib("14_ieee"))
+acopf = OPFGenerator.build_opf(PowerModels.ACPPowerModel, data, Ipopt.Optimizer)
+optimize!(acopf.model)
+res = OPFGenerator.extract_result(acopf)
+
+res["objective"]  # should be close to 2178.08041
+```
+
 ## Generating datasets
 
 A script for generating multiple ACOPF instances is given in [`exp/sampler.jl`](exp/sampler.jl).
@@ -126,45 +162,54 @@ where
 
 ## Solution format
 
-The solution dictionary follows the [PowerModels result data format](https://lanl-ansi.github.io/PowerModels.jl/stable/result-data/).
 
-### ACOPF Primal variables
+Individual solutions are stored in a dictionary that follows the [PowerModels result data format](https://lanl-ansi.github.io/PowerModels.jl/stable/result-data/).
+As a convention, dual variables of equality constraints are named `lam_<constraint_ref>`, dual variables of (scalar) inequality constraints are named `mu_<constraint_ref>`, and dual variables of conic constraints are named `nu_<constraint_ref>_<i>` where `i` denotes the coordinate index.
+
+Collections of instances & solutions are stored in a compact, array-based HDF5 file (see [Datasets/Format](#format) below.)
+
+### ACPPowerModel
+
+See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.ACPPowerModel).
+
+Primal variables
 
 | Component | Key | Description |
 |:---------:|:----|:------------|
 | bus       | `"vm"` | Nodal voltage magnitude
 |           | `"va"` | Nodal voltage angle
+| generator | `"pg"` | Active power generation
+|           | `"qg"` | Reactive power generation
 | branch    | `"pf"` | Branch active power flow (fr)
 |           | `"pt"` | Branch active power flow (to)
 |           | `"qf"` | Branch reactive power flow (fr)
 |           | `"qt"` | Branch reactive power flow (to)
-| generator | `"pg"` | Active power generation
-|           | `"qg"` | Reactive power generation
 
-### ACOPF Dual variables
+Dual variables
 
-As a convention, dual variables of equality constraints are named `lam_<constraint_ref>`, and dual variables of inequality constraints are named `mu_<constraint_ref>`.
-Dual variables are stored together with each component's primal solution.
+| Component | Key                        | Constraint |
+|:---------:|:---------------------------|:------------|
+| bus       | `"mu_vm_lb"`               | Nodal voltage magnitude lower bound
+|           | `"mu_vm_ub"`               | Nodal voltage magnitude upper bound
+|           | `"lam_kirchhoff_active"`   | Nodal active power balance
+|           | `"lam_kirchhoff_reactive"` | Nodal reactive power balance
+| generator | `"mu_pg_lb"`               | Active power generation lower bound
+|           | `"mu_pg_ub"`               | Active power generation upper bound
+|           | `"mu_qg_lb"`               | Reactive power generation lower bound
+|           | `"mu_qg_ub"`               | Reactive power generation upper bound
+| branch    | `"mu_sm_fr"`               | Thermal limit (fr)
+|           | `"mu_sm_to"`               | Thermal limit (to)
+|           | `"lam_ohm_active_fr"`      | Ohm's law; active power (fr)
+|           | `"lam_ohm_active_to"`      | Ohm's law; active power (to)
+|           | `"lam_ohm_reactive_fr"`    | Ohm's law; reactive power (fr)
+|           | `"lam_ohm_reactive_to"`    | Ohm's law; reactive power (to)
+|           | `"mu_va_diff"`             | Voltage angle difference
 
-| Component | Key | Constraint |
-|:---------:|:----|:------------|
-| bus       | `"mu_vm_lb"` | Nodal voltage magnitude lower bound
-|           | `"mu_vm_ub"` | Nodal voltage magnitude upper bound
-|           | `"lam_pb_active"` | Nodal active power balance
-|           | `"lam_pb_reactive"` | Nodal reactive power blaance
-| branch    | `"mu_sm_fr"` | Thermal limit (fr)
-|           | `"mu_sm_to"` | Thermal limit (to)
-|           | `"lam_ohm_active_fr"` | Ohm's law; active power (fr)
-|           | `"lam_ohm_active_to"` | Ohm's law; active power (to)
-|           | `"lam_ohm_reactive_fr"` | Ohm's law; reactive power (fr)
-|           | `"lam_ohm_reactive_to"` | Ohm's law; reactive power (to)
-|           | `"mu_va_diff"` | Voltage angle difference
-| generator | `"mu_pg_lb"` | Active power generation lower bound
-|           | `"mu_pg_ub"` | Active power generation upper bound
-|           | `"mu_qg_lb"` | Reactive power generation lower bound
-|           | `"mu_qg_ub"` | Reactive power generation upper bound
+### DCPPowerModel
 
-### DCOPF Primal variables
+See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.DCPPowerModel).
+
+Primal variables
 
 | Component | Key | Description |
 |:---------:|:----|:------------|
@@ -172,78 +217,110 @@ Dual variables are stored together with each component's primal solution.
 | generator | `"pg"` | Power generation
 | branch    | `"pf"` | Power flow
 
-### DCOPF Dual variables
+Dual variables
 
-| Component | Key | Constraint  |
-|:---------:|:----|:------------|
+| Component | Key               | Constraint  |
+|:---------:|:------------------|:------------|
 | bus       | `"lam_kirchhoff"` | Power balance
-| generator | `"mu_pg_lb"` | Power generation lower bound
-|           | `"mu_pg_ub"` | Power generation upper bound
-| branch    | `"lam_ohm"` | Ohm's law
-|           | `"mu_va_diff"` | Voltage angle difference
+| generator | `"mu_pg_lb"`      | Power generation lower bound
+|           | `"mu_pg_ub"`      | Power generation upper bound
+| branch    | `"lam_ohm"`       | Ohm's law
+|           | `"mu_sm_lb"`      | Thermal limit (lower bound)
+|           | `"mu_sm_ub"`      | Thermal limit (upper bound)
+|           | `"mu_va_diff"`    | Voltage angle difference
+
+### SOCWRPowerModel
+
+See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.SOCWRPowerModel).
+
+Primal variables
+
+| Component | Key | Description |
+|:---------:|:----|:------------|
+| bus       | `"w"`  | Squared voltage magnitude
+| generator | `"pg"` | Active power generation
+|           | `"qg"` | Reactive power generation
+| branch    | `"pf"` | Branch active power flow (fr)
+|           | `"pt"` | Branch active power flow (to)
+|           | `"qf"` | Branch reactive power flow (fr)
+|           | `"qt"` | Branch reactive power flow (to)
+|           | `"wr"` | Real part of voltage product
+|           | `"wi"` | Imaginary part of voltage product
+
+Dual variables depend on whether a quadratic (`SOCWRPowerModel`) or conic (`SOCWRConicPowerModel`) formulation is considered.
+The former are identified with `(quad)`, the latter with `(cone)` in the table below.
+Only the dual variables of quadratic constraints are affected by this distinction.
+Note that conic dual are high-dimensional variables, and separate coordinates are stored separately.
+
+| Component | Key                        | Constraint |
+|:---------:|:---------------------------|:------------|
+| bus       | `"mu_vm_lb"`               | Nodal voltage magnitude lower bound
+|           | `"mu_vm_ub"`               | Nodal voltage magnitude upper bound
+|           | `"lam_kirchhoff_active"`   | Nodal active power balance
+|           | `"lam_kirchhoff_reactive"` | Nodal reactive power balance
+| generator | `"mu_pg_lb"`               | Active power generation lower bound
+|           | `"mu_pg_ub"`               | Active power generation upper bound
+|           | `"mu_qg_lb"`               | Reactive power generation lower bound
+|           | `"mu_qg_ub"`               | Reactive power generation upper bound
+| branch    | `"lam_ohm_active_fr"`      | Ohm's law; active power (fr)
+|           | `"lam_ohm_active_to"`      | Ohm's law; active power (to)
+|           | `"lam_ohm_reactive_fr"`    | Ohm's law; reactive power (fr)
+|           | `"lam_ohm_reactive_to"`    | Ohm's law; reactive power (to)
+|           | `"mu_va_diff_lb"`          | Voltage angle difference lower bound
+|           | `"mu_va_diff_ub"`          | Voltage angle difference upper bound
+|           | `"mu_sm_fr"`               | (quad) Thermal limit (fr)
+|           | `"mu_sm_to"`               | (quad) Thermal limit (to)
+|           | `"mu_voltage_prod_quad"`   | (quad) Voltage product relaxation (Jabr)
+|           | `"nu_voltage_prod_soc_1"`  | (cone) Voltage product relaxation (Jabr)
+|           | `"nu_voltage_prod_soc_2"`  | (cone) Voltage product relaxation (Jabr)
+|           | `"nu_voltage_prod_soc_3"`  | (cone) Voltage product relaxation (Jabr)
+|           | `"nu_voltage_prod_soc_4"`  | (cone) Voltage product relaxation (Jabr)
+|           | `"nu_sm_fr_1"`             | (cone) Thermal limit (fr)
+|           | `"nu_sm_fr_2"`             | (cone) Thermal limit (fr)
+|           | `"nu_sm_fr_3"`             | (cone) Thermal limit (fr)
+|           | `"nu_sm_to_1"`             | (cone) Thermal limit (to)
+|           | `"nu_sm_to_2"`             | (cone) Thermal limit (to)
+|           | `"nu_sm_to_3"`             | (cone) Thermal limit (to)
+
 
 ## Datasets
 
 ### Format
 
-Each dataset is stored in an `.h5` file, organized as follows:
+Each dataset is stored in an `.h5` file, organized as follows.
+See [Solution format](#solution-format) for a list of each formulation's primal and dual variables.
 ```
 /
 |-- meta
-    |-- ref
-    |-- seed
+|   |-- ref
+|   |-- config
 |-- input
-    |-- pd
-    |-- qd
-    |-- br_status
-|-- acopf_solution
+|   |-- seed
+|   |-- pd
+|   |-- qd
+|   |-- br_status
+|-- ACPPowerModel
+|   |-- meta
+|   |   |-- termination_status
+|   |   |-- primal_status
+|   |   |-- dual_status
+|   |   |-- solve_time
+|   |-- primal
+|   |   |-- pg
+|   |   |-- qg
+|   |   |-- ...
+|   |-- dual
+|       |-- lam_kirchhoff_active
+|       |-- lam_kirchhoff_active
+|       |-- ...
+|-- DCPPowerModel
+|   |-- meta
+|   |-- primal
+|   |-- dual
+|-- SOCWRConicPowerModel
     |-- meta
-        |-- termination_status
-        |-- primal_status
-        |-- dual_status
-        |-- solve_time
     |-- primal
-        |-- vm
-        |-- va
-        |-- pg
-        |-- qg
-        |-- pf
-        |-- qf
-        |-- pt
-        |-- qt
     |-- dual
-        |-- mu_vm_lb
-        |-- mu_vm_ub
-        |-- lam_kircchoff_active
-        |-- lam_kircchoff_reactive
-        |-- mu_pg_lb
-        |-- mu_pg_ub
-        |-- mu_qg_lb
-        |-- mu_qg_ub
-        |-- mu_sm_fr
-        |-- mu_sm_to
-        |-- lam_ohm_active_fr
-        |-- lam_ohm_active_to
-        |-- lam_ohm_reactive_fr
-        |-- lam_ohm_reactive_to
-        |-- mu_va_diff
-|-- dcopf_solution
-    |-- meta
-        |-- termination_status
-        |-- primal_status
-        |-- dual_status
-        |-- solve_time
-    |-- primal
-        |-- va
-        |-- pg
-        |-- pf
-    |-- dual
-        |-- lam_kirchhoff
-        |-- mu_pg_lb
-        |-- mu_pg_ub
-        |-- lam_ohm
-        |-- mu_va_diff
-
 ```
 
 ### Loading from julia

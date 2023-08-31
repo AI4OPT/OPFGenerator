@@ -4,10 +4,6 @@ using Random
 using StableRNGs
 using Distributions
 
-using CodecBzip2
-using CodecZlib
-using JSON
-
 using PowerModels
 const PM = PowerModels
 using PGLib
@@ -19,6 +15,8 @@ export load_json, save_json
 export SimpleOPFSampler, LoadScaler, ScaledLogNormal
 
 include("utils.jl")
+include("utils/json.jl")
+
 include("bridges.jl")
 include("checker.jl")
 include("process.jl")
@@ -56,6 +54,6 @@ function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     return data
 end
 
-include("acopf.jl")
-include("dcopf.jl")
+include("opf/opf.jl")
+
 end # module

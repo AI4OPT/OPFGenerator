@@ -6,7 +6,7 @@ Build an AC-OPF model.
 This implementation is based on the AC-OPF formulation of Rosetta-OPF
     https://github.com/lanl-ansi/rosetta-opf/blob/38a951326df3156d79dcdc49c8010aa29905b05d/jump.jl
 """
-function build_acopf(data::Dict{String,Any}, optimizer)
+function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer)
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
@@ -31,6 +31,7 @@ function build_acopf(data::Dict{String,Any}, optimizer)
     ]
 
     model = JuMP.Model(optimizer)
+    model.ext[:opf_model] = PM.ACPPowerModel  # for internal checks
 
     #
     #   I. Variables
@@ -119,12 +120,15 @@ function build_acopf(data::Dict{String,Any}, optimizer)
     #
     #   III. Objective
     #
+    # check that we don't have quadratic objective coeffs
+    l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
+    (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
     JuMP.@objective(model, Min, sum(
-        gen["cost"][1]*pg[i]^2 + gen["cost"][2]*pg[i] + gen["cost"][3]
+        gen["cost"][2]*pg[i] + gen["cost"][3]
         for (i,gen) in ref[:gen]
     ))
 
-    return model
+    return OPFModel{PM.ACPPowerModel}(data, model)
 end
 
 """
@@ -133,7 +137,10 @@ end
 Extract ACOPF solution from optimization model.
 The model must have been solved before.
 """
-function _extract_acopf_solution(model::JuMP.Model, data::Dict{String,Any})
+function extract_result(opf::OPFModel{PM.ACPPowerModel})
+    data  = opf.data
+    model = opf.model
+
     # Pre-process data
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
@@ -142,6 +149,7 @@ function _extract_acopf_solution(model::JuMP.Model, data::Dict{String,Any})
 
     # Build the solution dictionary
     res = Dict{String,Any}()
+    res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
     res["objective_lb"] = -Inf
     res["optimizer"] = JuMP.solver_name(model)
@@ -220,4 +228,90 @@ function _extract_acopf_solution(model::JuMP.Model, data::Dict{String,Any})
     end 
     
     return res
+end
+
+function json2h5(::Type{PM.ACPPowerModel}, res)
+    sol = res["solution"]
+    N = length(sol["bus"])
+    E = length(sol["branch"])
+    G = length(sol["gen"])
+
+    res_h5 = Dict{String,Any}(
+        "meta" => Dict{String,Any}(
+            "termination_status" => res["termination_status"],
+            "primal_status" => res["primal_status"],
+            "dual_status" => res["dual_status"],
+            "solve_time" => res["solve_time"],
+        ),
+    )
+
+    res_h5["primal"] = pres_h5 = Dict{String,Any}(
+        "vm" => zeros(Float64, N),
+        "va" => zeros(Float64, N),
+        "pg" => zeros(Float64, G),
+        "qg" => zeros(Float64, G),
+        "pf" => zeros(Float64, E),
+        "qf" => zeros(Float64, E),
+        "pt" => zeros(Float64, E),
+        "qt" => zeros(Float64, E),
+    )
+    res_h5["dual"] = dres_h5 = Dict{String,Any}(
+        "mu_vm_lb"               => zeros(Float64, N),
+        "mu_vm_ub"               => zeros(Float64, N),
+        "lam_kirchhoff_active"   => zeros(Float64, N),
+        "lam_kirchhoff_reactive" => zeros(Float64, N),
+        "mu_pg_lb"               => zeros(Float64, G),
+        "mu_pg_ub"               => zeros(Float64, G),
+        "mu_qg_lb"               => zeros(Float64, G),
+        "mu_qg_ub"               => zeros(Float64, G),
+        "mu_sm_fr"               => zeros(Float64, E),
+        "mu_sm_to"               => zeros(Float64, E),
+        "lam_ohm_active_fr"      => zeros(Float64, E),
+        "lam_ohm_active_to"      => zeros(Float64, E),
+        "lam_ohm_reactive_fr"    => zeros(Float64, E),
+        "lam_ohm_reactive_to"    => zeros(Float64, E),
+        "mu_va_diff"             => zeros(Float64, E),
+    )
+
+    # extract from ACOPF solution
+    for i in 1:N
+        bsol = sol["bus"]["$i"]
+
+        pres_h5["vm"][i] = bsol["vm"]
+        pres_h5["va"][i] = bsol["va"]
+
+        dres_h5["mu_vm_lb"][i] = bsol["mu_vm_lb"]
+        dres_h5["mu_vm_ub"][i] = bsol["mu_vm_ub"]
+        dres_h5["lam_kirchhoff_active"][i] = bsol["lam_pb_active"]
+        dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_pb_reactive"]
+    end
+    for g in 1:G
+        gsol = sol["gen"]["$g"]
+
+        pres_h5["pg"][g] = gsol["pg"]
+        pres_h5["qg"][g] = gsol["qg"]
+
+        dres_h5["mu_pg_lb"][g] = gsol["mu_pg_lb"]
+        dres_h5["mu_pg_ub"][g] = gsol["mu_pg_ub"]
+        dres_h5["mu_qg_lb"][g] = gsol["mu_qg_lb"]
+        dres_h5["mu_qg_ub"][g] = gsol["mu_qg_ub"]
+    end
+    for e in 1:E
+        brsol = sol["branch"]["$e"]
+
+        pres_h5["pf"][e] = brsol["pf"]
+        pres_h5["qf"][e] = brsol["qf"]
+        pres_h5["pt"][e] = brsol["pt"]
+        pres_h5["qt"][e] = brsol["qt"]
+        
+        dres_h5["mu_sm_fr"][e] = brsol["mu_sm_fr"]
+        dres_h5["mu_sm_to"][e] = brsol["mu_sm_to"]
+        dres_h5["lam_ohm_active_fr"][e] = brsol["lam_ohm_active_fr"]
+        dres_h5["lam_ohm_active_to"][e] = brsol["lam_ohm_active_to"]
+        dres_h5["lam_ohm_reactive_fr"][e] = brsol["lam_ohm_reactive_fr"]
+        dres_h5["lam_ohm_reactive_to"][e] = brsol["lam_ohm_reactive_to"]
+        dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
+    end
+
+    return res_h5
 end
