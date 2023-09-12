@@ -55,5 +55,6 @@ function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
 end
 
 include("opf/opf.jl")
+include("standard_form.jl")
 
 end # module
