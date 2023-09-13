@@ -8,7 +8,7 @@ function build_opf(::Type{StandardFormDCPPowerModel}, data::Dict{String,Any}, op
 
     model, std = make_standard_form(opf, optimizer; kwargs...)
 
-    model.ext[:opf_model] = PM.DCPPowerModel # NOTE: should this be different?
+    model.ext[:opf_model] = PM.DCPPowerModel # NOTE: should be StandardFormDCPPowerModel?
 
     return StandardFormDCPPowerModel(data, model, std)
 end
