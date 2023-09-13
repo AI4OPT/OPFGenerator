@@ -40,7 +40,14 @@ function main(data, config)
             config["solver"][opf_solver]...
         )
 
-        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver)
+        if OPF <: OPFGenerator.StandardFormOPFModel
+            tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver,
+                objective_type=config["standard_form_objective_type"],
+                mu=config["standard_form_mu"]
+            )
+        else
+            tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver)
+        end
        
         # Solve OPF model
         set_silent(opf.model)

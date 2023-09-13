@@ -121,7 +121,7 @@ function make_standard_form_data(lp::Model)
 end
 
 """
-    make_standard_form(lp::Model; optimizer=Ipopt.Optimizer)
+    make_standard_form(lp::Model, optimizer=Ipopt.Optimizer; objective_type="linear", mu=0.1)
 
 Given a linear JuMP model, convert it to a JuMP model in standard form:
 
@@ -129,25 +129,67 @@ Given a linear JuMP model, convert it to a JuMP model in standard form:
     s.t.     Ax == b
          l <= x <= u
 
-The input model must only have linear constraints (GenericAffExpr).
-If the input model has a quadratic (QuadExpr) objective, only the linear parts are used.
+The input model must only have linear constraints (`GenericAffExpr`).
+If the input model has a quadratic (`QuadExpr`) objective, only the linear parts are used.
+
+The output model can be given a barrier term using an ExponentialCone.
+Set `objective_type` to "cone" to use these barrier terms with parameter `mu`.
+Make sure the solver supports ExponentialCone.
 """
-function make_standard_form(lp::Model, optimizer=Ipopt.Optimizer)
+function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.1)
     std = make_standard_form_data(lp)
+    N = size(std.A, 2)
 
     model = Model(optimizer)
 
-    @variable(model, std.l[i] <= x[i=1:size(std.A, 2)] <= std.u[i])
+    @variable(model, std.l[i] <= x[i=1:N] <= std.u[i])
 
     @constraint(model, constraints, std.A * x .== std.b)
 
-    @objective(model, Min, dot(std.c, x) + std.c0)
+    if objective_type == "linear"
+        @objective(model, Min,
+            sum(
+                std.c[i]*x[i]
+                for i in 1:N
+            ) + std.c0
+        )
+    elseif objective_type == "cone"
+        finite_u = isfinite.(std.u)
+        model[:t_u] = Vector{JuMP.VariableRef}(undef, N)
+        model[:cone_upper] = Vector{JuMP.ConstraintRef}(undef, N)
+
+        finite_l = isfinite.(std.l)
+        model[:t_l] = Vector{JuMP.VariableRef}(undef, N)
+        model[:cone_lower] = Vector{JuMP.ConstraintRef}(undef, N)
+
+        for i in 1:N
+            if finite_u[i]
+                model[:t_u][i] = @variable(model)
+                model[:cone_upper][i] = @constraint(model, [model[:t_u][i], 1, std.u[i] - x[i]] in MOI.ExponentialCone())
+            end
+            if finite_l[i]
+                model[:t_l][i] = @variable(model)
+                model[:cone_lower][i] = @constraint(model, [model[:t_l][i], 1, x[i] - std.l[i]] in MOI.ExponentialCone())
+            end
+        end
+
+        JuMP.@objective(model, Min,
+            sum(
+                std.c[i]*x[i]
+                for i in 1:N
+            ) + std.c0
+            - mu * sum(model[:t_l][i] for i in 1:N if finite_l[i])
+            - mu * sum(model[:t_u][i] for i in 1:N if finite_u[i])
+        )
+    else
+        error("make_standard_form: unknown objective_type")
+    end
 
     return model, std
 end
 
-function make_standard_form(opf::OPFModel{OPF}, optimizer=Ipopt.Optimizer) where {OPF <: PM.AbstractPowerModel}
-    return make_standard_form(opf.model, optimizer)
+function make_standard_form(opf::OPFModel{OPF}, optimizer; kwargs...) where {OPF <: PM.AbstractPowerModel}
+    return make_standard_form(opf.model, optimizer; kwargs...)
 end
 
 """

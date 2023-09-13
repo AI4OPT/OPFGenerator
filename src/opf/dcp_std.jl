@@ -3,10 +3,10 @@
 
 Build a Standard Form model.
 """
-function build_opf(::Type{StandardFormDCPPowerModel}, data::Dict{String,Any}, optimizer)
+function build_opf(::Type{StandardFormDCPPowerModel}, data::Dict{String,Any}, optimizer; kwargs...)
     opf = build_opf(PM.DCPPowerModel, data, optimizer)
 
-    model, std = make_standard_form(opf, optimizer)
+    model, std = make_standard_form(opf, optimizer; kwargs...)
 
     model.ext[:opf_model] = PM.DCPPowerModel # NOTE: should this be different?
 
