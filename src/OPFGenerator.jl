@@ -54,7 +54,12 @@ function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     return data
 end
 
-include("opf/opf.jl")
+mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
+    data::Dict{String,Any}
+    model::JuMP.Model
+end
+
 include("standard_form.jl")
+include("opf/opf.jl")
 
 end # module

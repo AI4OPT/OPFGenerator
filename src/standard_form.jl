@@ -1,8 +1,25 @@
-using JuMP
-using LinearAlgebra
+import SparseArrays: SparseMatrixCSC
+
+struct StandardFormData
+    A::SparseMatrixCSC
+    b::Vector{Float64}
+    c::Vector{Float64}
+    c0::Float64
+    l::Vector{Float64}
+    u::Vector{Float64}
+    columns::Dict{VariableRef, Union{Int, Dict{String, Float64}}}
+end
+
+mutable struct StandardFormOPFModel{OPF <: PM.AbstractPowerModel}
+    data::Dict{String,Any}
+    model::JuMP.Model
+    std::StandardFormData
+end
+
+StandardFormDCPPowerModel = StandardFormOPFModel{PM.DCPPowerModel}
 
 """
-    make_standard_form_matrix(lp::Model)
+    make_standard_form_data(lp::Model)
 
 Convert a JuMP Model to standard form matrices:
 
@@ -13,7 +30,7 @@ Convert a JuMP Model to standard form matrices:
 The input model must only have linear constraints (GenericAffExpr).
 If the input model has a quadratic (QuadExpr) objective, only the linear parts are used.
 """
-function make_standard_form_matrix(lp::Model)
+function make_standard_form_data(lp::Model)
     jump_std = JuMP._standard_form_matrix(lp)  # NOTE: this is not an unstable public API!
 
     function deletecol(A, col)
@@ -100,16 +117,7 @@ function make_standard_form_matrix(lp::Model)
         c0 = -c0
     end
 
-    return (
-        A = A, b = b,
-        c = c, c0 = c0,
-        l = l, u = u,
-        columns = columns
-    )
-end
-
-function make_standard_form(opf::OPFModel{PM.DCPPowerModel}, optimizer=Ipopt.Optimizer)
-    return make_standard_form(opf.model, optimizer)
+    return StandardFormData(A, b, c, c0, l, u, columns)
 end
 
 """
@@ -125,7 +133,7 @@ The input model must only have linear constraints (GenericAffExpr).
 If the input model has a quadratic (QuadExpr) objective, only the linear parts are used.
 """
 function make_standard_form(lp::Model, optimizer=Ipopt.Optimizer)
-    std = make_standard_form_matrix(lp)
+    std = make_standard_form_data(lp)
 
     model = Model(optimizer)
 
@@ -135,7 +143,11 @@ function make_standard_form(lp::Model, optimizer=Ipopt.Optimizer)
 
     @objective(model, Min, dot(std.c, x) + std.c0)
 
-    return model, std.columns
+    return model, std
+end
+
+function make_standard_form(opf::OPFModel{OPF}, optimizer=Ipopt.Optimizer) where {OPF <: PM.AbstractPowerModel}
+    return make_standard_form(opf.model, optimizer)
 end
 
 """
@@ -157,4 +169,61 @@ function map_standard_form_solution(model::Model, columns::Dict)
     end
 
     return solution
+end
+
+function map_standard_form_solution(model::Model, std::StandardFormData)
+    return map_standard_form_solution(model, std.columns)
+end
+
+function map_standard_form_solution(opf::StandardFormOPFModel{OPF}) where {OPF <: PM.AbstractPowerModel}
+    return map_standard_form_solution(opf.model, opf.std)
+end
+
+function standard_form_data_to_dict(std::StandardFormData)
+    str_columns = Dict(string(k) => v for (k,v) in std.columns)
+    d = Dict{String, Any}()
+
+    d["A"] = Array(std.A)
+    d["b"] = std.b
+    d["c"] = std.c
+    d["c0"] = std.c0
+    d["l"] = std.l
+    d["u"] = std.u
+
+    cols = d["columns"] = Dict{String, Any}()
+    cols["keys"] = Array(collect(keys(str_columns)))
+    cols["values"] = Array(collect(values(str_columns)))
+
+    return d
+end
+
+function standard_form_data_to_dict(opf::StandardFormOPFModel{OPF}) where {OPF <: PM.AbstractPowerModel}
+    return standard_form_data_to_dict(opf.std)
+end
+
+function standard_form_data_to_h5(opf::StandardFormOPFModel{OPF}, filename::AbstractString) where {OPF <: PM.AbstractPowerModel}
+    h5open(filename, "w") do file
+        d = standard_form_data_to_dict(opf)
+        gr = create_group(file, "standard_form")
+        for (k, v) in d
+            if k == "columns"
+                gr_ = create_group(gr, k)
+                gr_["keys"] = v["keys"]
+                gr_["values"] = v["values"]
+            else
+                gr[k] = v
+            end
+        end
+    end
+end
+
+function write_standard_form_data(config::Dict)
+    for opf_str in keys(config["OPF"])
+        OPF = OPFGenerator.OPF2TYPE[opf_str]
+        if (OPF <: StandardFormOPFModel)
+            data = make_basic_network(pglib(config["ref"]))
+            opf = OPFGenerator.build_opf(OPF, data, nothing)
+            OPFGenerator.standard_form_data_to_h5(opf, joinpath(config["export_dir"], "$opf_str.h5"))
+        end
+    end
 end

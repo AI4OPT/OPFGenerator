@@ -8,20 +8,16 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
 
 # A name --> type dictionary
 # Used for passing the OPF type as a string (e.g. through config file)
-const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
+const OPF2TYPE = Dict{String,Type{<:Union{AbstractPowerModel,StandardFormOPFModel}}}(
     "ACPPowerModel" => PowerModels.ACPPowerModel,
     "DCPPowerModel" => PowerModels.DCPPowerModel,
     "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
+    "StandardFormDCPPowerModel" => StandardFormDCPPowerModel,
 )
-
-mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
-    data::Dict{String,Any}
-    model::JuMP.Model
-end
-
-function build_opf(data, ::Type{<:PM.AbstractPowerModel}) end
 
 include("acp.jl")    # ACCPPowerModel
 include("dcp.jl")    # DCPPowerModel
 include("socwr.jl")  # SOCWRPowerModel & SOCWRConicPowerModel
+
+include("dcp_std.jl") # StandardFormOPFModel{DCPPowerModel}
