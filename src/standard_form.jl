@@ -177,10 +177,6 @@ function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.
     return model, std
 end
 
-function make_standard_form(opf::OPFModel{OPF}, optimizer; kwargs...) where {OPF <: PM.AbstractPowerModel}
-    return make_standard_form(opf.model, optimizer; kwargs...)
-end
-
 """
     map_standard_form_solution(model::Model, columns::Dict)
 

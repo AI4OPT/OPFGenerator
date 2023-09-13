@@ -16,6 +16,11 @@ const OPF2TYPE = Dict{String,Type{<:Union{AbstractPowerModel,StandardFormOPFMode
     "StandardFormDCPPowerModel" => StandardFormDCPPowerModel,
 )
 
+mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
+    data::Dict{String,Any}
+    model::JuMP.Model
+end
+
 include("acp.jl")    # ACCPPowerModel
 include("dcp.jl")    # DCPPowerModel
 include("socwr.jl")  # SOCWRPowerModel & SOCWRConicPowerModel
