@@ -149,26 +149,32 @@ function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.
     if objective_type == "linear"
         @objective(model, Min, sum(std.c[i] * x[i] for i in 1:N) + std.c0)
     elseif objective_type == "cone"
-        model[:t_l] = Vector{JuMP.VariableRef}(undef, N)
-        model[:t_u] = Vector{JuMP.VariableRef}(undef, N)
-        model[:cone_lower] = Vector{JuMP.ConstraintRef}(undef, N)
-        model[:cone_upper] = Vector{JuMP.ConstraintRef}(undef, N)
+        finite_ls = isfinite.(std.l)
+        finite_us = isfinite.(std.u)
 
-        for i in 1:N
-            if isfinite(std.l[i])
-                model[:t_u][i] = @variable(model)
-                model[:cone_upper][i] = @constraint(model, [model[:t_u][i], 1, std.u[i] - x[i]] in MOI.ExponentialCone())
+        N_finite_l = sum(finite_ls)
+        N_finite_u = sum(finite_us)
+
+        finite_l_map = Dict{Int, Int}()
+        finite_u_map = Dict{Int, Int}()
+        for (i, (finite_l, finite_u)) in enumerate(zip(finite_ls, finite_us))
+            if finite_l
+                finite_l_map[i] = findall(finite_ls)[i]
             end
-            if isfinite(std.u[i])
-                model[:t_l][i] = @variable(model)
-                model[:cone_lower][i] = @constraint(model, [model[:t_l][i], 1, x[i] - std.l[i]] in MOI.ExponentialCone())
+            if finite_u
+                finite_u_map[i] = findall(finite_us)[i]
             end
         end
 
-        JuMP.@objective(model, Min,
+        @variable(model, t_l[1:N_finite_l])
+        @variable(model, t_u[1:N_finite_u])
+        @constraint(model, cone_lower[i=1:N_finite_l], [t_l[i], 1, x[finite_l_map[i]] - std.l[finite_l_map[i]]] in MOI.ExponentialCone())
+        @constraint(model, cone_upper[i=1:N_finite_u], [t_u[i], 1, std.u[finite_u_map[i]] - x[finite_u_map[i]]] in MOI.ExponentialCone())
+
+        @objective(model, Min,
             sum(std.c[i] * x[i] for i in 1:N) + std.c0
-            - mu * sum(model[:t_l][i] for i in 1:N if isassigned(model[:t_l], i))
-            - mu * sum(model[:t_u][i] for i in 1:N if isassigned(model[:t_u], i))
+            - mu * sum(t_l[i] for i in 1:N_finite_l)
+            - mu * sum(t_u[i] for i in 1:N_finite_u)
         )
     else
         error("make_standard_form: unknown objective_type")
