@@ -10,7 +10,7 @@ function build_opf(::Type{StandardFormDCPPowerModel}, data::Dict{String,Any}, op
 
     model.ext[:opf_model] = PM.DCPPowerModel # NOTE: should be StandardFormDCPPowerModel?
 
-    return StandardFormDCPPowerModel(data, model, std)
+    return StandardFormDCPPowerModel(data, model, std, model.ext[:objective_kind], model.ext[:mu])
 end
 
 """
@@ -38,6 +38,10 @@ function extract_result(opf::StandardFormDCPPowerModel)
     res["termination_status"] = JuMP.termination_status(model)
     res["primal_status"] = JuMP.primal_status(model)
     res["dual_status"] = JuMP.dual_status(model)
+
+    res["objective_kind"] = model.ext[:objective_kind]
+    res["mu"] = model.ext[:mu]
+
     res["solution"] = sol = Dict{String,Any}()
 
     sol["per_unit"] = get(data, "per_unit", false)
@@ -197,8 +201,4 @@ function json2h5(::Type{StandardFormDCPPowerModel}, res)
     end
 
     return res_h5
-end
-
-function make_standard_form(opf::OPFModel{OPF}, optimizer; kwargs...) where {OPF <: PM.AbstractPowerModel}
-    return make_standard_form(opf.model, optimizer; kwargs...)
 end

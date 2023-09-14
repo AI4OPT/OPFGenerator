@@ -57,4 +57,8 @@ end
 include("standard_form.jl")
 include("opf/opf.jl")
 
+function make_standard_form(opf::OPFModel{OPF}, optimizer; kwargs...) where {OPF <: PM.AbstractPowerModel}
+    return make_standard_form(opf.model, optimizer; kwargs...)
+end
+
 end # module

@@ -18,5 +18,4 @@ if abspath(PROGRAM_FILE) == @__FILE__
         batch_size,
         force_process=false,
     )
-    OPFGenerator.write_standard_form_data(config)
 end

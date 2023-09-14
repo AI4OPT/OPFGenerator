@@ -1,4 +1,4 @@
-import SparseArrays: SparseMatrixCSC
+import SparseArrays: SparseMatrixCSC, findnz
 
 struct StandardFormData
     A::SparseMatrixCSC
@@ -14,6 +14,8 @@ mutable struct StandardFormOPFModel{OPF <: PM.AbstractPowerModel}
     data::Dict{String,Any}
     model::JuMP.Model
     std::StandardFormData
+    objective_type::String
+    mu::Float64
 end
 
 StandardFormDCPPowerModel = StandardFormOPFModel{PM.DCPPowerModel}
@@ -23,7 +25,7 @@ StandardFormDCPPowerModel = StandardFormOPFModel{PM.DCPPowerModel}
 
 Convert a JuMP Model to standard form matrices:
 
-    min   c ⋅ x + c0
+    min  ∑ᵢ cᵢxᵢ + c₀
     s.t.     Ax == b
          l <= x <= u
 
@@ -125,16 +127,15 @@ end
 
 Given a linear JuMP model, convert it to a JuMP model in standard form:
 
-    min   c ⋅ x + c0
+    min  ∑ᵢ cᵢxᵢ + c₀
     s.t.     Ax == b
          l <= x <= u
 
 The input model must only have linear constraints (`GenericAffExpr`).
 If the input model has a quadratic (`QuadExpr`) objective, only the linear parts are used.
 
-The output model can be given a barrier term using an ExponentialCone.
-Set `objective_type` to "cone" to use these barrier terms with parameter `mu`.
-Make sure the solver supports ExponentialCone.
+The output model can be given a barrier term using MOI.ExponentialCone.
+Set `objective_type` to "cone" to use a barrier with parameter `mu`.
 """
 function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.1)
     std = make_standard_form_data(lp)
@@ -147,8 +148,14 @@ function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.
     @constraint(model, constraints, std.A * x .== std.b)
 
     if objective_type == "linear"
+        model.ext[:objective_kind] = objective_type
+        model.ext[:mu] = 0.0
+
         @objective(model, Min, sum(std.c[i] * x[i] for i in 1:N) + std.c0)
     elseif objective_type == "cone"
+        model.ext[:objective_kind] = objective_type
+        model.ext[:mu] = mu
+
         finite_ls = isfinite.(std.l)
         finite_us = isfinite.(std.u)
 
@@ -157,12 +164,16 @@ function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.
 
         finite_l_map = Dict{Int, Int}()
         finite_u_map = Dict{Int, Int}()
-        for (i, (finite_l, finite_u)) in enumerate(zip(finite_ls, finite_us))
-            if finite_l
-                finite_l_map[i] = findall(finite_ls)[i]
+        finite_l_idx = 0
+        finite_u_idx = 0
+        for i in 1:N
+            if finite_ls[i]
+                finite_l_idx += 1
+                finite_l_map[finite_l_idx] = i
             end
-            if finite_u
-                finite_u_map[i] = findall(finite_us)[i]
+            if finite_us[i]
+                finite_u_idx += 1
+                finite_u_map[finite_u_idx] = i
             end
         end
 
@@ -216,16 +227,35 @@ function standard_form_data_to_dict(std::StandardFormData)
     str_columns = Dict(string(k) => v for (k,v) in std.columns)
     d = Dict{String, Any}()
 
-    d["A"] = Array(std.A)
+    d["m"] = size(std.A, 1)
+    d["n"] = size(std.A, 2)
+
     d["b"] = std.b
     d["c"] = std.c
     d["c0"] = std.c0
-    d["l"] = std.l
-    d["u"] = std.u
 
-    cols = d["columns"] = Dict{String, Any}()
-    cols["keys"] = Array(collect(keys(str_columns)))
-    cols["values"] = Array(collect(values(str_columns)))
+    # TODO: not able to reproduce A@x-b=0 in torch/ml4opf
+    d["A_coo"] = coo = Dict{String, Any}()
+    I, J, V = findnz(std.A)
+    coo["I"] = I
+    coo["J"] = J
+    coo["V"] = V
+
+    finite_ls = isfinite.(std.l)
+    finite_us = isfinite.(std.u)
+
+    @assert all(std.l[.!finite_ls] .== -Inf)
+    @assert all(std.u[.!finite_us] .== Inf)
+
+    d["l"] = Dict{String, Any}()
+    d["l"]["finite"] = std.l[finite_ls]
+    d["l"]["mask_idx"] = Int.(finite_ls)
+
+    d["u"] = Dict{String, Any}()
+    d["u"]["finite"] = std.u[finite_us]
+    d["u"]["mask_idx"] = Int.(finite_us)
+
+    d["columns"] = str_columns
 
     return d
 end
@@ -234,29 +264,16 @@ function standard_form_data_to_dict(opf::StandardFormOPFModel{OPF}) where {OPF <
     return standard_form_data_to_dict(opf.std)
 end
 
-function standard_form_data_to_h5(opf::StandardFormOPFModel{OPF}, filename::AbstractString) where {OPF <: PM.AbstractPowerModel}
-    h5open(filename, "w") do file
-        d = standard_form_data_to_dict(opf)
-        gr = create_group(file, "standard_form")
-        for (k, v) in d
-            if k == "columns"
-                gr_ = create_group(gr, k)
-                gr_["keys"] = v["keys"]
-                gr_["values"] = v["values"]
-            else
-                gr[k] = v
-            end
-        end
-    end
-end
-
-function write_standard_form_data(config::Dict)
+function write_standard_form_data(config::Dict, D::Dict)
     for opf_str in keys(config["OPF"])
         OPF = OPFGenerator.OPF2TYPE[opf_str]
         if (OPF <: StandardFormOPFModel)
+            PM.silence()
             data = make_basic_network(pglib(config["ref"]))
             opf = OPFGenerator.build_opf(OPF, data, nothing)
-            OPFGenerator.standard_form_data_to_h5(opf, joinpath(config["export_dir"], "$opf_str.h5"))
+
+            Dopf = get!(D, opf_str, Dict{String,Any}())
+            Dopf["standard_form"] = OPFGenerator.standard_form_data_to_dict(opf)
         end
     end
 end

@@ -25,5 +25,7 @@ end
 @time D = OPFGenerator._merge_h5(Ds...);
 @time OPFGenerator._sort_h5!(D);
 
+@time OPFGenerator.write_standard_form_data(config, D);
+
 # export to disk
 @time OPFGenerator.save_h5("$(export_dir)/$(name).h5", D);
