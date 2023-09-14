@@ -42,6 +42,8 @@ function extract_result(opf::StandardFormDCPPowerModel)
     res["objective_kind"] = model.ext[:objective_kind]
     res["mu"] = model.ext[:mu]
 
+    res["b"] = opf.std.b
+
     res["solution"] = sol = Dict{String,Any}()
 
     sol["per_unit"] = get(data, "per_unit", false)
@@ -52,10 +54,11 @@ function extract_result(opf::StandardFormDCPPowerModel)
     
     # bound duals default to 0 -> if the lower/upper bound is ±∞, dual is fixed at 0
     # consistent with Mosek https://docs.mosek.com/latest/dotnetapi/prob-def-linear.html
-    sol["mu_lower"] = zeros(Float64, length(model[:x]))
-    sol["mu_upper"] = zeros(Float64, length(model[:x]))
+    Nx = length(model[:x])
+    sol["mu_lower"] = zeros(Float64, Nx)
+    sol["mu_upper"] = zeros(Float64, Nx)
 
-    for i in 1:length(model[:x])
+    for i in 1:Nx
         if has_lower_bound(model[:x][i])
             sol["mu_lower"][i] = dual(LowerBoundRef(model[:x][i]))
         end
@@ -141,6 +144,8 @@ function json2h5(::Type{StandardFormDCPPowerModel}, res)
 
     res_h5["primal"] = pres_h5 = Dict{String,Any}(
         "x" => zeros(Float64, Nx),
+         # TODO: b is not a primal variable + what if c/A change?
+        "b" => zeros(Float64, Nλ),
 
         "va" => zeros(Float64, N),
         "pg" => zeros(Float64, G),
@@ -197,6 +202,8 @@ function json2h5(::Type{StandardFormDCPPowerModel}, res)
         dres_h5["mu_upper"][x] = sol["mu_upper"][x]
     end
     for λ in 1:Nλ
+        pres_h5["b"][λ] = res["b"][λ]
+
         dres_h5["lambda"][λ] = sol["lambda"][λ]
     end
 

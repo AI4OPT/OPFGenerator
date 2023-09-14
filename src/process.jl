@@ -81,7 +81,7 @@ function add_datapoint!(D, d)
     for opf_formulation in opf_formulations
         Dsol = get!(D, opf_formulation, Dict{String,Any}())
         resh5 = json2h5(OPF2TYPE[opf_formulation], d[opf_formulation])
-        for cat in ["meta", "primal", "dual"]
+        for cat in keys(resh5)
             get!(Dsol, cat, Dict{String,Any}())
             for (k, v) in resh5[cat]
                 if !haskey(Dsol[cat], k)
