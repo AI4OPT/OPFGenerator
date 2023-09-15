@@ -4,9 +4,6 @@ ref = "pglib_opf_case1354_pegase"
 # must be a valid directory
 export_dir = "data/1354_mu0001"
 
-standard_form_objective_type = 'cone' # linear, cone
-standard_form_mu = 0.0001
-
 [sampler]
 # ACOPF sampler options
 [sampler.load]
@@ -16,8 +13,17 @@ u          = 1.25               # Upper bound of base load factor
 sigma      = 0.15               # Relative (multiplicative) noise level.
 
 [OPF]
-StandardFormDCPPowerModel = "Mosek"
-DCPPowerModel = "Mosek"
 
-[solver]
-[solver.Mosek]
+[OPF.DCPPowerModel]
+    type = "DCPPowerModel"
+    [OPF.DCPPowerModel.solver]
+        name = "Mosek"
+
+[OPF.StandardFormDCPPowerModel_mu01]
+    type = "StandardFormDCPPowerModel"
+    [OPF.StandardFormDCPPowerModel_mu01.solver]
+        name = "Mosek"
+        [OPF.StandardFormDCPPowerModel_mu01.solver.attributes]
+    [OPF.StandardFormDCPPowerModel_mu01.kwargs]
+        objective_kind = "conic"
+        mu = 0.1

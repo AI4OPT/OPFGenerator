@@ -14,7 +14,7 @@ mutable struct StandardFormOPFModel{OPF <: PM.AbstractPowerModel}
     data::Dict{String,Any}
     model::JuMP.Model
     std::StandardFormData
-    objective_type::String
+    objective_kind::String
     mu::Float64
 end
 
@@ -123,7 +123,7 @@ function make_standard_form_data(lp::Model)
 end
 
 """
-    make_standard_form(lp::Model, optimizer=Ipopt.Optimizer; objective_type="linear", mu=0.1)
+    make_standard_form(lp::Model, optimizer=Ipopt.Optimizer; objective_kind="linear", mu=0.1)
 
 Given a linear JuMP model, convert it to a JuMP model in standard form:
 
@@ -135,9 +135,9 @@ The input model must only have linear constraints (`GenericAffExpr`).
 If the input model has a quadratic (`QuadExpr`) objective, only the linear parts are used.
 
 The output model can be given a barrier term using MOI.ExponentialCone.
-Set `objective_type` to "cone" to use a barrier with parameter `mu`.
+Set `objective_kind` to "conic" to use a barrier with parameter `mu`.
 """
-function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.1)
+function make_standard_form(lp::Model, optimizer; objective_kind="linear", mu=0.1)
     std = make_standard_form_data(lp)
     N = size(std.A, 2)
 
@@ -147,13 +147,13 @@ function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.
 
     @constraint(model, constraints, std.A * x .== std.b)
 
-    if objective_type == "linear"
-        model.ext[:objective_kind] = objective_type
+    if objective_kind == "linear"
+        model.ext[:objective_kind] = objective_kind
         model.ext[:mu] = 0.0
 
         @objective(model, Min, sum(std.c[i] * x[i] for i in 1:N) + std.c0)
-    elseif objective_type == "cone"
-        model.ext[:objective_kind] = objective_type
+    elseif objective_kind == "conic"
+        model.ext[:objective_kind] = objective_kind
         model.ext[:mu] = mu
 
         finite_ls = isfinite.(std.l)
@@ -188,7 +188,7 @@ function make_standard_form(lp::Model, optimizer; objective_type="linear", mu=0.
             - mu * sum(t_u[i] for i in 1:N_finite_u)
         )
     else
-        error("make_standard_form: unknown objective_type")
+        error("make_standard_form: unknown objective_kind")
     end
 
     return model, std
@@ -265,14 +265,14 @@ function standard_form_data_to_dict(opf::StandardFormOPFModel{OPF}) where {OPF <
 end
 
 function write_standard_form_data(config::Dict, D::Dict)
-    for opf_str in keys(config["OPF"])
-        OPF = OPFGenerator.OPF2TYPE[opf_str]
+    for opf_config in values(config["OPF"])
+        OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
         if (OPF <: StandardFormOPFModel)
             PM.silence()
             data = make_basic_network(pglib(config["ref"]))
             opf = OPFGenerator.build_opf(OPF, data, nothing)
 
-            Dopf = get!(D, opf_str, Dict{String,Any}())
+            Dopf = get!(D, opf_config["type"], Dict{String,Any}())
             Dopf["standard_form"] = OPFGenerator.standard_form_data_to_dict(opf)
         end
     end

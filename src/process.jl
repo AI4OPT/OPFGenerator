@@ -77,10 +77,10 @@ function add_datapoint!(D, d)
     push!(D_input["br_status"], br)
 
     # Add OPF solutions
-    opf_formulations = sort(collect(keys(config["OPF"])))
-    for opf_formulation in opf_formulations
-        Dsol = get!(D, opf_formulation, Dict{String,Any}())
-        resh5 = json2h5(OPF2TYPE[opf_formulation], d[opf_formulation])
+    opf_formulations = sort(collect((k, d["type"]) for (k, d) in config["OPF"]))
+    for (opf_name, opf_type) in opf_formulations
+        Dsol = get!(D, opf_name, Dict{String,Any}())
+        resh5 = json2h5(OPF2TYPE[opf_type], d[opf_name])
         for cat in ["meta", "primal", "dual"]
             get!(Dsol, cat, Dict{String,Any}())
             for (k, v) in resh5[cat]
@@ -148,9 +148,8 @@ function convert_to_h5!(D::Dict)
     for k in ["pd", "qd", "br_status"]
         dat[k] = _vecvec2mat(dat[k])
     end
-        
-    opf_formulations = sort(collect(keys(config["OPF"])))
-    for opf_formulation in opf_formulations
+
+    for opf_formulation in sort(collect(keys(config["OPF"])))
         opfres = D[opf_formulation]
         for cat in ["meta", "primal", "dual"]
             for (k, v) in opfres[cat]
