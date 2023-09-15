@@ -148,7 +148,7 @@ function convert_to_h5!(D::Dict)
     for k in ["pd", "qd", "br_status"]
         dat[k] = _vecvec2mat(dat[k])
     end
-
+        
     opf_formulations = sort(collect(keys(config["OPF"])))
     for opf_formulation in opf_formulations
         opfres = D[opf_formulation]
