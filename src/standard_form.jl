@@ -249,11 +249,11 @@ function standard_form_data_to_dict(std::StandardFormData)
 
     d["l"] = Dict{String, Any}()
     d["l"]["finite"] = std.l[finite_ls]
-    d["l"]["mask_idx"] = Int.(finite_ls)
+    d["l"]["mask"] = Int.(finite_ls)
 
     d["u"] = Dict{String, Any}()
     d["u"]["finite"] = std.u[finite_us]
-    d["u"]["mask_idx"] = Int.(finite_us)
+    d["u"]["mask"] = Int.(finite_us)
 
     d["columns"] = str_columns
 
