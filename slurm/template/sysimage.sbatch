@@ -9,6 +9,8 @@
 #SBATCH -o {{{:name_dir}}}/slurm/sysimage.out   # Combined output and error messages file
 #SBATCH -q{{:queue}}
 
+module load gcc
+
 cd {{{:opfgenerator_dir}}}
 
 mkdir app
