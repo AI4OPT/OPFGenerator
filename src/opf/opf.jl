@@ -1,3 +1,5 @@
+using MathOptSymbolicAD
+
 # Contains a list of all supported OPF models
 const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
     PowerModels.ACPPowerModel,
@@ -20,7 +22,9 @@ mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
     model::JuMP.Model
 end
 
-function build_opf(data, ::Type{<:PM.AbstractPowerModel}) end
+function solve!(opf::OPFModel{<:AbstractPowerModel})
+    optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
+end
 
 include("acp.jl")    # ACCPPowerModel
 include("dcp.jl")    # DCPPowerModel

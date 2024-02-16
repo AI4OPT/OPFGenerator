@@ -33,23 +33,25 @@ function main(data, config)
     d["data"] = data
 
     # Solve all OPF formulations
-    for (opf_str, opf_solver) in config["OPF"]
-        OPF = OPFGenerator.OPF2TYPE[opf_str]
+    for (dataset_name, opf_config) in config["OPF"]
+        OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
+        solver_config = get(opf_config, "solver", Dict())
         
-        solver = optimizer_with_attributes(NAME2OPTIMIZER[opf_solver],
-            config["solver"][opf_solver]...
+        solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
+            get(solver_config, "attributes", Dict())...
         )
+        build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
 
-        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver)
-       
+        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver; build_kwargs...)
+
         # Solve OPF model
         set_silent(opf.model)
-        optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
+        OPFGenerator.solve!(opf)
 
         tsol = @elapsed res = OPFGenerator.extract_result(opf)
         res["time_build"] = tbuild
         res["time_extract"] = tsol
-        d[opf_str] = res
+        d[dataset_name] = res
     end
 
     # Done
@@ -75,9 +77,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Load reference data and setup OPF sampler
     data = make_basic_network(pglib(config["ref"]))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
+
+    OPFs = keys(config["OPF"])
+    caseref = config["ref"]
     
     # Data generation
-    @info "Generating ACOPF & DCOPF instances for case $ref\nSeed range: [$smin, $smax]"
+    @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]\nDatasets: $OPFs"
     for s in smin:smax
         rng = StableRNG(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)

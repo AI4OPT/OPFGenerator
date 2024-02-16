@@ -1,7 +1,9 @@
+using SparseArrays
+
 """
     build_dcopf(data, optimizer)
 
-Build a DC-OPF model.
+Build a DC-OPF model using PTDF (no reserves).
 """
 function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
     # Cleanup and pre-process data
@@ -17,91 +19,113 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
     N = length(ref[:bus])
     G = length(ref[:gen])
     E = length(data["branch"])
-    L = length(ref[:load])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
 
     model = JuMP.Model(optimizer)
     model.ext[:opf_model] = PM.DCPPowerModel  # for internal checks
+    model.ext[:formulation] = "PTDF"
+    model.ext[:PTDF] = PM.calc_basic_ptdf_matrix(data)
 
     #
     #   I. Variables
     #
 
-    # bus voltage angle
-    JuMP.@variable(model, va[1:N])
-
     # generator active dispatch
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
+    JuMP.@variable(model, -ref[:branch][e]["rate_a"] <= pf[e in 1:E] <= ref[:branch][e]["rate_a"])
 
-    # branch flows
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs_from]] <= ref[:branch][l]["rate_a"])
-
-    # https://github.com/lanl-ansi/PowerModels.jl/blob/d9c00d228a4e875ac3426425ad6c8f8338309efa/src/form/dcp.jl#L255-L258
-    # pf_expr = Dict{Any, Any}( ((l,i,j), pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from] )
-    # pf_expr = merge(pf_expr, Dict( ((l,j,i), -1.0*pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from] ))
-    pf_expr = [((l,i,j), pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from]]
-    pf_expr = vcat(pf_expr, [((l,j,i), -1.0*pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from]])
-
-    model[:pf] = pf = JuMP.Containers.DenseAxisArray(collect(getfield.(pf_expr, 2)), collect(getfield.(pf_expr, 1)))
-
-    #
-    #   II. Constraints
-    #
-
-    # Slack bus
-    JuMP.@constraint(model, slack_bus, va[i0] == 0.0)
-
-    # Nodal power balance
     JuMP.@constraint(model,
-        kirchhoff[i in 1:N],
-        sum(pf[a] for a in ref[:bus_arcs][i]) ==
-        sum(pg[g] for g in ref[:bus_gens][i]) -
-        sum(load["pd"] for load in bus_loads[i]) -
-        sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
+        power_balance,
+        sum(pg[g] for g in 1:G) == sum(ref[:load][l]["pd"] for l in 1:length(ref[:load]))
     )
 
-    # Branch power flow physics and limit constraints
-    # We pre-allocate constraint containers for simplicity
-    model[:voltage_difference_limit] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:ohm_eq] = Vector{JuMP.ConstraintRef}(undef, E)
-    for (i,branch) in ref[:branch]
-        data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
-
-        f_idx = (i, branch["f_bus"], branch["t_bus"])
-
-        p_fr = pf[f_idx]
-
-        va_fr = va[branch["f_bus"]]
-        va_to = va[branch["t_bus"]]
-
-        g, b = PM.calc_branch_y(branch)
-
-        # From side of the branch flow
-        model[:ohm_eq][i] = JuMP.@constraint(model, p_fr == -b*(va_fr - va_to))
-
-        # Voltage angle difference limit
-        model[:voltage_difference_limit][i] = JuMP.@constraint(model, branch["angmin"] <= va_fr - va_to <= branch["angmax"])
-    end
+    # to be added during solve!
+    model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
+    model.ext[:tracked_branches] = zeros(Bool, E)
 
     #
     #   III. Objective
     #
+
     l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
     (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
+
+    l, u = extrema(gen["cost"][3] for (i, gen) in ref[:gen])
+    (l == u == 0.0) || @warn "Data $(data["name"]) has constant cost terms; those terms are being ignored"
+
     JuMP.@objective(model, Min, sum(
-        gen["cost"][2]*pg[i] + gen["cost"][3]
-        for (i,gen) in ref[:gen]
+        gen["cost"][2] * pg[i]
+        for (i, gen) in ref[:gen]
     ))
 
     return OPFModel{PM.DCPPowerModel}(data, model)
 end
+
+
+function solve!(opf::OPFModel{PM.DCPPowerModel})
+    if !haskey(opf.model.ext, :formulation) || opf.model.ext[:formulation] != "PTDF"
+        error("Expected PTDF formulation")
+    end
+
+    data = opf.data
+    model = opf.model
+
+    N = length(data["bus"])
+    G = length(data["gen"])
+    E = length(data["branch"])
+    L = length(data["load"])
+    Al = sparse(
+        [data["load"]["$l"]["load_bus"] for l in 1:L],
+        [l for l in 1:L],
+        ones(Float64, L),
+        N,
+        L,
+    )
+
+    Ag = sparse(
+        [data["gen"]["$g"]["gen_bus"] for g in 1:G],
+        [g for g in 1:G],
+        ones(Float64, G),
+        N,
+        G,
+    )
+
+    pd = [data["load"]["$l"]["pd"] for l in 1:L]
+    rate_a = [data["branch"]["$e"]["rate_a"] for e in 1:E]
+
+    p_expr = Ag * model[:pg] - Al * pd
+
+    solved = false
+    niter = 0
+    while !solved
+        optimize!(opf.model, _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
+        st = termination_status(model)
+        st == MOI.OPTIMAL || error("Solver failed to converge: $st")
+        pg_ = value.(model[:pg])
+        p_ = Ag * pg_ - Al * pd
+        pf_ = model.ext[:PTDF] * p_
+
+        n_violated = 0
+        for e in 1:E
+            if (model.ext[:tracked_branches][e]) || (-rate_a[e] <= pf_[e] <= rate_a[e])
+                continue
+            end
+
+            model[:ptdf_flow][e] = JuMP.@constraint(
+                model,
+                model[:pf][e] == dot(model.ext[:PTDF][e, :], p_expr)
+            )
+            model.ext[:tracked_branches][e] = true
+            n_violated += 1
+        end
+        solved = n_violated == 0
+        niter += 1
+    end
+
+    @info("Solved in $niter iteration" * (niter == 1 ? "" : "s"))
+
+    opf.model.ext[:ptdf_iter] = niter
+end
+
 
 """
     _extract_dcopf_solution(model, data)
@@ -110,7 +134,7 @@ Extract DCOPF solution from optimization model.
 The model must have been solved before.
 """
 function extract_result(opf::OPFModel{PM.DCPPowerModel})
-    data  = opf.data
+    data = opf.data
     model = opf.model
 
     # Pre-process data
@@ -132,21 +156,14 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
     res["solution"] = sol = Dict{String,Any}()
 
     sol["per_unit"] = get(data, "per_unit", false)
-    sol["baseMVA"]  = get(data, "baseMVA", 100.0)
+    sol["baseMVA"] = get(data, "baseMVA", 100.0)
 
     ### populate branches, gens, buses ###
 
-    sol["bus"] = Dict{String,Any}()
     sol["branch"] = Dict{String,Any}()
     sol["gen"] = Dict{String,Any}()
 
-    for bus in 1:N
-        sol["bus"]["$bus"] = Dict(
-            "va" => value(model[:va][bus]),
-            # dual vars
-            "lam_kirchhoff" => dual(model[:kirchhoff][bus])
-        )
-    end
+    sol["power_balance"] = dual(model[:power_balance])
 
     for b in 1:E
         if data["branch"]["$b"]["br_status"] == 0
@@ -154,22 +171,18 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
             sol["branch"]["$b"] = Dict(
                 "pf" => 0.0,
                 # dual vars
-                "mu_va_diff" => 0.0,
-                "lam_ohm"    => 0.0,
-                "mu_sm_lb"   => 0.0,
-                "mu_sm_ub"   => 0.0,
+                "mu_pf_lb" => 0.0,
+                "mu_pf_ub" => 0.0,
+                "lam_ptdf_flow" => 0.0,
             )
         else
-            branch = ref[:branch][b]
-            f_idx = (b, branch["f_bus"], branch["t_bus"])
-
             sol["branch"]["$b"] = Dict(
-                "pf" => value(model[:pf][f_idx]),
+                "pf" => value(model[:pf][b]),
                 # dual vars
-                "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
-                "lam_ohm"    => dual(model[:ohm_eq][b]),
-                "mu_sm_lb"   => dual(LowerBoundRef(model[:pf][f_idx])),
-                "mu_sm_ub"   => dual(UpperBoundRef(model[:pf][f_idx])),
+                "mu_pf_lb" => dual(LowerBoundRef(model[:pf][b])),
+                "mu_pf_ub" => dual(UpperBoundRef(model[:pf][b])),
+                # if not tracked, dual is 0
+                "lam_ptdf_flow" => isdefined(model[:ptdf_flow], b) ? dual(model[:ptdf_flow][b]) : 0.0,
             )
         end
     end
@@ -202,28 +215,18 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
     )
 
     res_h5["primal"] = pres_h5 = Dict{String,Any}(
-        "va" => zeros(Float64, N),
         "pg" => zeros(Float64, G),
         "pf" => zeros(Float64, E),
     )
     res_h5["dual"] = dres_h5 = Dict{String,Any}(
-        "lam_kirchhoff"   => zeros(Float64, N),
-        "mu_pg_lb"               => zeros(Float64, G),
-        "mu_pg_ub"               => zeros(Float64, G),
-        "lam_ohm"                => zeros(Float64, E),
-        "mu_sm_lb"               => zeros(Float64, E),
-        "mu_sm_ub"               => zeros(Float64, E),
-        "mu_va_diff"             => zeros(Float64, E),
+        "mu_pg_lb" => zeros(Float64, G),
+        "mu_pg_ub" => zeros(Float64, G),
+        "mu_pf_lb" => zeros(Float64, E),
+        "mu_pf_ub" => zeros(Float64, E),
+        "lam_ptdf_flow" => zeros(Float64, E),
     )
 
     # extract from solution
-    for i in 1:N
-        bsol = sol["bus"]["$i"]
-
-        pres_h5["va"][i] = bsol["va"]
-
-        dres_h5["lam_kirchhoff"][i] = bsol["lam_kirchhoff"]
-    end
     for g in 1:G
         gsol = sol["gen"]["$g"]
 
@@ -236,12 +239,14 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
         brsol = sol["branch"]["$e"]
 
         pres_h5["pf"][e] = brsol["pf"]
-        
-        dres_h5["lam_ohm"][e] = brsol["lam_ohm"]
-        dres_h5["mu_sm_lb"][e] = brsol["mu_sm_lb"]
-        dres_h5["mu_sm_ub"][e] = brsol["mu_sm_ub"]
-        dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
+
+        dres_h5["mu_pf_lb"][e] = brsol["mu_pf_lb"]
+        dres_h5["mu_pf_ub"][e] = brsol["mu_pf_ub"]
+        dres_h5["lam_ptdf_flow"][e] = brsol["lam_ptdf_flow"]
+
     end
+
+    dres_h5["lam_power_balance"] = sol["power_balance"]
 
     return res_h5
 end
