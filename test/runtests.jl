@@ -15,10 +15,11 @@ const IPOPT_SOLVER = JuMP.optimizer_with_attributes(Ipopt.Optimizer, "linear_sol
 const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose" => false)
 
 const OPT_SOLVERS = Dict(
-    PM.ACPPowerModel        => IPOPT_SOLVER,
-    PM.SOCWRPowerModel      => IPOPT_SOLVER,
-    PM.SOCWRConicPowerModel => CLRBL_SOLVER,
-    PM.DCPPowerModel        => CLRBL_SOLVER,
+    PM.ACPPowerModel               => IPOPT_SOLVER,
+    PM.SOCWRPowerModel             => IPOPT_SOLVER,
+    PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
+    PM.DCPPowerModel               => CLRBL_SOLVER,
+    OPFGenerator.DCPPTDFPowerModel => CLRBL_SOLVER, # TODO: add PTDF tests
 )
 
 include("opf/opf.jl")
