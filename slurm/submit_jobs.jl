@@ -123,23 +123,23 @@ open("$(name_dir)/sampler.sbatch", "w") do io
     println(io, sampler_sbatch)
 end
 
+submit_sh = Mustache.render(
+    Mustache.load("$(@__DIR__)/template/submit.sh"),
+    (
+        name_dir=name_dir
+    )
+)
+open("$(name_dir)/submit.sh", "w") do io
+    println(io, submit_sh)
+end
+
 @info(
 """The job files have been written to $(name_dir).
-You can now run the following lines to submit the jobs:"""
+You can run the following script to submit the jobs:"""
 )
-println(
-"""
 
-sysimage_id=\$(sbatch $(name_dir)/sysimage.sbatch | awk '{print \$NF}')
-echo "Submitted sysimage job with id \$sysimage_id"
-ref_id=\$(sbatch --dependency=afterok:\$sysimage_id $(name_dir)/ref.sbatch | awk '{print \$NF}')
-echo "Submitted ref job with id \$ref_id"
-solve_id=\$(sbatch --dependency=afterok:\$ref_id $(name_dir)/sampler.sbatch | awk '{print \$NF}')
-echo "Submitted solve job with id \$solve_id"
-merge_id=\$(sbatch --dependency=afterok:\$solve_id $(name_dir)/extract.sbatch | awk '{print \$NF}')
-echo "Submitted extract+merge job with id \$merge_id"
-"""
-)
+println("bash $(name_dir)/submit.sh")
+
 @info("Check the queue from time to time (using squeue --me)
 to see if any steps failed (typically due to a lack of resources).
-If so, edit the files in $(name_dir) and resubmit them.")
+If so, edit the sbatch files in $(name_dir) and re-run submit.sh.")
