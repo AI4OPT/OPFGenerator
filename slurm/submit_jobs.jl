@@ -125,12 +125,12 @@ end
 
 @info(
 """The job files have been written to $(name_dir).
-You can run the following lines to submit the jobs:
-"""
+You can now run the following lines to submit the jobs:"""
 )
-
 println(
-"""sysimage_id=\$(sbatch $(name_dir)/sysimage.sbatch | awk '{print \$NF}')
+"""
+
+sysimage_id=\$(sbatch $(name_dir)/sysimage.sbatch | awk '{print \$NF}')
 echo "Submitted sysimage job with id \$sysimage_id"
 ref_id=\$(sbatch --dependency=afterok:\$sysimage_id $(name_dir)/ref.sbatch | awk '{print \$NF}')
 echo "Submitted ref job with id \$ref_id"
@@ -140,3 +140,6 @@ merge_id=\$(sbatch --dependency=afterok:\$solve_id $(name_dir)/extract.sbatch | 
 echo "Submitted extract+merge job with id \$merge_id"
 """
 )
+@info("Check the queue from time to time (using squeue --me)
+to see if any steps failed (typically due to a lack of resources).
+If so, edit the files in $(name_dir) and resubmit them.")
