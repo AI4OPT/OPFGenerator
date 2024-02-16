@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=24                    # Give 24 CPUs to each task
 #SBATCH --mem-per-cpu=7gb                     # Memory per processor
 #SBATCH --time=08:00:00                       # Time limit hrs:min:sec
-#SBATCH -o {{{:logs_dir}}}/OPF.%A-%a.out     # Combined output and error messages file
+#SBATCH -o {{{:logs_dir}}}/OPF.%A-%a.out      # Combined output and error messages file
 #SBATCH -q{{:queue}}
 #SBATCH --array=1-{{:J}}
 

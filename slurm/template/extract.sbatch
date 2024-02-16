@@ -3,7 +3,7 @@
 #SBATCH --account={{:charge_account}}         # charge account
 #SBATCH --nodes=1                             # Use one node
 #SBATCH --ntasks=1                            # Run a single task
-#SBATCH --cpus-per-task=24                    # Give 128 CPUs to each task
+#SBATCH --cpus-per-task=24                    # Give 24 CPUs to each task
 #SBATCH --mem=7gb                             # Memory per processor
 #SBATCH --time=08:00:00                       # Time limit hrs:min:sec
 #SBATCH -o {{{:logs_dir}}}/extract.out        # Combined output and error messages file
