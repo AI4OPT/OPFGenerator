@@ -10,3 +10,11 @@ To launch a dataset generation job, first create a TOML file with the desired pa
 ```bash
 julia --project=. slurm/submit_jobs.jl <path/to/config/file.toml>
 ```
+
+Follow the directions from the output of the above command to submit the jobs.
+
+When the jobs are finished, you can run the below interactive script to remove any temporary files:
+
+```bash
+julia --project=. slurm/cleanup.jl <path/to/config/file.toml>
+```
