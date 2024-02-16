@@ -23,22 +23,27 @@ datasetname = splitdir(result_dir)[end]
 opfgenerator_dir = "$(@__DIR__)/../"
 sampler_script = joinpath(opfgenerator_dir, "exp", "sampler.jl")
 extract_script = joinpath(opfgenerator_dir, "exp", "extract.jl")
+
 slurm_dir = joinpath(result_dir, "slurm")
+json_dir = joinpath(result_dir, "res_json")
+h5_dir = joinpath(result_dir, "res_h5")
+
+jobs_dir = joinpath(slurm_dir, "jobs")
+logs_dir = joinpath(slurm_dir, "logs")
 
 mkpath(result_dir)
-mkpath(joinpath(result_dir, "res_json"))
-mkpath(joinpath(result_dir, "res_h5"))
-mkpath(joinpath(slurm_dir))
-mkpath(joinpath(slurm_dir, "jobs"))
-mkpath(joinpath(slurm_dir, "logs"))
-mkpath(joinpath(slurm_dir, "slurm"))
+mkpath(json_dir)
+mkpath(h5_dir)
+mkpath(slurm_dir)
+mkpath(jobs_dir)
+mkpath(logs_dir)
 
 julia_bin = "julia --sysimage=app/julia.so"
 
 # identify all missing jobs
 h = falses(S)
 @threads for s in 1:S
-    h[s] = isfile(joinpath(result_dir, "res_json", "$(case)_s$(s).json.gz"))
+    h[s] = isfile(joinpath(json_dir, "$(case)_s$(s).json.gz"))
 end
 @info "Missing $(S - sum(h)) instances"
 missing_seeds = (1:S)[.!h]
@@ -47,10 +52,10 @@ B, r = divrem(S_, J)
 B = B + (r > 0)
 for (j, seed_range) in enumerate(partition(missing_seeds, B))
     # Update job files
-    open(joinpath(slurm_dir, "jobs", "jobs_$j.txt"), "w") do io
+    open(joinpath(jobs_dir, "jobs_$j.txt"), "w") do io
         for minibatch in partition(seed_range, b)
             smin, smax = extrema(minibatch)
-            println(io, "$(julia_bin) --project=. -t1 $(sampler_script) $(config_file) $(smin) $(smax) > $(slurm_dir)/logs/$(case)_$(smin)-$(smax).log 2>&1")
+            println(io, "$(julia_bin) --project=. -t1 $(sampler_script) $(config_file) $(smin) $(smax) > $(logs_dir)/$(case)_$(smin)-$(smax).log 2>&1")
         end
     end
 end
@@ -59,7 +64,7 @@ sysimage_sbatch = Mustache.render(
     Mustache.load("$(@__DIR__)/template/sysimage.sbatch"),
     (
         charge_account=charge_account,
-        slurm_dir=slurm_dir,
+        logs_dir=logs_dir,
         queue=queue,
         opfgenerator_dir=opfgenerator_dir,
         sampler_script=sampler_script,
@@ -74,7 +79,7 @@ ref_sbatch = Mustache.render(
     Mustache.load("$(@__DIR__)/template/ref.sbatch"),
     (
         charge_account=charge_account,
-        slurm_dir=slurm_dir,
+        logs_dir=logs_dir,
         queue=queue,
         opfgenerator_dir=opfgenerator_dir,
         config_file=config_file
@@ -88,7 +93,7 @@ extract_sbatch = Mustache.render(
     Mustache.load("$(@__DIR__)/template/extract.sbatch"),
     (
         charge_account=charge_account, 
-        slurm_dir=slurm_dir, 
+        logs_dir=logs_dir, 
         queue=queue, 
         opfgenerator_dir=opfgenerator_dir, 
         extract_script=extract_script, 
@@ -103,7 +108,8 @@ sampler_sbatch = Mustache.render(
     Mustache.load("$(@__DIR__)/template/sampler.sbatch"),
     (
         charge_account=charge_account,
-        slurm_dir=slurm_dir,
+        logs_dir=logs_dir,
+        jobs_dir=jobs_dir,
         queue=queue,
         J=J,
         opfgenerator_dir=opfgenerator_dir
@@ -122,6 +128,8 @@ submit_sh = Mustache.render(
 open("$(exp_dir)/submit.sh", "w") do io
     println(io, submit_sh)
 end
+
+run(`chmod +x $(exp_dir)/submit.sh`)
 
 @info(
 """The job files have been written to $(exp_dir).

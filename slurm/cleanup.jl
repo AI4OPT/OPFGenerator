@@ -1,5 +1,3 @@
-using Base.Iterators
-using Base.Threads
 using TOML
 
 config_file = ARGS[1]
@@ -7,33 +5,34 @@ config = TOML.parsefile(config_file)
 
 case = config["ref"]
 result_dir = config["export_dir"]
-
-datasetname = splitdir(result_dir)[end]
-
-opfgenerator_dir = "$(@__DIR__)/../"
-slurm_dir = joinpath(opfgenerator_dir, "exp", datasetname)
+slurm_dir = joinpath(result_dir, "slurm")
+json_dir = joinpath(result_dir, "res_json")
+h5_dir = joinpath(result_dir, "res_h5")
 
 
 print("Delete $slurm_dir? This contains job files, logs, etc. [Y/[n]] ")
-if readline()[1] == 'Y'
+response = readline()
+if response == "Y" || response == "y"
     @info("Deleting $slurm_dir")
     rm(slurm_dir; recursive=true)
 else
-    @info("Not deleting $slurm_dir - input was not 'Y'")
+    @info("Not deleting $slurm_dir - got input '$response'")
 end
 
-print("Delete $(joinpath(result_dir, "res_json"))? This contains individual result files [Y/[n]] ")
-if readline()[1] == 'Y'
-    @info("Deleting $(joinpath(result_dir, "res_json"))")
-    rm(joinpath(result_dir, "res_json"); recursive=true)
+print("Delete $json_dir? This contains individual result files [Y/[n]] ")
+response = readline()
+if response == "Y" || response == "y"
+    @info("Deleting $res_json")
+    rm(res_json; recursive=true)
 else
-    @info("Not deleting $(joinpath(result_dir, "res_json")) - input was not 'Y'")
+    @info("Not deleting $res_json - got input '$response'")
 end
 
-print("Delete $(joinpath(result_dir, "res_h5"))? This contains semi-aggregated result files [Y/[n]] ")
-if readline()[1] == 'Y'
-    @info("Deleting $(joinpath(result_dir, "res_h5"))")
-    rm(joinpath(result_dir, "res_h5"); recursive=true)
+print("Delete $h5_dir)? This contains semi-aggregated result files [Y/[n]] ")
+response = readline()
+if response == "Y" || response == "y"
+    @info("Deleting $h5_dir")
+    rm(h5_dir; recursive=true)
 else
-    @info("Not deleting $(joinpath(result_dir, "res_h5")) - input was not 'Y'")
+    @info("Not deleting $h5_dir - got input '$response'")
 end

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 sysimage_id=$(sbatch {{{:slurm_dir}}}/sysimage.sbatch | awk '{print \$NF}')
 echo "Submitted sysimage job with id $sysimage_id"
 
