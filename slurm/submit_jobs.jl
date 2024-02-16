@@ -123,26 +123,20 @@ open("$(name_dir)/sampler.sbatch", "w") do io
     println(io, sampler_sbatch)
 end
 
+@info(
+"""The job files have been written to $(name_dir).
+You can run the following lines to submit the jobs:
+"""
+)
 
-sysimage_id = split(readchomp(
-    `sbatch $(name_dir)/sysimage.sbatch`
-))[end]
-println("Submitted sysimage job with id $sysimage_id")
-
-ref_id = split(readchomp(
-    `sbatch --dependency=afterok:$sysimage_id $(name_dir)/ref.sbatch`
-))[end]
-println("Submitted ref job with id $ref_id")
-
-solve_id = split(readchomp(
-    `sbatch --dependency=afterok:$ref_id $(name_dir)/sampler.sbatch`
-))[end]
-println("Submitted solve job with id $solve_id")
-
-# TODO: for some reason this errors out when submitting automatically, but works when submitting manually...
-# extract_id = split(readchomp(
-#     `sbatch --dependency=afterok:$solve_id $(name_dir)/extract.sbatch`
-# ))[end]
-# println("Submitted extract+merge job with id $extract_id")
-@info("Run the following command to submit the extract+merge job:
-sbatch --dependency=afterok:$solve_id $(name_dir)/extract.sbatch")
+println(
+"""sysimage_id=\$(sbatch $(name_dir)/sysimage.sbatch | awk '{print \$NF}')
+echo "Submitted sysimage job with id \$sysimage_id"
+ref_id=\$(sbatch --dependency=afterok:\$sysimage_id $(name_dir)/ref.sbatch | awk '{print \$NF}')
+echo "Submitted ref job with id \$ref_id"
+solve_id=\$(sbatch --dependency=afterok:\$ref_id $(name_dir)/sampler.sbatch | awk '{print \$NF}')
+echo "Submitted solve job with id \$solve_id"
+merge_id=\$(sbatch --dependency=afterok:\$solve_id $(name_dir)/extract.sbatch | awk '{print \$NF}')
+echo "Submitted extract+merge job with id \$merge_id"
+"""
+)
