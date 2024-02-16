@@ -22,7 +22,9 @@ create_sysimage(
         "TOML",
         "CodecBzip2",
         "CodecZlib",
-        "JSON"
+        "JSON",
+        "MKL",
+        "SparseArrays"
     ];
     sysimage_path="app/julia.so",
     precompile_statements_file="app/precompile.jl"
