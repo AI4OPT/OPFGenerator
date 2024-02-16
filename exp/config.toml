@@ -1,25 +1,28 @@
 # Name of the reference PGLib case. Must be a valid PGLib case name.
-ref = "pglib_opf_case300_ieee"
+ref = "pglib_opf_case1354_pegase"
 # Directory where instance/solution files are exported
 # must be a valid directory
-export_dir = "data/ieee300"
+export_dir = "data/1354_pegase"
 
 [sampler]
 # ACOPF sampler options
 [sampler.load]
 noise_type = "ScaledLogNormal"  # Only "ScaledLogNormal" is supported at the moment
 l          = 0.8                # Lower bound of base load factor
-u          = 1.05               # Upper bound of base load factor
-sigma      = 0.05               # Relative (multiplicative) noise level.
+u          = 1.20               # Upper bound of base load factor
+sigma      = 0.15               # Relative (multiplicative) noise level.
 
 
 [OPF]
-[OPF.DCPPowerModel]
+[OPF.DCOPF]
 type = "DCPPowerModel"
-[OPF.DCPPowerModel.solver]
-name = "Mosek"
+solver.name = "Mosek"
 
-[OPF.ACPPowerModel]
+[OPF.DCOPF_PTDF]
+type = "DCPPTDFPowerModel"
+solver.name = "Mosek"
+
+[OPF.ACOPF]
 type = "ACPPowerModel"
-[OPF.ACPPowerModel.solver]
-name = "Ipopt"
+solver.name = "Ipopt"
+solver.tol = 1e-5
