@@ -35,16 +35,6 @@ mkpath(joinpath(slurm_dir, "slurm"))
 
 julia_bin = "julia --sysimage=app/julia.so"
 
-for (j, seed_range) in enumerate(partition(1:S, B))
-    # we run from 1 + B*(j-1) to B*j
-    open(joinpath(slurm_dir, "jobs", "jobs_$j.txt"), "w") do io
-        for minibatch in partition(seed_range, b)
-            smin, smax = extrema(minibatch)
-            println(io, "$(julia_bin) --project=. -t1 $(sampler_script) $(config_file) $(smin) $(smax) > $(slurm_dir)/logs/$(case)_$(smin)-$(smax).log 2>&1")
-        end
-    end
-end
-
 # identify all missing jobs
 h = falses(S)
 @threads for s in 1:S
