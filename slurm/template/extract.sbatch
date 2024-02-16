@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=24                    # Give 128 CPUs to each task
 #SBATCH --mem=7gb                             # Memory per processor
 #SBATCH --time=08:00:00                       # Time limit hrs:min:sec
-#SBATCH -o {{{:name_dir}}}/slurm/extract.out    # Combined output and error messages file
+#SBATCH -o {{{:slurm_dir}}}/slurm/extract.out    # Combined output and error messages file
 #SBATCH -q{{:queue}}
 
 cd {{{:opfgenerator_dir}}}

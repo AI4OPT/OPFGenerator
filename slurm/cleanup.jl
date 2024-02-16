@@ -11,15 +11,15 @@ result_dir = config["export_dir"]
 datasetname = splitdir(result_dir)[end]
 
 opfgenerator_dir = "$(@__DIR__)/../"
-name_dir = joinpath(opfgenerator_dir, "exp", datasetname)
+slurm_dir = joinpath(opfgenerator_dir, "exp", datasetname)
 
 
-print("Delete $name_dir? This contains job files, logs, etc. [Y/[n]] ")
+print("Delete $slurm_dir? This contains job files, logs, etc. [Y/[n]] ")
 if readline()[1] == 'Y'
-    @info("Deleting $name_dir")
-    rm(name_dir; recursive=true)
+    @info("Deleting $slurm_dir")
+    rm(slurm_dir; recursive=true)
 else
-    @info("Not deleting $name_dir - input was not 'Y'")
+    @info("Not deleting $slurm_dir - input was not 'Y'")
 end
 
 print("Delete $(joinpath(result_dir, "res_json"))? This contains individual result files [Y/[n]] ")
