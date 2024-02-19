@@ -3,20 +3,23 @@ using Base.Threads
 using Mustache
 using TOML
 
-S = 65536  # total number of instances
-J = 45     # number of jobs
-b = 16     # minibatch size ()
-B, r = divrem(S, J)
-B = B + (r > 0)
-
-queue = "embers"
-charge_account = "gts-phentenryck3-ai4opt"
 
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
 case = config["ref"]
 result_dir = config["export_dir"]
+
+S = config["slurm"]["n_samples"]
+J = config["slurm"]["n_jobs"]
+b = config["slurm"]["minibatch_size"]
+queue = config["slurm"]["queue"]
+charge_account = config["slurm"]["charge_account"]
+
+julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")
+
+B, r = divrem(S, J)
+B = B + (r > 0)
 
 datasetname = splitdir(result_dir)[end]
 
@@ -37,8 +40,6 @@ mkpath(h5_dir)
 mkpath(slurm_dir)
 mkpath(jobs_dir)
 mkpath(logs_dir)
-
-julia_bin = "julia --sysimage=app/julia.so"
 
 # identify all missing jobs
 h = falses(S)

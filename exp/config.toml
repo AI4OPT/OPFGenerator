@@ -26,3 +26,11 @@ solver.name = "Mosek"
 type = "ACPPowerModel"
 solver.name = "Ipopt"
 solver.tol = 1e-5
+
+
+[slurm]
+n_samples = 65536
+n_jobs = 45
+minibatch_size = 16
+queue = "embers"
+charge_account = "gts-phentenryck3-ai4opt"
