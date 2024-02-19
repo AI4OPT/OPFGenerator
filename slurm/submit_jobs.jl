@@ -123,22 +123,22 @@ end
 submit_sh = Mustache.render(
     Mustache.load("$(@__DIR__)/template/submit.sh"),
     (
-        exp_dir=slurm_dir
+        slurm_dir=slurm_dir
     )
 )
-open("$(exp_dir)/submit.sh", "w") do io
+open("$(slurm_dir)/submit.sh", "w") do io
     println(io, submit_sh)
 end
 
-run(`chmod +x $(exp_dir)/submit.sh`)
+run(`chmod +x $(slurm_dir)/submit.sh`)
 
 @info(
-"""The job files have been written to $(exp_dir).
+"""The job files have been written to $(slurm_dir).
 You can run the following script to submit the jobs:"""
 )
 
-println("bash $(exp_dir)/submit.sh")
+println("bash $(slurm_dir)/submit.sh")
 
 @info("Check the queue from time to time (using squeue --me)
 to see if any steps failed (typically due to a lack of resources).
-If so, edit the sbatch files in $(exp_dir) and re-run submit.sh.")
+If so, edit the sbatch files in $(slurm_dir) and re-run submit.sh.")
