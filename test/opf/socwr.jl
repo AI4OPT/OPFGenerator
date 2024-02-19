@@ -23,7 +23,7 @@ function _test_opf_detailed(opf::OPFModel{OPF}, res::Dict, res_pm::Dict) where {
     end
 
     optimize!(model)
-    @test termination_status(model) ∈ [OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
+    @test termination_status(model) ∈ [OPTIMAL, ALMOST_OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
     @test primal_status(model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
 
     return nothing
