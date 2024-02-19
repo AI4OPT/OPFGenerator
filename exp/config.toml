@@ -18,10 +18,6 @@ sigma      = 0.15               # Relative (multiplicative) noise level.
 type = "DCPPowerModel"
 solver.name = "Mosek"
 
-[OPF.DCOPF_PTDF]
-type = "DCPPTDFPowerModel"
-solver.name = "Mosek"
-
 [OPF.ACOPF]
 type = "ACPPowerModel"
 solver.name = "Ipopt"
