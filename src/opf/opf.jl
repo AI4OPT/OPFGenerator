@@ -7,14 +7,12 @@ end
 
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
-include("dcp_ptdf.jl") # DCPPowerModel with PTDF
 include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
 
 # Contains a list of all supported OPF models
 const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
     PowerModels.ACPPowerModel,
     PowerModels.DCPPowerModel,
-    DCPPTDFPowerModel,
     PowerModels.SOCWRPowerModel,
     PowerModels.SOCWRConicPowerModel,
 ]
@@ -24,7 +22,6 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
 const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
     "ACPPowerModel" => PowerModels.ACPPowerModel,
     "DCPPowerModel" => PowerModels.DCPPowerModel,
-    "DCPPTDFPowerModel" => DCPPTDFPowerModel,
     "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
 )

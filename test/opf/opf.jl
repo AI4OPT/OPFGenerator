@@ -53,7 +53,6 @@ end
 
 include("acp.jl")
 include("dcp.jl")
-# TODO: add PTDF tests
 include("socwr.jl")
 
 # other tests

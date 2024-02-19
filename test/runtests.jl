@@ -19,7 +19,6 @@ const OPT_SOLVERS = Dict(
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
-    OPFGenerator.DCPPTDFPowerModel => CLRBL_SOLVER, # TODO: add PTDF tests
 )
 
 include("opf/opf.jl")
