@@ -134,11 +134,11 @@ run(`chmod +x $(slurm_dir)/submit.sh`)
 
 @info(
 """The job files have been written to $(slurm_dir).
-You can run the following script to submit the jobs:"""
+Run the below command to submit them to the queue."""
 )
 
-println("bash $(slurm_dir)/submit.sh")
-
-@info("Check the queue from time to time (using squeue --me)
-to see if any steps failed (typically due to a lack of resources).
-If so, edit the sbatch files in $(slurm_dir) and re-run submit.sh.")
+command = "bash $(slurm_dir)/submit.sh"
+command_len = length(command)
+println("↓↓↓" * repeat("↓", command_len) * "↓↓↓")
+println("\n   " * command)
+println("\n↑↑↑" * repeat("↑", command_len) * "↑↑↑")

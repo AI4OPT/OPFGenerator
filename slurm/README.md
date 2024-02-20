@@ -13,6 +13,8 @@ julia --project=. slurm/submit_jobs.jl <path/to/config/file.toml>
 
 Follow the directions from the output of the above command to submit the jobs.
 
+Once submitted, check the queue from time to time (using `squeue --me`) to see if any steps failed (typically due to a lack of resources). If so, edit the generated sbatch files (in <export_dir>/slurm) and re-run the generated `submit.sh` script (also in <export_dir>/slurm).
+
 When the jobs are finished, you can run the below interactive script to remove any temporary files:
 
 ```bash
