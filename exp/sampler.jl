@@ -52,7 +52,7 @@ function main(data, config)
         tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver; build_kwargs...)
 
         # Solve OPF model
-        # set_silent(opf.model)
+        set_silent(opf.model)
         OPFGenerator.solve!(opf)
 
         tsol = @elapsed res = OPFGenerator.extract_result(opf)
