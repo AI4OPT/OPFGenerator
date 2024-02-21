@@ -23,7 +23,7 @@ solver.name = "Mosek"
 [OPF.ACOPF]
 type = "ACPPowerModel"
 solver.name = "Ipopt"
-solver.attributes.tol = 1e-5
+solver.attributes.tol = 1e-6
 solver.attributes.linear_solver = "ma27"
 
 
