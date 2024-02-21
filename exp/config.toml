@@ -1,8 +1,8 @@
 # Name of the reference PGLib case. Must be a valid PGLib case name.
-ref = "pglib_opf_case1354_pegase"
+ref = "pglib_opf_case300_ieee"
 # Directory where instance/solution files are exported
 # must be a valid directory
-export_dir = "data/1354_pegase"
+export_dir = "data/300_ieee"
 
 [sampler]
 # ACOPF sampler options
@@ -27,6 +27,5 @@ solver.tol = 1e-5
 [slurm]
 n_samples = 65536
 n_jobs = 45
-minibatch_size = 16
 queue = "embers"
 charge_account = "gts-phentenryck3-ai4opt"
