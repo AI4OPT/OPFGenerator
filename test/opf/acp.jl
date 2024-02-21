@@ -18,7 +18,9 @@ function _test_opf_detailed(opf::OPFGenerator.OPFModel{OPF}, res::Dict, res_pm::
     for varname in [:pg, :qg, :va, :vm]
         x = model[varname]
         v = var2val_pm[varname]
-        @constraint(model, v .<= x .<= v)
+        # Ipopt will complain if we fix too many variables
+        # To avoid this, we add a small tolerance below
+        @constraint(model, v .- 1e-8 .<= x .<= v .+ 1e-8)
     end
 
     optimize!(model)

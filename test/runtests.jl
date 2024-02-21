@@ -11,14 +11,14 @@ using PGLib
 
 using OPFGenerator
 
-const IPOPT_SOLVER = JuMP.optimizer_with_attributes(Ipopt.Optimizer, "linear_solver" => "mumps", "print_level" => 0, "tol" => 1e-6)
-const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose" => false)
+const IPOPT_SOLVER = JuMP.optimizer_with_attributes(Ipopt.Optimizer, "linear_solver" => "mumps", "print_level" => 1, "tol" => 1e-6)
+const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose" => true)
 
 const OPT_SOLVERS = Dict(
-    PM.ACPPowerModel        => IPOPT_SOLVER,
-    PM.SOCWRPowerModel      => IPOPT_SOLVER,
-    PM.SOCWRConicPowerModel => CLRBL_SOLVER,
-    PM.DCPPowerModel        => CLRBL_SOLVER,
+    PM.ACPPowerModel               => IPOPT_SOLVER,
+    PM.SOCWRPowerModel             => IPOPT_SOLVER,
+    PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
+    PM.DCPPowerModel               => CLRBL_SOLVER,
 )
 
 include("opf/opf.jl")

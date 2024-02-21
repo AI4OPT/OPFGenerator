@@ -156,7 +156,7 @@ It is called from the command-line as follows:
 julia --project=. exp/sampler.jl <path/to/config.toml> <seed_min> <seed_max>
 ```
 where
-* `<path/to/config.toml>` is a path to a valid configuration file in TOML format (see [`exp/ieee300.toml`](exp/ieee300.toml) for an example)
+* `<path/to/config.toml>` is a path to a valid configuration file in TOML format (see [`exp/config.toml`](exp/config.toml) for an example)
 * `<seed_min>` and `<seed_max>` are minimum and maximum values for the random seed. Must be integer values.
     The script will generate instances for values `smin, smin+1, ..., smax-1, smax`.
 

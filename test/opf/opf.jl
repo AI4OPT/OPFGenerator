@@ -69,4 +69,3 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
         @testset "QuadObj" begin test_quad_obj_warn(OPF) end
     end
 end
-

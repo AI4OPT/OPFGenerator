@@ -24,7 +24,7 @@ function _test_opf_detailed(opf::OPFGenerator.OPFModel{OPF}, res::Dict, res_pm::
     @constraint(model, var2val_pm[:pf] .<= model[:pf] .<= var2val_pm[:pf])
 
     optimize!(model)
-    @test termination_status(model) ∈ [OPTIMAL, LOCALLY_SOLVED,ALMOST_LOCALLY_SOLVED]
+    @test termination_status(model) ∈ [OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
     @test primal_status(model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
 
     return nothing

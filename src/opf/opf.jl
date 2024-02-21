@@ -1,3 +1,14 @@
+using MathOptSymbolicAD
+
+mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
+    data::Dict{String,Any}
+    model::JuMP.Model
+end
+
+include("acp.jl")      # ACPPowerModel
+include("dcp.jl")      # DCPPowerModel
+include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
+
 # Contains a list of all supported OPF models
 const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
     PowerModels.ACPPowerModel,
@@ -15,13 +26,6 @@ const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
 )
 
-mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
-    data::Dict{String,Any}
-    model::JuMP.Model
+function solve!(opf::OPFModel{<:AbstractPowerModel})
+    optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
 end
-
-function build_opf(data, ::Type{<:PM.AbstractPowerModel}) end
-
-include("acp.jl")    # ACCPPowerModel
-include("dcp.jl")    # DCPPowerModel
-include("socwr.jl")  # SOCWRPowerModel & SOCWRConicPowerModel
