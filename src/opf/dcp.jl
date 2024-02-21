@@ -3,7 +3,9 @@
 
 Build a DC-OPF model.
 """
-function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
+function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
+    T=Float64,    
+)
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
@@ -27,7 +29,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
         for i in 1:N
     ]
 
-    model = JuMP.Model(optimizer)
+    model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = PM.DCPPowerModel  # for internal checks
 
     #

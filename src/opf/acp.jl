@@ -6,7 +6,9 @@ Build an AC-OPF model.
 This implementation is based on the AC-OPF formulation of Rosetta-OPF
     https://github.com/lanl-ansi/rosetta-opf/blob/38a951326df3156d79dcdc49c8010aa29905b05d/jump.jl
 """
-function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer)
+function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
+    T=Float64,    
+)
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
@@ -30,7 +32,7 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer)
         for i in 1:N
     ]
 
-    model = JuMP.Model(optimizer)
+    model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = PM.ACPPowerModel  # for internal checks
 
     #

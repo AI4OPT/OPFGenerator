@@ -2,7 +2,7 @@ using MathOptSymbolicAD
 
 mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
     data::Dict{String,Any}
-    model::JuMP.Model
+    model::JuMP.GenericModel
 end
 
 include("acp.jl")      # ACPPowerModel
