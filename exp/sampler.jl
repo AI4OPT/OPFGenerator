@@ -37,11 +37,11 @@ function main(data, config)
         OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
         solver_config = get(opf_config, "solver", Dict())
 
-        # if solver is Ipopt and linear_solver is in attributes, set hsllib
-        if (solver_config["name"] == "Ipopt" &&
-                haskey(solver_config, "attributes") &&
-                    haskey(solver_config["attributes"], "linear_solver"))
-            solver_config["attributes"]["hsllib"] = HSL_jll.libhsl_path
+        if solver_config["name"] == "Ipopt"
+            # Make sure we provide an HSL path
+            # The code below does not modify anything if the user provides an HSL path
+            get!(solver_config, "attributes", Dict())
+            get!(solver_config["attributes"], "hsllib", HSL_jll.libhsl_path)
         end
 
         solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
