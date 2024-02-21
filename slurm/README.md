@@ -32,7 +32,7 @@ Create a TOML configuration file with the following options:
 
 ## Output Structure
 
-The script will organize the output into the following directories within the specified `export_dir`:
+The script will organize the intermediate files into the following directories within the specified `export_dir`:
 
 - `slurm`: Contains generated SLURM job files and submission scripts created by the `submit_jobs.jl` script.
 - `res_json`: Stores JSON files with individual instance and solution data created during the sampler job.
@@ -47,6 +47,11 @@ The script will generate the following job files in the `slurm` directory:
 - `submit.sh`: Script to submit all the above jobs to the SLURM queue.
 
 After generating the job files, the script will output a command to run that submits the jobs. Copy+paste and run this command to start the dataset generation process. The script uses dependencies to run the jobs in the correct order -> `sysimage` -> `ref` -> `sampler` -> `extract`.
+
+The final output files will be stored in the `export_dir` directory:
+
+- `<name>.h5`: HDF5 file containing the final dataset.
+- `<name>.ref.json`: JSON file containing the instance data for the reference case.
 
 ## Cleanup Script
 
