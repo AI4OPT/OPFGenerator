@@ -20,6 +20,7 @@ extract_memory = get(config["slurm"], "extract_memory", "16gb")
 ref_memory = get(config["slurm"], "ref_memory", sampler_memory)
 sysimage_memory = get(config["slurm"], "sysimage_memory", "16gb")
 julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")
+cpus_per_task = get(config["slurm"], "cpus_per_task", 24)
 
 B, r = divrem(S, J)
 B = B + (r > 0)
@@ -104,7 +105,8 @@ extract_sbatch = Mustache.render(
         opfgenerator_dir=opfgenerator_dir, 
         extract_script=extract_script, 
         config_file=config_file,
-        extract_memory=extract_memory
+        extract_memory=extract_memory,
+        cpus_per_task=cpus_per_task
     )
 )
 open("$(slurm_dir)/extract.sbatch", "w") do io
@@ -120,7 +122,8 @@ sampler_sbatch = Mustache.render(
         queue=queue,
         J=J,
         opfgenerator_dir=opfgenerator_dir,
-        sampler_memory=sampler_memory
+        sampler_memory=sampler_memory,
+        cpus_per_task=cpus_per_task
     )
 )
 open("$(slurm_dir)/sampler.sbatch", "w") do io
