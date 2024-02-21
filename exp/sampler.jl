@@ -36,7 +36,14 @@ function main(data, config)
     for (dataset_name, opf_config) in config["OPF"]
         OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
         solver_config = get(opf_config, "solver", Dict())
-        
+
+        # if solver is Ipopt and linear_solver is in attributes, set hsllib
+        if (solver_config["name"] == "Ipopt" &&
+                haskey(solver_config, "attributes") &&
+                    haskey(solver_config["attributes"], "linear_solver"))
+            solver_config["attributes"]["hsllib"] = HSL_jll.libhsl_path
+        end
+
         solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
             get(solver_config, "attributes", Dict())...
         )
@@ -45,7 +52,7 @@ function main(data, config)
         tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver; build_kwargs...)
 
         # Solve OPF model
-        set_silent(opf.model)
+        # set_silent(opf.model)
         OPFGenerator.solve!(opf)
 
         tsol = @elapsed res = OPFGenerator.extract_result(opf)

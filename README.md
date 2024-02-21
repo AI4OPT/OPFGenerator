@@ -79,8 +79,8 @@ Follow these steps for installing `JuliaHSL` (assumes Linux machine and academic
 To use HSL linear solvers when solving OPF instances, set the parameter "linear_solver" to "ma27" or "ma57" in the config file.
 The recommended solver for Ipopt is `ma27`.
 ```toml
-[solver.Ipopt]
-    linear_solver = "ma27"
+solver.name = "Ipopt"
+solver.attributes.linear_solver = "ma27"
 ```
 
 ## Quick start
