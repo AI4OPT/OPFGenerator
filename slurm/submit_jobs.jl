@@ -9,14 +9,18 @@ config = TOML.parsefile(config_file)
 
 case = config["ref"]
 result_dir = config["export_dir"]
-
 S = config["slurm"]["n_samples"]
 J = config["slurm"]["n_jobs"]
-b = config["slurm"]["minibatch_size"]
 queue = config["slurm"]["queue"]
 charge_account = config["slurm"]["charge_account"]
 
+b = get(config["slurm"], "minibatch_size", 16)
+sampler_memory = get(config["slurm"], "sampler_memory", "8gb")
+extract_memory = get(config["slurm"], "extract_memory", "16gb")
+ref_memory = get(config["slurm"], "ref_memory", sampler_memory)
+sysimage_memory = get(config["slurm"], "sysimage_memory", "16gb")
 julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")
+cpus_per_task = get(config["slurm"], "cpus_per_task", 24)
 
 B, r = divrem(S, J)
 B = B + (r > 0)
@@ -69,7 +73,8 @@ sysimage_sbatch = Mustache.render(
         queue=queue,
         opfgenerator_dir=opfgenerator_dir,
         sampler_script=sampler_script,
-        config_file=config_file
+        config_file=config_file,
+        sysimage_memory=sysimage_memory
     )
 )
 open("$(slurm_dir)/sysimage.sbatch", "w") do io
@@ -83,7 +88,8 @@ ref_sbatch = Mustache.render(
         logs_dir=logs_dir,
         queue=queue,
         opfgenerator_dir=opfgenerator_dir,
-        config_file=config_file
+        config_file=config_file,
+        ref_memory=ref_memory
     )
 )
 open("$(slurm_dir)/ref.sbatch", "w") do io
@@ -98,7 +104,9 @@ extract_sbatch = Mustache.render(
         queue=queue, 
         opfgenerator_dir=opfgenerator_dir, 
         extract_script=extract_script, 
-        config_file=config_file
+        config_file=config_file,
+        extract_memory=extract_memory,
+        cpus_per_task=cpus_per_task
     )
 )
 open("$(slurm_dir)/extract.sbatch", "w") do io
@@ -113,7 +121,9 @@ sampler_sbatch = Mustache.render(
         jobs_dir=jobs_dir,
         queue=queue,
         J=J,
-        opfgenerator_dir=opfgenerator_dir
+        opfgenerator_dir=opfgenerator_dir,
+        sampler_memory=sampler_memory,
+        cpus_per_task=cpus_per_task
     )
 )
 open("$(slurm_dir)/sampler.sbatch", "w") do io
