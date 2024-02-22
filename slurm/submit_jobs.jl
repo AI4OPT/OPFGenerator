@@ -92,7 +92,7 @@ ref_sbatch = Mustache.render(
         opfgenerator_dir=opfgenerator_dir,
         config_file=config_file,
         ref_memory=ref_memory,
-        env_path=env_path
+        env_path=env_path,
     )
 )
 open("$(slurm_dir)/ref.sbatch", "w") do io
