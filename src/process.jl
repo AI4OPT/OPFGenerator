@@ -3,6 +3,19 @@ using Base.Threads
 using ProgressMeter
 using HDF5
 
+# Supported datatypes as per https://juliaio.github.io/HDF5.jl/v0.17/#Supported-data-types
+const HDF5_SUPPORTED_NUMBER_TYPES = Union{
+    Bool,
+    UInt8, UInt16, UInt32, UInt64,
+     Int8,  Int16,  Int32,  Int64,
+    Float32, Float64,
+    # Complex versions of all of these
+    Complex{Bool},
+    Complex{UInt8}, Complex{UInt16}, Complex{UInt32}, Complex{UInt64},
+    Complex{Int8},  Complex{Int16},  Complex{Int32},  Complex{Int64},
+    Complex{Float32}, Complex{Float64},
+}
+
 """
     initialize_res(data)
 
@@ -117,14 +130,22 @@ function save_h5(gr::HDF5.Group, D::Dict)
         if isa(v, Array)
             gr[k] = v
         elseif isa(v, AbstractString)
-            gr[k] = string(v)
-        elseif isa(v, Union{Int64,Float64})
+            gr[k] = String(v)
+        elseif isa(v, HDF5_SUPPORTED_NUMBER_TYPES)
             gr[k] = v
         elseif isa(v, Dict)
             gr_ = create_group(gr, k)
             save_h5(gr_, v)
         else
-            error("Unsupported data type for writing to a group: $k::$(typeof(v))")
+            # Can we convert to Float64?
+            try 
+                v_float = convert(Float64, v)
+                gr[k] = v_float
+                @warn("Unsupported data type for writing to a group: $k::$(typeof(v)).\nThis value was converted to Float64.")
+            catch err
+                # Throw an error
+                error("Unsupported data type for writing to a group: $k::$(typeof(v)).\nThe value could not be converted to Float64.")
+            end
         end
     end
     return nothing
