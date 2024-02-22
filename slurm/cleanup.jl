@@ -22,10 +22,10 @@ end
 print("Delete $json_dir? This contains individual result files [Y/[n]] ")
 response = readline()
 if response == "Y" || response == "y"
-    @info("Deleting $res_json")
-    rm(res_json; recursive=true)
+    @info("Deleting $json_dir")
+    rm(json_dir; recursive=true)
 else
-    @info("Not deleting $res_json - got input '$response'")
+    @info("Not deleting $json_dir - got input '$response'")
 end
 
 print("Delete $h5_dir)? This contains semi-aggregated result files [Y/[n]] ")
