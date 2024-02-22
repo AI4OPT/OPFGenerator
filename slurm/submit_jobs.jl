@@ -21,7 +21,7 @@ ref_memory = get(config["slurm"], "ref_memory", sampler_memory)
 sysimage_memory = get(config["slurm"], "sysimage_memory", "16gb")
 julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")
 cpus_per_task = get(config["slurm"], "cpus_per_task", 24)
-env_path = get(config["slurm"], "env_path", "$(@__DIR__)/template/env.sh")
+env_path = get(config["slurm"], "env_path", joinpath(@__DIR__, "template", "env.sh"))
 
 B, r = divrem(S, J)
 B = B + (r > 0)
