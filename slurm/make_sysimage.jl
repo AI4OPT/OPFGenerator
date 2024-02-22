@@ -13,6 +13,8 @@ create_sysimage(
         "Graphs",
         "ProgressMeter",
         "HDF5",
+        "Clarabel",
+        "Quadmath",
         "Ipopt",
         "Mosek",
         "MosekTools",

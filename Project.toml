@@ -4,6 +4,7 @@ authors = ["mtanneau3 <mtanneau3@gatech.edu>"]
 version = "0.1.0"
 
 [deps]
+Clarabel = "61c947e1-3e6d-4ee4-985a-eec8c727bd6e"
 CodecBzip2 = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -23,6 +24,7 @@ PGLib = "07a8691f-3d11-4330-951b-3c50f98338be"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 PowerModels = "c36e90e8-916a-50a6-bd94-075b64ef4655"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
