@@ -9,6 +9,8 @@
 #SBATCH -o {{{:logs_dir}}}/ref.out            # Combined output and error messages file
 #SBATCH -q{{:queue}}
 
+. {{{:env_path}}}
+
 cd {{{:opfgenerator_dir}}}
 
 julia --project=. -t1 {{{:opfgenerator_dir}}}/slurm/make_ref.jl {{{:config_file}}}

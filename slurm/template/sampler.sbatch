@@ -10,7 +10,7 @@
 #SBATCH -q{{:queue}}
 #SBATCH --array=1-{{:J}}
 
-module load parallel
+. {{{:env_path}}}
 
 cd {{{:opfgenerator_dir}}}
 

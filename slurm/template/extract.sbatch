@@ -9,6 +9,8 @@
 #SBATCH -o {{{:logs_dir}}}/extract.out        # Combined output and error messages file
 #SBATCH -q{{:queue}}
 
+. {{{:env_path}}}
+
 cd {{{:opfgenerator_dir}}}
 
 julia --project=. -t{{:cpus_per_task}} {{{:extract_script}}} {{{:config_file}}}
