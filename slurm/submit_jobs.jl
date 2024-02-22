@@ -16,7 +16,7 @@ charge_account = config["slurm"]["charge_account"]
 
 b = get(config["slurm"], "minibatch_size", 16)
 sampler_memory = get(config["slurm"], "sampler_memory", "8gb")
-extract_memory = get(config["slurm"], "extract_memory", "16gb")
+extract_memory = get(config["slurm"], "extract_memory", "64gb")
 ref_memory = get(config["slurm"], "ref_memory", sampler_memory)
 sysimage_memory = get(config["slurm"], "sysimage_memory", "16gb")
 julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")

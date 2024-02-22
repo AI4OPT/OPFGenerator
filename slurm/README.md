@@ -18,7 +18,7 @@ Create a TOML configuration file with the following options:
 | `slurm.sampler_memory` | Memory per CPU for sampler job | No | "8gb" |
 | `slurm.ref_memory` | Total memory for reference job | No | `sampler_memory` |
 | `slurm.sysimage_memory` | Total memory for sysimage job | No | "16gb" |
-| `slurm.extract_memory` | Total memory for extract job | No | "16gb" |
+| `slurm.extract_memory` | Total memory for extract job | No | "64gb" |
 | `slurm.julia_bin` | Julia command to use | No | `julia --sysimage=app/julia.so` |
 
 ## Usage
