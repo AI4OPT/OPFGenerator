@@ -2,6 +2,7 @@ using Random
 using LinearAlgebra
 using StableRNGs
 using TOML
+using Quadmath  # for Float128 arithmetic
 
 BLAS.set_num_threads(1)
 
@@ -10,6 +11,7 @@ PowerModels.silence()
 using PGLib
 
 using JuMP
+using Clarabel
 using Ipopt
 using Mosek, MosekTools
 
@@ -21,9 +23,17 @@ using MathOptSymbolicAD
 using OPFGenerator
 
 const NAME2OPTIMIZER = Dict(
+    "Clarabel128" => Clarabel.MOIwrapper.Optimizer{Float128},
+    "Clarabel" => Clarabel.MOIwrapper.Optimizer{Float64},
     "Ipopt" => Ipopt.Optimizer,
     "Mosek" => Mosek.Optimizer,
 )
+
+# Helper function to use correct arithmetic
+# The default `Float64` is over-ridden only for Clarabel
+value_type(::Any) = Float64
+value_type(::Type{Clarabel.MOIwrapper.Optimizer{T}}) where{T} = T
+value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
 function main(data, config)
     d = Dict{String,Any}()
@@ -49,7 +59,10 @@ function main(data, config)
         )
         build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
 
-        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver; build_kwargs...)
+        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
+            T=value_type(solver.optimizer_constructor),
+            build_kwargs...
+        )
 
         # Solve OPF model
         set_silent(opf.model)
