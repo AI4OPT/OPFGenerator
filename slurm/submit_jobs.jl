@@ -110,7 +110,7 @@ extract_sbatch = Mustache.render(
         config_file=config_file,
         extract_memory=extract_memory,
         cpus_per_task=cpus_per_task,
-        env_path=env_path
+        env_path=env_path,
     )
 )
 open("$(slurm_dir)/extract.sbatch", "w") do io
