@@ -76,7 +76,7 @@ sysimage_sbatch = Mustache.render(
         sampler_script=sampler_script,
         config_file=config_file,
         sysimage_memory=sysimage_memory,
-        env_path=env_path
+        env_path=env_path,
     )
 )
 open("$(slurm_dir)/sysimage.sbatch", "w") do io
