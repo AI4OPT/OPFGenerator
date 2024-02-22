@@ -9,8 +9,10 @@
 #SBATCH -o {{{:logs_dir}}}/sysimage.out       # Combined output and error messages file
 #SBATCH -q{{:queue}}
 
+. {{{:env_path}}}
+
 cd {{{:opfgenerator_dir}}}
-module load gcc
+
 mkdir app
 
 julia --project=. -t1 --trace-compile=app/precompile.jl {{{:sampler_script}}} {{{:config_file}}} 1 1
