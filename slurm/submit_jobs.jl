@@ -128,7 +128,7 @@ sampler_sbatch = Mustache.render(
         opfgenerator_dir=opfgenerator_dir,
         sampler_memory=sampler_memory,
         cpus_per_task=cpus_per_task,
-        env_path=env_path
+        env_path=env_path,
     )
 )
 open("$(slurm_dir)/sampler.sbatch", "w") do io
