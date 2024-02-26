@@ -141,10 +141,10 @@ function save_h5(gr::HDF5.Group, D::Dict)
             try 
                 v_float = convert(Float64, v)
                 gr[k] = v_float
-                @warn("Unsupported data type for writing to a group: $k::$(typeof(v)).\nThis value was converted to Float64.")
+                @warn("Unsupported data type for writing to an HDF5 group: $k::$(typeof(v)).\nThis value was converted to Float64.", maxlog=10)
             catch err
                 # Throw an error
-                error("Unsupported data type for writing to a group: $k::$(typeof(v)).\nThe value could not be converted to Float64.")
+                error("Unsupported data type for writing to an HDF5 group: $k::$(typeof(v)).\nThe value could not be converted to Float64.")
             end
         end
     end
