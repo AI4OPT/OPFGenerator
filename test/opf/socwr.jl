@@ -28,3 +28,13 @@ function _test_opf_detailed(opf::OPFModel{OPF}, res::Dict, res_pm::Dict) where {
 
     return nothing
 end
+
+function _test_socwr128(data::Dict)
+    opf = OPFGenerator.build_opf(PM.SOCWRConicPowerModel, data, CLRBL128_SOLVER; T=Float128)
+
+    OPFGenerator.solve!(opf)
+
+    res = OPFGenerator.extract_result(opf)
+
+    return nothing
+end
