@@ -25,7 +25,7 @@ function test_opf(::Type{OPF}, data::Dict) where{OPF <: PM.AbstractPowerModel}
 
     # Build and solve OPF with OPFGenerator
     opf = OPFGenerator.build_opf(OPF, data, solver)
-    optimize!(opf.model)
+    OPFGenerator.solve!(opf)
     res = OPFGenerator.extract_result(opf)
     @test res["opf_model"] == string(OPF)
     

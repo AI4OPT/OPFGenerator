@@ -18,16 +18,13 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
     G = length(ref[:gen])
     E = length(data["branch"])
     L = length(ref[:load])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
+
     bus_shunts = [
         [ref[:shunt][s] for s in ref[:bus_shunts][i]]
         for i in 1:N
     ]
 
-    model = JuMP.Model(optimizer)
+    model = JuMP.Model(() -> POI.Optimizer(MOI.instantiate(optimizer)))
     model.ext[:opf_model] = PM.DCPPowerModel  # for internal checks
 
     #
@@ -51,6 +48,9 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
 
     model[:pf] = pf = JuMP.Containers.DenseAxisArray(collect(getfield.(pf_expr, 2)), collect(getfield.(pf_expr, 1)))
 
+    # Parameters
+    JuMP.@variable(model, pd[l in 1:L] in MOI.Parameter.(ref[:load][l]["pd"]))
+
     #
     #   II. Constraints
     #
@@ -63,7 +63,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer)
         kirchhoff[i in 1:N],
         sum(pf[a] for a in ref[:bus_arcs][i]) ==
         sum(pg[g] for g in ref[:bus_gens][i]) -
-        sum(load["pd"] for load in bus_loads[i]) -
+        sum(pd[l] for l in ref[:bus_loads][i]) -
         sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
     )
 
@@ -244,4 +244,20 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
     end
 
     return res_h5
+end
+
+function change_loads(opf::OPFModel{PM.DCPPowerModel}, new_loads::Dict{String,Any})
+    data = opf.data
+    model = opf.model
+
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+    L = length(ref[:load])
+
+    for l in 1:L
+        data["load"]["$l"]["pd"] = new_loads["$l"]["pd"]
+    end
+
+    for l in 1:L
+        MOI.set(model, POI.ParameterValue(), model[:pd][l], new_loads["$l"]["pd"])
+    end
 end

@@ -9,6 +9,9 @@ const PM = PowerModels
 using PGLib
 using JuMP
 
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
 import Random: rand
 
 export load_json, save_json
