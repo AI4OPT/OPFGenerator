@@ -23,8 +23,8 @@ using MathOptSymbolicAD
 using OPFGenerator
 
 const NAME2OPTIMIZER = Dict(
-    "Clarabel128" => Clarabel.MOIwrapper.Optimizer{Float128},
-    "Clarabel" => Clarabel.MOIwrapper.Optimizer{Float64},
+    "Clarabel128" => Clarabel.Optimizer{Float128},
+    "Clarabel" => Clarabel.Optimizer{Float64},
     "Ipopt" => Ipopt.Optimizer,
     "Mosek" => Mosek.Optimizer,
 )
@@ -32,7 +32,7 @@ const NAME2OPTIMIZER = Dict(
 # Helper function to use correct arithmetic
 # The default `Float64` is over-ridden only for Clarabel
 value_type(::Any) = Float64
-value_type(::Type{Clarabel.MOIwrapper.Optimizer{T}}) where{T} = T
+value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
 function main(data, config)
