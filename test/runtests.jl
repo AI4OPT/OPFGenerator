@@ -1,5 +1,7 @@
 using Test
 
+using Quadmath
+
 using Clarabel
 using Ipopt
 using JuMP
@@ -13,6 +15,9 @@ using OPFGenerator
 
 const IPOPT_SOLVER = JuMP.optimizer_with_attributes(Ipopt.Optimizer, "linear_solver" => "mumps", "print_level" => 1, "tol" => 1e-6)
 const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose" => true)
+const CLRBL128_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer{Float128},
+    "verbose" => true,
+)
 
 const OPT_SOLVERS = Dict(
     PM.ACPPowerModel               => IPOPT_SOLVER,

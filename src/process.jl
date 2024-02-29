@@ -1,7 +1,6 @@
 using Base.Iterators
 using Base.Threads
 using ProgressMeter
-using HDF5
 
 """
     initialize_res(data)
@@ -94,40 +93,6 @@ function add_datapoint!(D, d)
     end
 
     return D
-end
-
-function save_h5(filename::AbstractString, D)
-    h5open(filename, "w") do file
-        save_h5(file, D)
-    end
-    return nothing
-end
-
-function save_h5(file::HDF5.File, D::Dict)
-    for (k, v) in D
-        @assert isa(v, Dict)
-        gr = create_group(file, k)
-        save_h5(gr, v)
-    end
-    return nothing
-end
-
-function save_h5(gr::HDF5.Group, D::Dict)
-    for (k, v) in D
-        if isa(v, Array)
-            gr[k] = v
-        elseif isa(v, AbstractString)
-            gr[k] = string(v)
-        elseif isa(v, Union{Int64,Float64})
-            gr[k] = v
-        elseif isa(v, Dict)
-            gr_ = create_group(gr, k)
-            save_h5(gr_, v)
-        else
-            error("Unsupported data type for writing to a group: $k::$(typeof(v))")
-        end
-    end
-    return nothing
 end
 
 """

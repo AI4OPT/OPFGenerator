@@ -11,11 +11,12 @@ using JuMP
 
 import Random: rand
 
-export load_json, save_json
+export load_json, save_json, save_h5
 export SimpleOPFSampler, LoadScaler, ScaledLogNormal
 
 include("utils.jl")
 include("utils/json.jl")
+include("utils/hdf5.jl")
 
 include("bridges.jl")
 include("checker.jl")

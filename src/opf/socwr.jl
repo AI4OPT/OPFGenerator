@@ -6,7 +6,9 @@ Build an SOC-OPF model.
 This implementation is based on the SOC-OPF formulation of PMAnnex.jl
     https://github.com/lanl-ansi/PMAnnex.jl/blob/f303f3c3c61e2d1a050ee7651fa6e8abc4055b55/src/model/opf.jl
 """
-function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
+    T=Float64,    
+) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
     @assert !haskey(data, "multinetwork")
     @assert !haskey(data, "conductors")
 
@@ -28,7 +30,7 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer) where {OPF <:
         for i in 1:N
     ]
 
-    model = JuMP.Model(optimizer)
+    model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = OPF
 
     #
