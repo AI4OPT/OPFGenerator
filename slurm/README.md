@@ -29,6 +29,20 @@ Create a TOML configuration file with the following options:
    julia --project=. slurm/submit_jobs.jl path/to/config.toml
    ```
 3. Follow the printed instructions to submit the jobs to the SLURM queue.
+4. When submitting slurm jobs, you will be prompted to select whether to (re)-create a julia sysimage
+   * If no sysimage `app/julia.so` is detected, the default option is to create a new one.
+      ```bash
+      Do you want to create a sysimage at app/julia.so? (yes/no) [yes]:
+      ```
+   * If a sysimage `app/julia.so` already exists, the default option is _not_ to create a new one.
+      ```bash
+      Do you want to re-create the sysimage at app/julia.so? (yes/no) [no]:
+      ```
+
+If you decide to (re)create a sysimage, a specific job will be submitted to the queue before data-generation starts.
+
+⚠ Data-generation jobs require a sysimage `app/julia.so`. You may encounter errors if no sysimage is available and you skip the sysimage job.
+
 
 ## Output Structure
 
