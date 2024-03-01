@@ -39,7 +39,7 @@ function _save_h5(fid::HDF5.H5DataStore, D::Dict)
             T = typeof(v)
             T5 = _convert_to_h5_supported(T)
             # Error if we can't convert to a supported type
-            (T5 == Any) || ((T5 <: AbstractArray) && eltype(T) == Any) && error(
+            ((T5 == Any) || ((T5 <: AbstractArray) && eltype(T) == Any)) && error(
                 """Unsupported data type for writing to an HDF5 group: \"$k\"::$(typeof(v)).
                 HDF5 only supports the following types:
                 * `String`
