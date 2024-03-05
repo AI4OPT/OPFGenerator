@@ -9,7 +9,7 @@ const PM = PowerModels
 using PGLib
 using JuMP
 
-import Random: rand
+import Random: rand, rand!
 
 export load_json, save_json, save_h5
 export SimpleOPFSampler, LoadScaler, ScaledLogNormal
@@ -49,8 +49,19 @@ end
 
 function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
     data = deepcopy(opf_sampler.data)
-    # Sample and update loads
-    pd, qd = rand(rng, opf_sampler.load_sampler)
+    rand!(rng, opf_sampler, data)
+end
+
+"""
+    rand!(rng::AbstractRNG, s::AbstractOPFSampler, data::Dict)
+
+Sample one new OPF instance and modify `data` in-place.
+
+`data` must be a `Dict` in PowerModels format, representing the same network
+    (i.e., same grid components with same indexing) as the one used to create `s`.
+"""
+function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
+    pd, qd = rand(rng, s.load_sampler)
     _set_loads!(data, pd, qd)
     return data
 end
