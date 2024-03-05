@@ -26,4 +26,5 @@ const OPT_SOLVERS = Dict(
     PM.DCPPowerModel               => CLRBL_SOLVER,
 )
 
+include("io.jl")
 include("opf/opf.jl")
