@@ -1,6 +1,8 @@
+using Random
 using Test
 
 using Quadmath
+using StableRNGs
 
 using Clarabel
 using Ipopt
@@ -27,4 +29,5 @@ const OPT_SOLVERS = Dict(
 )
 
 include("io.jl")
+include("sampler.jl")
 include("opf/opf.jl")
