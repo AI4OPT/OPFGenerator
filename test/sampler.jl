@@ -45,7 +45,7 @@ function _test_ieee14_LogNormal_s42(data)
     end
 
     # Check sampled active / reactive power loads
-    # The numerical values below were generated as follows, on 03/06/0224 on a Linux machine:
+    # The numerical values below were generated as follows, on 03/06/2024 on a Linux machine:
     # * PGLib v21.07 case `14_ieee`, in basic network format
     # * The random number generator StableRNG(42)
     # * ScaledLogNormal load scaler with [0.8, 1.2] range and σ=0.05
