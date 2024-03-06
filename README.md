@@ -1,4 +1,4 @@
-Copyright Georgia Tech 2022
+Copyright Georgia Tech 2022-2024
 
 [![Build][build-img]][build-url]
 
