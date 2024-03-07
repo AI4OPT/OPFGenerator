@@ -1,16 +1,16 @@
 # Name of the reference PGLib case. Must be a valid PGLib case name.
-ref = "pglib_opf_case300_ieee"
+ref = "pglib_opf_case14_ieee"
 # Directory where instance/solution files are exported
 # must be a valid directory
-export_dir = "data/300_ieee"
+export_dir = "data/14_ieee"
 
 [sampler]
 # Sampler options
 [sampler.load]
 noise_type = "ScaledLogNormal"  # Only "ScaledLogNormal" is supported at the moment
-l          = 0.8                # Lower bound of base load factor
-u          = 1.05               # Upper bound of base load factor
-sigma      = 0.15               # Relative (multiplicative) noise level.
+l          = 0.6                # Lower bound of base load factor
+u          = 0.8                # Upper bound of base load factor
+sigma      = 0.05               # Relative (multiplicative) noise level.
 
 
 [OPF]
@@ -18,7 +18,7 @@ sigma      = 0.15               # Relative (multiplicative) noise level.
 [OPF.DCOPF]
 # Formulation/solver options
 type = "DCPPowerModel"
-solver.name = "Mosek"
+solver.name = "Clarabel"
 
 [OPF.ACOPF]
 type = "ACPPowerModel"
@@ -28,12 +28,7 @@ solver.attributes.linear_solver = "ma27"
 
 [OPF.SOCWRConic]
 type = "SOCWRConicPowerModel"
-solver.name = "Mosek"
-# Loosened tolerances improve Mosek's convergence
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_PFEAS = 1e-6
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_DFEAS = 1e-6
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_MU_RED = 1e-6
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_REL_GAP = 1e-6
+solver.name = "Clarabel"
 
 [OPF.SOCWRConic128]
 # These settings are meant to solve `SOCWRConic` problems to high precision
@@ -67,7 +62,7 @@ solver.attributes.iterative_refinement_abstol = 1e-18
 
 [slurm]
 # SLURM options
-n_samples = 65536
-n_jobs = 45
+n_samples = 25
+n_jobs = 5
 queue = "embers"
 charge_account = "gts-phentenryck3-ai4opt"

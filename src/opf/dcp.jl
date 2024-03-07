@@ -63,8 +63,8 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
     # Nodal power balance
     JuMP.@constraint(model,
         kirchhoff[i in 1:N],
-        sum(pf[a] for a in ref[:bus_arcs][i]) ==
         sum(pg[g] for g in ref[:bus_gens][i]) -
+        sum(pf[a] for a in ref[:bus_arcs][i]) ==
         sum(load["pd"] for load in bus_loads[i]) -
         sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
     )
@@ -103,6 +103,32 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
     ))
 
     return OPFModel{PM.DCPPowerModel}(data, model)
+end
+
+function update!(opf::OPFModel{PM.DCPPowerModel}, data::Dict{String,Any})
+    PM.standardize_cost_terms!(data, order=2)
+    PM.calc_thermal_limits!(data)
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+
+    opf.data = data
+
+    N = length(ref[:bus])
+
+    bus_loads = [
+        [ref[:load][l] for l in ref[:bus_loads][i]]
+        for i in 1:N
+    ]
+    bus_shunts = [
+        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
+        for i in 1:N
+    ]
+
+    for i in 1:N
+        JuMP.set_normalized_rhs(opf.model[:kirchhoff][i],
+            sum(load["pd"] for load in bus_loads[i]; init=0.0) -
+            sum(shunt["gs"] for shunt in bus_shunts[i]; init=0.0)*1.0^2
+        )
+    end
 end
 
 """

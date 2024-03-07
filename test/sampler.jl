@@ -1,3 +1,5 @@
+using TOML
+
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
     _data = deepcopy(data)  # keep a deepcopy nearby
@@ -107,7 +109,89 @@ function test_inplace_sampler()
     return nothing
 end
 
+# function check_results_file(seed, filepath)
+#     seed_status_dict = Dict(
+#         1 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "OPTIMAL",
+#             "ACOPF" => "LOCALLY_SOLVED",
+#         ),
+#         2 => Dict(
+#             "DCOPF" => "INFEASIBLE",
+#             "SOCWRConic" => "INFEASIBLE",
+#             "ACOPF" => "LOCALLY_INFEASIBLE",
+#         ),
+#         3 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "OPTIMAL",
+#             "ACOPF" => "LOCALLY_SOLVED",
+#         ),
+#         4 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "INFEASIBLE",
+#             "ACOPF" => "LOCALLY_INFEASIBLE",
+#         ),
+#         5 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "OPTIMAL",
+#             "ACOPF" => "LOCALLY_SOLVED",
+#         ),
+#         6 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "SLOW_PROGRESS",
+#             "ACOPF" => "LOCALLY_INFEASIBLE",
+#         ),
+#         7 => Dict(
+#             "DCOPF" => "INFEASIBLE",
+#             "SOCWRConic" => "SLOW_PROGRESS",
+#             "ACOPF" => "LOCALLY_INFEASIBLE",
+#         ),
+#         8 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "SLOW_PROGRESS",
+#             "ACOPF" => "LOCALLY_INFEASIBLE",
+#         ),
+#         9 => Dict(
+#             "DCOPF" => "INFEASIBLE",
+#             "SOCWRConic" => "SLOW_PROGRESS",
+#             "ACOPF" => "LOCALLY_INFEASIBLE",
+#         ),
+#         10 => Dict(
+#             "DCOPF" => "OPTIMAL",
+#             "SOCWRConic" => "OPTIMAL",
+#             "ACOPF" => "LOCALLY_SOLVED",
+#         ),
+#     )
+
+#     res = load_json(filepath)
+#     for (opf, status) in seed_status_dict[seed]
+#         @test res[opf]["termination_status"] == status
+#         # TODO: add some solve time checks
+#     end
+# end
+
+function test_sampler_script()
+    sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
+    config_file = joinpath(@__DIR__, "config.toml")
+    config = TOML.parsefile(config_file)
+
+    caseref = config["ref"]
+
+    proc = run(`julia --project=$(joinpath(@__DIR__, "..")) $sampler_script $config_file 1 10`)
+
+    @test success(proc)
+
+    # test that the output files are created and termination status is as expected
+    for s in 1:10
+        resfile = joinpath(config["export_dir"], "res_json", "$(caseref)_s$s.json.gz")
+        @test isfile(resfile)
+
+        # check_results_file(s, resfile)
+    end
+end
+
 @testset "Sampler" begin
     test_sampler()
     test_inplace_sampler()
+    test_sampler_script()
 end

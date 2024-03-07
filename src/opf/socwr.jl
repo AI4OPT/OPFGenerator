@@ -56,17 +56,17 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     # Nodal power balance
     JuMP.@constraint(model, 
         kirchhoff_active[i in 1:N],
-        sum(pf[a] for a in ref[:bus_arcs][i]) ==
         sum(pg[g] for g in ref[:bus_gens][i]) -
-        sum(load["pd"] for load in bus_loads[i]) -
-        sum(shunt["gs"] for shunt in bus_shunts[i])*w[i]
+        sum(pf[a] for a in ref[:bus_arcs][i]) - 
+        sum(shunt["gs"] for shunt in bus_shunts[i])*w[i] ==
+        sum(load["pd"] for load in bus_loads[i])
     )
     JuMP.@constraint(model,
         kirchhoff_reactive[i in 1:N],
-        sum(qf[a] for a in ref[:bus_arcs][i]) ==
         sum(qg[g] for g in ref[:bus_gens][i]) -
-        sum(load["qd"] for load in bus_loads[i]) +
-        sum(shunt["bs"] for shunt in bus_shunts[i])*w[i]
+        sum(qf[a] for a in ref[:bus_arcs][i]) +
+        sum(shunt["bs"] for shunt in bus_shunts[i])*w[i] ==
+        sum(load["qd"] for load in bus_loads[i]) 
     )
 
     # Branch power flow physics and limit constraints
@@ -150,6 +150,30 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     ))
 
     return OPFModel{OPF}(data, model)
+end
+
+function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+    PM.standardize_cost_terms!(data, order=2)
+    PM.calc_thermal_limits!(data)
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+
+    opf.data = data
+
+    N = length(ref[:bus])
+
+    bus_loads = [
+        [ref[:load][l] for l in ref[:bus_loads][i]]
+        for i in 1:N
+    ]
+
+    for i in 1:N
+        JuMP.set_normalized_rhs(opf.model[:kirchhoff_active][i],
+            sum(load["pd"] for load in bus_loads[i]; init=0.0)
+        )
+        JuMP.set_normalized_rhs(opf.model[:kirchhoff_reactive][i],
+            sum(load["qd"] for load in bus_loads[i]; init=0.0)
+        )
+    end
 end
 
 """

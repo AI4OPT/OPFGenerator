@@ -55,19 +55,19 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     JuMP.@constraint(model, slack_bus, va[i0] == 0.0)
 
     # Nodal power balance
-    JuMP.@constraint(model, 
+    JuMP.@constraint(model,
         kirchhoff_active[i in 1:N],
-        sum(pf[a] for a in ref[:bus_arcs][i]) ==
         sum(pg[g] for g in ref[:bus_gens][i]) -
-        sum(load["pd"] for load in bus_loads[i]) -
-        sum(shunt["gs"] for shunt in bus_shunts[i])*vm[i]^2
+        sum(pf[a] for a in ref[:bus_arcs][i]) -
+        sum(shunt["gs"] for shunt in bus_shunts[i])*vm[i]^2 ==
+        sum(load["pd"] for load in bus_loads[i])
     )
     JuMP.@constraint(model,
         kirchhoff_reactive[i in 1:N],
-        sum(qf[a] for a in ref[:bus_arcs][i]) ==
         sum(qg[g] for g in ref[:bus_gens][i]) -
-        sum(load["qd"] for load in bus_loads[i]) +
-        sum(shunt["bs"] for shunt in bus_shunts[i])*vm[i]^2
+        sum(qf[a] for a in ref[:bus_arcs][i]) +
+        sum(shunt["bs"] for shunt in bus_shunts[i])*vm[i]^2 ==
+        sum(load["qd"] for load in bus_loads[i])
     )
 
     # Branch power flow physics and limit constraints
@@ -132,6 +132,31 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
 
     return OPFModel{PM.ACPPowerModel}(data, model)
 end
+
+function update!(opf::OPFModel{PM.ACPPowerModel}, data::Dict{String,Any})
+    PM.standardize_cost_terms!(data, order=2)
+    PM.calc_thermal_limits!(data)
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+
+    opf.data = data
+
+    N = length(ref[:bus])
+
+    bus_loads = [
+        [ref[:load][l] for l in ref[:bus_loads][i]]
+        for i in 1:N
+    ]
+
+    for i in 1:N
+        JuMP.set_normalized_rhs(opf.model[:kirchhoff_active][i],
+            sum(load["pd"] for load in bus_loads[i]; init=0.0)
+        )
+        JuMP.set_normalized_rhs(opf.model[:kirchhoff_reactive][i],
+            sum(load["qd"] for load in bus_loads[i]; init=0.0)
+        )
+    end
+end
+
 
 """
     _extract_acopf_solution(model, data)

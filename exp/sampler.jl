@@ -35,14 +35,12 @@ value_type(::Any) = Float64
 value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
-function main(data, config)
-    d = Dict{String,Any}()
-    d["meta"] = deepcopy(config)
+function build_models(data, config)
+    caseref = config["ref"]
+    OPFs = keys(config["OPF"])
+    @info "Building models for $caseref\nFormulations: $OPFs"
 
-    # Keep track of initial data file
-    d["data"] = data
-
-    # Solve all OPF formulations
+    opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:PowerModels.AbstractPowerModel}, Float64}}()
     for (dataset_name, opf_config) in config["OPF"]
         OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
         solver_config = get(opf_config, "solver", Dict())
@@ -64,18 +62,50 @@ function main(data, config)
             build_kwargs...
         )
 
-        # Solve OPF model
         set_silent(opf.model)
-        OPFGenerator.solve!(opf)
-
-        tsol = @elapsed res = OPFGenerator.extract_result(opf)
-        res["time_build"] = tbuild
-        res["time_extract"] = tsol
-        d[dataset_name] = res
+        opf_models[dataset_name] = (opf, tbuild)
+        @info "Built $dataset_name in $tbuild seconds"
     end
 
-    # Done
-    return d
+    return opf_models
+end
+
+function main(data, opf_sampler, opf_models, smin, smax, config)
+    caseref = config["ref"]
+    resdir_json = joinpath(config["export_dir"], "res_json")
+
+    @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]"
+    for s in smin:smax
+        rng = StableRNG(s)
+
+        tgen = @elapsed rand!(rng, opf_sampler, data)
+
+        d = Dict{String,Any}()
+        d["data"] = data
+        d["meta"] = config
+        d["meta"]["seed"] = s
+
+        # Solve all OPF formulations
+        ttrial = @elapsed for dataset_name in keys(opf_models)
+            opf = opf_models[dataset_name][1]
+
+            tupdate = @elapsed OPFGenerator.update!(opf, data)
+            tsolve = @elapsed OPFGenerator.solve!(opf)
+    
+            textract = @elapsed res = OPFGenerator.extract_result(opf)
+            @info "$dataset_name $(termination_status(opf.model))\nUpdated in $tupdate\nSolved in $tsolve\nExtracted in $textract"
+            
+            d[dataset_name] = res
+            d[dataset_name]["time_build"] = opf_models[dataset_name][2]
+        end
+
+        twrite = @elapsed save_json(joinpath(resdir_json, config["ref"] * "_s$s.json.gz"), d)
+        @info "Seed $s" tgen ttrial twrite
+    end
+
+    @info "All instances completed."
+
+    return nothing
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
@@ -88,31 +118,13 @@ if abspath(PROGRAM_FILE) == @__FILE__
     resdir_json = joinpath(config["export_dir"], "res_json")
     mkpath(resdir_json)
 
-    # Dummy run (for pre-compilation)
-    data0 = make_basic_network(pglib("14_ieee"))
-    opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
-    rand(StableRNG(1), opf_sampler0)
-    d0 = main(data0, config)
-
     # Load reference data and setup OPF sampler
     data = make_basic_network(pglib(config["ref"]))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
 
-    OPFs = keys(config["OPF"])
-    caseref = config["ref"]
+    opf_models = build_models(data, config)
     
-    # Data generation
-    @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]\nDatasets: $OPFs"
-    for s in smin:smax
-        rng = StableRNG(s)
-        tgen = @elapsed data_ = rand(rng, opf_sampler)
-        tsolve = @elapsed d = main(data_, config)
-        d["meta"]["seed"] = s
-        twrite = @elapsed save_json(joinpath(resdir_json, config["ref"] * "_s$s.json.gz"), d)
-        @info "Seed $s" tgen tsolve twrite
-    end
-
-    @info "All instances completed."
+    main(data, opf_sampler, opf_models, smin, smax, config)
 
     return nothing
 end

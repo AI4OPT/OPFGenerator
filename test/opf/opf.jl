@@ -25,7 +25,7 @@ function test_opf(::Type{OPF}, data::Dict) where{OPF <: PM.AbstractPowerModel}
 
     # Build and solve OPF with OPFGenerator
     opf = OPFGenerator.build_opf(OPF, data, solver)
-    optimize!(opf.model)
+    OPFGenerator.solve!(opf)
     res = OPFGenerator.extract_result(opf)
     @test res["opf_model"] == string(OPF)
     
@@ -36,6 +36,39 @@ function test_opf(::Type{OPF}, data::Dict) where{OPF <: PM.AbstractPowerModel}
     @test isapprox(res["objective"], res_pm["objective"], atol=1e-6, rtol=1e-6)
 
     _test_opf_detailed(opf, res, res_pm)
+
+    # Test update!
+
+    # rebuilding because we fix some variables in the detailed test
+    opf = OPFGenerator.build_opf(OPF, data, solver)
+    OPFGenerator.solve!(opf) # test build->solve->update->solve
+    res = OPFGenerator.extract_result(opf)
+
+    sampler_config = Dict(
+        "load" => Dict(
+            "noise_type" => "ScaledLogNormal",
+            "l" => 0.6, "u" => 0.8, "sigma" => 0.05, # always feasible with seed=42
+        )
+    )
+    rng = StableRNG(42)
+    sampler = OPFGenerator.SimpleOPFSampler(data, sampler_config)
+    new_data = rand(rng, sampler)
+
+    OPFGenerator.update!(opf, new_data)
+    OPFGenerator.solve!(opf)
+    updated_res = OPFGenerator.extract_result(opf)
+    @test updated_res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
+    @test updated_res["primal_status"] == FEASIBLE_POINT
+    @test updated_res["dual_status"] == FEASIBLE_POINT
+
+    new_opf = OPFGenerator.build_opf(OPF, new_data, solver)
+    OPFGenerator.solve!(new_opf)
+    new_res = OPFGenerator.extract_result(new_opf)
+    @test new_res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
+    @test new_res["primal_status"] == FEASIBLE_POINT
+    @test new_res["dual_status"] == FEASIBLE_POINT
+
+    @test isapprox(updated_res["objective"], new_res["objective"], atol=1e-6, rtol=1e-6)
 
     return opf, res, res_pm
 end
