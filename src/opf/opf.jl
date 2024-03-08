@@ -8,7 +8,8 @@ function patch_if_clarabel!(model, optimizer)
         (
             (optimizer isa MOI.OptimizerWithAttributes) && (
                 (optimizer.optimizer_constructor == Clarabel.Optimizer) ||
-                (optimizer.optimizer_constructor <: Clarabel.Optimizer))
+                    (optimizer.optimizer_constructor isa Type &&
+                    (optimizer.optimizer_constructor <: Clarabel.Optimizer)))
         )
     )
         @warn "Removing VectorizeBridge from Clarabel (see MathOptInterface.jl#2452)"
