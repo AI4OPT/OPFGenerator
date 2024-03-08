@@ -2,30 +2,11 @@ using MathOptSymbolicAD
 using Clarabel
 using Quadmath
 
-function patch_if_clarabel!(model, optimizer)
-    if (
-        (optimizer == Clarabel.Optimizer) ||
-        (
-            (optimizer isa MOI.OptimizerWithAttributes) && (
-                (optimizer.optimizer_constructor == Clarabel.Optimizer) ||
-                    (optimizer.optimizer_constructor isa Type &&
-                    (optimizer.optimizer_constructor <: Clarabel.Optimizer)))
-        )
-    )
+function patch_if_clarabel!(model)
+    if JuMP.solver_name(model) == "Clarabel"
         @warn "Removing VectorizeBridge from Clarabel (see MathOptInterface.jl#2452)"
 
-        T = if (
-            (optimizer == Clarabel.Optimizer{Float128}) ||
-            (
-                (optimizer isa MOI.OptimizerWithAttributes) && (
-                    (optimizer.optimizer_constructor == Clarabel.Optimizer{Float128}) ||
-                    (optimizer.optimizer_constructor <: Clarabel.Optimizer{Float128}))
-            )
-        )
-            Float128
-        else    
-            Float64
-        end
+        T = typeof(model).parameters[1]
 
         JuMP.MOI.Bridges.remove_bridge(
            JuMP.backend(model).optimizer,
