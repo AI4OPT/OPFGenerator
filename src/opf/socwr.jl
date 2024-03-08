@@ -198,6 +198,21 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
     G = length(ref[:gen])
     E = length(data["branch"])
 
+    # Count parallel branches
+    nparallel_buspairs = Dict()
+    for (e, br) in ref[:branch]
+        i = br["f_bus"]
+        j = br["t_bus"]
+        get!(nparallel_buspairs, (i, j), 0)
+        nparallel_buspairs[(i, j)] += 1
+    end
+    nparallel_branches = zeros(E)
+    for (e, br) in ref[:branch]
+        i = br["f_bus"]
+        j = br["t_bus"]
+        nparallel_branches[e] = nparallel_buspairs[(i, j)]
+    end
+
     # Build the solution dictionary
     res = Dict{String,Any}()
     res["opf_model"] = string(model.ext[:opf_model])
@@ -293,18 +308,21 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b]),
             )
             
-            # The following dual variables depend on whether we have a QCP or SOC form,
-            #   so they are handled separately
+            # Thermal limits and Jabr inequality depend on whether we have a QCP or SOC form
+            # ⚠ The JuMP model has one Jabr inequality per _buspair_,
+            #   but the formulation has one Jabr per _branch_
+            #   To account for this discrepancy, we split the the dual of the bus-pair Jabr constraint
+            #   equally among all parallel branches.
             if OPF == PM.SOCWRPowerModel
                 brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
-                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp])
+                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp]) / nparallel_branches[b]
             elseif OPF == PM.SOCWRConicPowerModel
                 nu_voltage_prod_soc = dual(model[:voltage_prod_conic][bp])
-                brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1]
-                brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2]
-                brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3]
-                brsol["nu_voltage_prod_soc_4"] = nu_voltage_prod_soc[4]
+                brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1] / nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2] / nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3] / nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_4"] = nu_voltage_prod_soc[4] / nparallel_branches[b]
                 nu_sm_to = dual(model[:thermal_limit_to][b])
                 brsol["nu_sm_to_1"] = nu_sm_to[1]
                 brsol["nu_sm_to_2"] = nu_sm_to[2]
