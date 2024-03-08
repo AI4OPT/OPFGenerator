@@ -32,6 +32,8 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = PM.DCPPowerModel  # for internal checks
 
+    patch_if_clarabel!(model, optimizer)
+
     #
     #   I. Variables
     #
