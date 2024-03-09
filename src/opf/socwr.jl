@@ -29,6 +29,11 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
         [ref[:shunt][s] for s in ref[:bus_shunts][i]]
         for i in 1:N
     ]
+    # Branch --> bus-pair correspondence
+    br2bp = [
+        (ref[:branch][e]["f_bus"], ref[:branch][e]["t_bus"])
+        for e in 1:E
+    ]
 
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = OPF
@@ -41,8 +46,8 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
 
     wr_min, wr_max, wi_min, wi_max = PM.ref_calc_voltage_product_bounds(ref[:buspairs])
 
-    JuMP.@variable(model, wr_min[bp] <= wr[bp in keys(ref[:buspairs])] <= wr_max[bp], start=1.0)
-    JuMP.@variable(model, wi_min[bp] <= wi[bp in keys(ref[:buspairs])] <= wi_max[bp])
+    JuMP.@variable(model, wr_min[br2bp[e]] <= wr[e in 1:E] <= wr_max[br2bp[e]], start=1.0)
+    JuMP.@variable(model, wi_min[br2bp[e]] <= wi[e in 1:E] <= wi_max[br2bp[e]])
     # Active and reactive dispatch
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
     JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
@@ -79,6 +84,7 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     model[:ohm_active_to] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_fr] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_to] = Vector{JuMP.ConstraintRef}(undef, E)
+    model[:jabr] = Vector{JuMP.ConstraintRef}(undef, E)
     for (i,branch) in ref[:branch]
         data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
 
@@ -93,8 +99,8 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
 
         w_fr = w[branch["f_bus"]]
         w_to = w[branch["t_bus"]]
-        wr_br = wr[bp_idx]
-        wi_br = wi[bp_idx]
+        wr_br = wr[i]
+        wi_br = wi[i]
 
         g, b = PM.calc_branch_y(branch)
         tr, ti = PM.calc_branch_t(branch)
@@ -124,19 +130,17 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
             model[:thermal_limit_fr][i] = JuMP.@constraint(model, [branch["rate_a"], p_fr, q_fr] in JuMP.SecondOrderCone())
             model[:thermal_limit_to][i] = JuMP.@constraint(model, [branch["rate_a"], p_to, q_to] in JuMP.SecondOrderCone())
         end
-    end
-    
-    # Voltage product relaxation (quadratic form)
-    if OPF == PM.SOCWRPowerModel
-        JuMP.@constraint(model,
-            voltage_prod_quadratic[(i, j) in keys(ref[:buspairs])],
-            wr[(i,j)]^2 + wi[(i,j)]^2 <= w[i]*w[j]
-        )
-    elseif OPF == PM.SOCWRConicPowerModel
-        JuMP.@constraint(model,
-            voltage_prod_conic[(i, j) in keys(ref[:buspairs])],
-            [w[i] / sqrt(2), w[j] / sqrt(2), wr[(i,j)], wi[(i,j)]] in JuMP.RotatedSecondOrderCone()
-        )
+
+        # Jabr inequality (one per branch)
+        if OPF == PM.SOCWRPowerModel
+            model[:jabr][i] = JuMP.@constraint(model,
+                wr[i]^2 + wi[i]^2 <= w[f_idx]*w[t_idx]
+            )
+        elseif OPF == PM.SOCWRConicPowerModel
+            model[:jabr][i] = JuMP.@constraint(model,
+                [w[f_idx] / sqrt(2), w[t_idx] / sqrt(2), wr[i], wi[i]] in JuMP.RotatedSecondOrderCone()
+            )
+        end
     end
 
     #
