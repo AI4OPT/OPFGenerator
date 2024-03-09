@@ -272,9 +272,9 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
             if OPF == PM.SOCWRPowerModel
                 brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
-                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp])
+                brsol["mu_voltage_prod_quad"] = dual(model[:jabr][b])
             elseif OPF == PM.SOCWRConicPowerModel
-                nu_voltage_prod_soc = dual(model[:voltage_prod_conic][bp])
+                nu_voltage_prod_soc = dual(model[:jabr][b])
                 brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1]
                 brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2]
                 brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3]
