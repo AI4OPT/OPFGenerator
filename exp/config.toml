@@ -27,7 +27,7 @@ solver.attributes.tol = 1e-6
 solver.attributes.linear_solver = "ma27"
 
 [OPF.SOCWRConic]
-type = "SOCWRConicPowerModel
+type = "SOCWRConicPowerModel"
 solver.name = "Mosek"
 # Loosened tolerances improve Mosek's convergence
 solver.attributes.MSK_DPAR_INTPNT_CO_TOL_PFEAS = 1e-6
