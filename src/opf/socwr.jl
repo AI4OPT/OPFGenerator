@@ -136,7 +136,7 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
         model[:ohm_reactive_to][i] = JuMP.@constraint(model,
             -(b+b_to) * w_to 
             - ((-b*tr+g*ti)/ttm) * wr_br
-            - ((-g*tr-b*ti)/ttm) * -wi_br
+            + ((-g*tr-b*ti)/ttm) * wi_br
             - q_to
             ==
             0.0
