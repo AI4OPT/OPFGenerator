@@ -313,16 +313,17 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
             #   but the formulation has one Jabr per _branch_
             #   To account for this discrepancy, we split the the dual of the bus-pair Jabr constraint
             #   equally among all parallel branches.
+            # ⚠⚠ [EDIT]: ignore the above comment for now, we should work with buspair-level Jabr
             if OPF == PM.SOCWRPowerModel
                 brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
-                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp]) / nparallel_branches[b]
+                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp]) # / nparallel_branches[b]
             elseif OPF == PM.SOCWRConicPowerModel
                 nu_voltage_prod_soc = dual(model[:voltage_prod_conic][bp])
-                brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1] / nparallel_branches[b]
-                brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2] / nparallel_branches[b]
-                brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3] / nparallel_branches[b]
-                brsol["nu_voltage_prod_soc_4"] = nu_voltage_prod_soc[4] / nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1] #/ nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2] #/ nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3] #/ nparallel_branches[b]
+                brsol["nu_voltage_prod_soc_4"] = nu_voltage_prod_soc[4] #/ nparallel_branches[b]
                 nu_sm_to = dual(model[:thermal_limit_to][b])
                 brsol["nu_sm_to_1"] = nu_sm_to[1]
                 brsol["nu_sm_to_2"] = nu_sm_to[2]
