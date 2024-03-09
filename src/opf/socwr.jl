@@ -252,8 +252,8 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                "wr" => value(model[:wr][bp]),
-                "wi" => value(model[:wi][bp]),
+                "wr" => value(model[:wr][b]),
+                "wi" => value(model[:wi][b]),
                 # dual vars
                 "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
                 "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
