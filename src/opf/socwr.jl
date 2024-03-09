@@ -134,11 +134,11 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
         # Jabr inequality (one per branch)
         if OPF == PM.SOCWRPowerModel
             model[:jabr][i] = JuMP.@constraint(model,
-                wr[i]^2 + wi[i]^2 <= w[f_idx]*w[t_idx]
+                wr[i]^2 + wi[i]^2 <= w[branch["f_bus"]]*w[branch["t_bus"]]
             )
         elseif OPF == PM.SOCWRConicPowerModel
             model[:jabr][i] = JuMP.@constraint(model,
-                [w[f_idx] / sqrt(2), w[t_idx] / sqrt(2), wr[i], wi[i]] in JuMP.RotatedSecondOrderCone()
+                [w[branch["f_bus"]] / sqrt(2), w[branch["t_bus"]] / sqrt(2), wr[i], wi[i]] in JuMP.RotatedSecondOrderCone()
             )
         end
     end
