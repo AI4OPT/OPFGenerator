@@ -62,8 +62,8 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
     JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
     # Bi-directional branch flows
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= qf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
+    JuMP.@variable(model, pf[(l,i,j) in ref[:arcs]])
+    JuMP.@variable(model, qf[(l,i,j) in ref[:arcs]])
 
     # 
     #   II. Constraints
