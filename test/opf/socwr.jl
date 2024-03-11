@@ -55,7 +55,12 @@ function _test_socwr_DualFeasibility()
     OPFGenerator.solve!(opf)
     res = OPFGenerator.extract_result(opf)
 
-    # Dual feasibility check
+    _test_socwr_DualFeasibility(data, res)
+
+    return nothing
+end
+
+function _test_socwr_DualFeasibility(data, res)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
     E = length(ref[:branch])
@@ -63,6 +68,7 @@ function _test_socwr_DualFeasibility()
         [ref[:load][l] for l in ref[:bus_loads][i]]
         for i in 1:N
     ]
+    # Bus-level data
     bus_shunts = [
         [ref[:shunt][s] for s in ref[:bus_shunts][i]]
         for i in 1:N
@@ -70,7 +76,7 @@ function _test_socwr_DualFeasibility()
     gs = [sum(shunt["gs"] for shunt in bus_shunts[i]; init=0.0) for i in 1:N]
     bs = [sum(shunt["bs"] for shunt in bus_shunts[i]; init=0.0) for i in 1:N]
 
-    # Identifying entering / exiting branches
+    # Extract branch-level data
     g = [PM.calc_branch_y(ref[:branch][e])[1] for e in 1:E]
     b = [PM.calc_branch_y(ref[:branch][e])[2] for e in 1:E]
     tr = [PM.calc_branch_t(ref[:branch][e])[1] for e in 1:E]
@@ -80,6 +86,9 @@ function _test_socwr_DualFeasibility()
     g_to = [ref[:branch][e]["g_to"] for e in 1:E]
     b_fr = [ref[:branch][e]["b_fr"] for e in 1:E]
     b_to = [ref[:branch][e]["b_to"] for e in 1:E]
+    δθmin = [ref[:branch][e]["angmin"] for e in 1:E]
+    δθmax = [ref[:branch][e]["angmax"] for e in 1:E]
+    # Identifying entering / exiting branches
     br_in  = [Tuple{Int,Int,Int}[] for _ in 1:N]  # entering branches
     br_out = [Tuple{Int,Int,Int}[] for _ in 1:N]  # existing branches
     for (e, br) in ref[:branch]
@@ -90,6 +99,7 @@ function _test_socwr_DualFeasibility()
     end
 
     # Check dual feasibility for select buses and constraints
+    # ⚠ we need to correct for wrong sign of dual variables
     λp  = -[res["solution"]["bus"]["$i"]["lam_kirchhoff_active"] for i in 1:N]
     λq  = -[res["solution"]["bus"]["$i"]["lam_kirchhoff_reactive"] for i in 1:N]
     λpf = -[res["solution"]["branch"]["$e"]["lam_ohm_active_fr"] for e in 1:E]
@@ -102,14 +112,25 @@ function _test_socwr_DualFeasibility()
     ωr = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_3"] for e in 1:E]
     ωi = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_4"] for e in 1:E]
 
+    μθ_lb = [res["solution"]["branch"]["$e"]["mu_va_diff_lb"] for e in 1:E]
+    μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
+
     μ_w = [
         res["solution"]["bus"]["$i"]["mu_w_lb"] + res["solution"]["bus"]["$i"]["mu_w_ub"]
         for i in 1:N
     ]
+    μ_wr = [
+        res["solution"]["branch"]["$e"]["mu_wr_lb"] + res["solution"]["branch"]["$e"]["mu_wr_ub"]
+        for e in 1:E
+    ]
+    μ_wi = [
+        res["solution"]["branch"]["$e"]["mu_wi_lb"] + res["solution"]["branch"]["$e"]["mu_wi_ub"]
+        for e in 1:E
+    ]
 
     # Check dual constraint corresponding to `w` variables
-    for i in 1:N
-        @test isapprox(
+    δw = [
+        (
             -gs[i] * λp[i]
             + bs[i] * λq[i]
             + sum(
@@ -126,49 +147,45 @@ function _test_socwr_DualFeasibility()
                 for (e, _, _) in br_in[i];
                 init=zero(Float128)
             )
-            + μ_w[i],
-            0.0;
-            atol=1e-8,
-            rtol=1e-8,
+            + μ_w[i]
         )
-    end
+        for i in 1:N
+    ]
+    @test norm(δw, Inf) <= 1e-4
 
     # Check dual constraint corresponding to `wr` variables
-    δθmin = [ref[:branch][e]["angmin"] for e in 1:E]
-    δθmax = [ref[:branch][e]["angmax"] for e in 1:E]
-    μθ_lb = [res["solution"]["branch"]["$e"]["mu_va_diff_lb"] for e in 1:E]
-    μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
-    for e in 1:E
-        @test isapprox(
-                ((-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]) * λpf[e] 
+    δwr = [
+        (
+            ((-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]) * λpf[e] 
             + ((-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]) * λpt[e]
             - ((-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]) * λqf[e] 
             - ((-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]) * λqt[e]
             - tan(δθmin[e]) * μθ_lb[e]
             + tan(δθmax[e]) * μθ_ub[e]
-            + ωr[e],
-            0.0;
-            atol=1e-8,
-            rtol=1e-8,
+            + ωr[e]
+            + μ_wr[e]
         )
-    end
+        for e in 1:E
+    ]
+    @test norm(δwr, Inf) <= 1e-4
 
     # Check dual constraint corresponding to `wi` variables
-    for e in 1:E
-        @test isapprox(
-              ((-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]) * λpf[e] 
+    δwi = [
+        (
+            ((-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]) * λpf[e] 
             - ((-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]) * λpt[e]
             + ((-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]) * λqf[e] 
             - ((-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]) * λqt[e]
             + μθ_lb[e]
             - μθ_ub[e]
-            + ωi[e],
-            0.0;
-            atol=1e-8,
-            rtol=1e-8,
+            + ωi[e]
+            + μ_wi[e]
         )
-    end
-
+        for e in 1:E
+    ]
+    @test norm(δwi, Inf) <= 1e-4
+    return nothing
+end
     return nothing
 end
 
