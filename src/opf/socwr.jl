@@ -7,7 +7,8 @@ This implementation is based on the SOC-OPF formulation of PMAnnex.jl
     https://github.com/lanl-ansi/PMAnnex.jl/blob/f303f3c3c61e2d1a050ee7651fa6e8abc4055b55/src/model/opf.jl
 """
 function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
-    T=Float64,    
+    T=Float64,
+    wbounds=false,
 ) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
     @assert !haskey(data, "multinetwork")
     @assert !haskey(data, "conductors")
@@ -44,10 +45,19 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     # nodal voltage
     JuMP.@variable(model, ref[:bus][i]["vmin"]^2 <= w[i in 1:N] <= ref[:bus][i]["vmax"]^2, start=1.001)
 
+    # wr, wi variables (per branch)
+    JuMP.@variable(model, wr[e in 1:E], start=1.0)
+    JuMP.@variable(model, wi[e in 1:E])
+    model.ext[:wbounds] = wbounds
     wr_min, wr_max, wi_min, wi_max = PM.ref_calc_voltage_product_bounds(ref[:buspairs])
-
-    JuMP.@variable(model, wr_min[br2bp[e]] <= wr[e in 1:E] <= wr_max[br2bp[e]], start=1.0)
-    JuMP.@variable(model, wi_min[br2bp[e]] <= wi[e in 1:E] <= wi_max[br2bp[e]])
+    if wbounds
+        for e in 1:E
+            set_lower_bound(wr[e], wr_min[br2bp[e]])
+            set_upper_bound(wr[e], wr_max[br2bp[e]])
+            set_lower_bound(wi[e], wi_min[br2bp[e]])
+            set_upper_bound(wi[e], wi_max[br2bp[e]])
+        end
+    end
     # Active and reactive dispatch
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
     JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
@@ -204,6 +214,7 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
         )
     end
 
+    wbounds = model.ext[:wbounds]
     for b in 1:E
         if data["branch"]["$b"]["br_status"] == 0
             # branch is under outage --> we set everything to zero
@@ -257,10 +268,10 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 # dual vars
                 "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
                 "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
-                "mu_wr_lb" => dual(LowerBoundRef(model[:wr][b])),
-                "mu_wr_ub" => dual(UpperBoundRef(model[:wr][b])),
-                "mu_wi_lb" => dual(LowerBoundRef(model[:wi][b])),
-                "mu_wi_ub" => dual(UpperBoundRef(model[:wi][b])),
+                "mu_wr_lb" => wbounds ? dual(LowerBoundRef(model[:wr][b])) : 0.0,
+                "mu_wr_ub" => wbounds ? dual(UpperBoundRef(model[:wr][b])) : 0.0,
+                "mu_wi_lb" => wbounds ? dual(LowerBoundRef(model[:wi][b])) : 0.0,
+                "mu_wi_ub" => wbounds ? dual(UpperBoundRef(model[:wi][b])) : 0.0,
                 "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
                 "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
                 "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
