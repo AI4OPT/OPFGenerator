@@ -60,7 +60,7 @@ function _test_socwr_DualFeasibility()
     return nothing
 end
 
-function _test_socwr_DualFeasibility(data, res)
+function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
     E = length(ref[:branch])
@@ -151,7 +151,7 @@ function _test_socwr_DualFeasibility(data, res)
         )
         for i in 1:N
     ]
-    @test norm(δw, Inf) <= 1e-4
+    @test norm(δw, Inf) <= atol
 
     # Check dual constraint corresponding to `wr` variables
     δwr = [
@@ -167,7 +167,7 @@ function _test_socwr_DualFeasibility(data, res)
         )
         for e in 1:E
     ]
-    @test norm(δwr, Inf) <= 1e-4
+    @test norm(δwr, Inf) <= atol
 
     # Check dual constraint corresponding to `wi` variables
     δwi = [
@@ -183,11 +183,10 @@ function _test_socwr_DualFeasibility(data, res)
         )
         for e in 1:E
     ]
-    @test norm(δwi, Inf) <= 1e-4
+    @test norm(δwi, Inf) <= atol
     return nothing
 end
-    return nothing
-end
+
 
 function _test_socwr128(data::Dict)
     opf = OPFGenerator.build_opf(PM.SOCWRConicPowerModel, data, CLRBL128_SOLVER; T=Float128)
