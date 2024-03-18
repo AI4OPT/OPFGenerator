@@ -46,24 +46,23 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     JuMP.@variable(model, ref[:bus][i]["vmin"]^2 <= w[i in 1:N] <= ref[:bus][i]["vmax"]^2, start=1.001)
 
     # wr, wi variables (per branch)
+    wr_min, wr_max, wi_min, wi_max = PM.ref_calc_voltage_product_bounds(ref[:buspairs])
     JuMP.@variable(model, wr[e in 1:E], start=1.0)
     JuMP.@variable(model, wi[e in 1:E])
     model.ext[:wbounds] = wbounds
-    wr_min, wr_max, wi_min, wi_max = PM.ref_calc_voltage_product_bounds(ref[:buspairs])
-    if wbounds
-        for e in 1:E
-            set_lower_bound(wr[e], wr_min[br2bp[e]])
-            set_upper_bound(wr[e], wr_max[br2bp[e]])
-            set_lower_bound(wi[e], wi_min[br2bp[e]])
-            set_upper_bound(wi[e], wi_max[br2bp[e]])
-        end
+    for e in 1:E
+        set_lower_bound(wr[e], wr_min[br2bp[e]])
+        set_upper_bound(wr[e], wr_max[br2bp[e]])
+        set_lower_bound(wi[e], wi_min[br2bp[e]])
+        set_upper_bound(wi[e], wi_max[br2bp[e]])
     end
+
     # Active and reactive dispatch
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
     JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
     # Bi-directional branch flows
-    JuMP.@variable(model, pf[(l,i,j) in ref[:arcs]])
-    JuMP.@variable(model, qf[(l,i,j) in ref[:arcs]])
+    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
+    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= qf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
 
     # 
     #   II. Constraints
