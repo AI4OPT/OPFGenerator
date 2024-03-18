@@ -138,14 +138,14 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
                 + (-(b[e]+b_fr[e])/ttm[e]) * λqf[e]
                 + ωf[e] / sqrt(2)
                 for (e, _, _) in br_out[i];
-                init=zero(Float128)
+                init=0
             )
             + sum(
                 (g[e]+g_to[e]) * λpt[e] 
                 + (-(b[e]+b_to[e])) * λqt[e] 
                 + ωt[e] / sqrt(2)
                 for (e, _, _) in br_in[i];
-                init=zero(Float128)
+                init=0
             )
             + μ_w[i]
         )
