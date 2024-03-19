@@ -1,19 +1,32 @@
-function _test_opf_detailed(opf::OPFGenerator.OPFModel{OPF}, res::Dict, res_pm::Dict) where {OPF <: PM.DCPPowerModel}
-    data = opf.data
+function test_opf_pm(::Type{PM.DCPPowerModel}, data::Dict)
+    OPF = PM.DCPPowerModel
+
+    data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
     E = length(data["branch"])
     G = length(data["gen"])
-    model = opf.model
-    sol_pm = res_pm["solution"]
+
+    # Solve OPF with PowerModels
+    solver = OPT_SOLVERS[OPF]
+    res_pm = PM.solve_opf(data, OPF, solver)
+
+    # Build and solve OPF with OPFGenerator
+    solver = OPT_SOLVERS[OPF]
+    opf = OPFGenerator.build_opf(OPF, data, solver)
+    OPFGenerator.solve!(opf)
+    res = OPFGenerator.extract_result(opf)
+    @test res["opf_model"] == string(OPF)
 
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
     #    (would require extracting a variable => value Dict)
+    sol_pm = res_pm["solution"]
     var2val_pm = Dict(
         :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
         :va => Float64[sol_pm["bus"]["$i"]["va"] for i in 1:N],
         :pf => Float64[sol_pm["branch"]["$e"]["pf"] for e in 1:E],
     )
+    model = opf.model
     # reorder pf according to branch order in our model
     dcopf_branch_order = [key[1][1] for key in keys(model[:pf])][1:E]
     var2val_pm[:pf] = var2val_pm[:pf][dcopf_branch_order]
