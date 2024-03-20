@@ -15,7 +15,14 @@ function test_opf_pm(::Type{PM.DCPPowerModel}, data::Dict)
     opf = OPFGenerator.build_opf(OPF, data, solver)
     OPFGenerator.solve!(opf)
     res = OPFGenerator.extract_result(opf)
+
+    # Check that the right problem was indeed solved
     @test res["opf_model"] == string(OPF)
+    @test res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
+    @test res["primal_status"] == FEASIBLE_POINT
+    @test res["dual_status"] == FEASIBLE_POINT
+    # Check objective value against PowerModels
+    @test isapprox(res["objective"], res_pm["objective"], atol=1e-6, rtol=1e-6)
 
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
