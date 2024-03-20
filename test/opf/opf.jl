@@ -41,7 +41,7 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
     end
 
     @testset "SOCWRConic_128" begin
-        _test_socwr128(make_basic_network(pglib("14_ieee")))
+        _test_socwr128(make_basic_network(pglib("pglib_opf_case14_ieee")))
     end
 
     @testset _test_socwr_DualFeasibility()
