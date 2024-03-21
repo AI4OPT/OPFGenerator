@@ -67,7 +67,7 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
         kirchhoff_reactive[i in 1:N],
         sum(qg[g] for g in ref[:bus_gens][i]) 
         - sum(qf[a] for a in ref[:bus_arcs][i])
-        - sum(shunt["bs"] for shunt in bus_shunts[i])*vm[i]^2
+        + sum(shunt["bs"] for shunt in bus_shunts[i])*vm[i]^2
         ==
         sum(load["qd"] for load in bus_loads[i])
     )
