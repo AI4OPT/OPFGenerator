@@ -229,7 +229,7 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
         )
     end 
 
-    sol["singleton"] = Dict(
+    sol["global"] = Dict(
         "lam_slack_bus" => dual(model[:slack_bus]),
     )
 
@@ -320,7 +320,7 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
         dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
     end
 
-    dres_h5["lam_slack_bus"] = sol["singleton"]["lam_slack_bus"]
+    dres_h5["lam_slack_bus"] = sol["global"]["lam_slack_bus"]
 
     return res_h5
 end
