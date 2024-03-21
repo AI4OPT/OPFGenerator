@@ -122,8 +122,8 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
 
     # Check dual feasibility for select buses and constraints
     # ⚠ we need to correct for wrong sign of dual variables
-    λp  = -[res["solution"]["bus"]["$i"]["lam_kirchhoff_active"] for i in 1:N]
-    λq  = -[res["solution"]["bus"]["$i"]["lam_kirchhoff_reactive"] for i in 1:N]
+    λp  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_active"] for i in 1:N]
+    λq  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_reactive"] for i in 1:N]
     λpf = -[res["solution"]["branch"]["$e"]["lam_ohm_active_fr"] for e in 1:E]
     λqf = -[res["solution"]["branch"]["$e"]["lam_ohm_reactive_fr"] for e in 1:E]
     λpt = -[res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
