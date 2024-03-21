@@ -63,10 +63,11 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
     # Nodal power balance
     JuMP.@constraint(model,
         kirchhoff[i in 1:N],
-        sum(pf[a] for a in ref[:bus_arcs][i]) ==
-        sum(pg[g] for g in ref[:bus_gens][i]) -
-        sum(load["pd"] for load in bus_loads[i]) -
-        sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
+        sum(pg[g] for g in ref[:bus_gens][i])
+        - sum(pf[a] for a in ref[:bus_arcs][i]) 
+        ==
+        sum(load["pd"] for load in bus_loads[i])
+        + sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
     )
 
     # Branch power flow physics and limit constraints
