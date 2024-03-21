@@ -7,7 +7,7 @@ This implementation is based on the SOC-OPF formulation of PMAnnex.jl
     https://github.com/lanl-ansi/PMAnnex.jl/blob/f303f3c3c61e2d1a050ee7651fa6e8abc4055b55/src/model/opf.jl
 """
 function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
-    T=Float64,    
+    T=Float64,
 ) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
     @assert !haskey(data, "multinetwork")
     @assert !haskey(data, "conductors")
@@ -29,6 +29,11 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
         [ref[:shunt][s] for s in ref[:bus_shunts][i]]
         for i in 1:N
     ]
+    # Branch --> bus-pair correspondence
+    br2bp = [
+        (ref[:branch][e]["f_bus"], ref[:branch][e]["t_bus"])
+        for e in 1:E
+    ]
 
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = OPF
@@ -41,10 +46,17 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     # nodal voltage
     JuMP.@variable(model, ref[:bus][i]["vmin"]^2 <= w[i in 1:N] <= ref[:bus][i]["vmax"]^2, start=1.001)
 
+    # wr, wi variables (per branch)
     wr_min, wr_max, wi_min, wi_max = PM.ref_calc_voltage_product_bounds(ref[:buspairs])
+    JuMP.@variable(model, wr[e in 1:E], start=1.0)
+    JuMP.@variable(model, wi[e in 1:E])
+    for e in 1:E
+        set_lower_bound(wr[e], wr_min[br2bp[e]])
+        set_upper_bound(wr[e], wr_max[br2bp[e]])
+        set_lower_bound(wi[e], wi_min[br2bp[e]])
+        set_upper_bound(wi[e], wi_max[br2bp[e]])
+    end
 
-    JuMP.@variable(model, wr_min[bp] <= wr[bp in keys(ref[:buspairs])] <= wr_max[bp], start=1.0)
-    JuMP.@variable(model, wi_min[bp] <= wi[bp in keys(ref[:buspairs])] <= wi_max[bp])
     # Active and reactive dispatch
     JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
     JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
@@ -81,6 +93,7 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     model[:ohm_active_to] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_fr] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_to] = Vector{JuMP.ConstraintRef}(undef, E)
+    model[:jabr] = Vector{JuMP.ConstraintRef}(undef, E)
     for (i,branch) in ref[:branch]
         data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
 
@@ -95,8 +108,8 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
 
         w_fr = w[branch["f_bus"]]
         w_to = w[branch["t_bus"]]
-        wr_br = wr[bp_idx]
-        wi_br = wi[bp_idx]
+        wr_br = wr[i]
+        wi_br = wi[i]
 
         g, b = PM.calc_branch_y(branch)
         tr, ti = PM.calc_branch_t(branch)
@@ -126,19 +139,17 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
             model[:thermal_limit_fr][i] = JuMP.@constraint(model, [branch["rate_a"], p_fr, q_fr] in JuMP.SecondOrderCone())
             model[:thermal_limit_to][i] = JuMP.@constraint(model, [branch["rate_a"], p_to, q_to] in JuMP.SecondOrderCone())
         end
-    end
-    
-    # Voltage product relaxation (quadratic form)
-    if OPF == PM.SOCWRPowerModel
-        JuMP.@constraint(model,
-            voltage_prod_quadratic[(i, j) in keys(ref[:buspairs])],
-            wr[(i,j)]^2 + wi[(i,j)]^2 <= w[i]*w[j]
-        )
-    elseif OPF == PM.SOCWRConicPowerModel
-        JuMP.@constraint(model,
-            voltage_prod_conic[(i, j) in keys(ref[:buspairs])],
-            [w[i] / sqrt(2), w[j] / sqrt(2), wr[(i,j)], wi[(i,j)]] in JuMP.RotatedSecondOrderCone()
-        )
+
+        # Jabr inequality (one per branch)
+        if OPF == PM.SOCWRPowerModel
+            model[:jabr][i] = JuMP.@constraint(model,
+                wr[i]^2 + wi[i]^2 <= w[branch["f_bus"]]*w[branch["t_bus"]]
+            )
+        elseif OPF == PM.SOCWRConicPowerModel
+            model[:jabr][i] = JuMP.@constraint(model,
+                [w[branch["f_bus"]] / sqrt(2), w[branch["t_bus"]] / sqrt(2), wr[i], wi[i]] in JuMP.RotatedSecondOrderCone()
+            )
+        end
     end
 
     #
@@ -274,15 +285,15 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                "wr" => value(model[:wr][bp]),
-                "wi" => value(model[:wi][bp]),
+                "wr" => value(model[:wr][b]),
+                "wi" => value(model[:wi][b]),
                 # dual vars
                 "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
                 "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
-                "mu_wr_lb" => dual(LowerBoundRef(model[:wr][bp])),
-                "mu_wr_ub" => dual(UpperBoundRef(model[:wr][bp])),
-                "mu_wi_lb" => dual(LowerBoundRef(model[:wi][bp])),
-                "mu_wi_ub" => dual(UpperBoundRef(model[:wi][bp])),
+                "mu_wr_lb" => dual(LowerBoundRef(model[:wr][b])),
+                "mu_wr_ub" => dual(UpperBoundRef(model[:wr][b])),
+                "mu_wi_lb" => dual(LowerBoundRef(model[:wi][b])),
+                "mu_wi_ub" => dual(UpperBoundRef(model[:wi][b])),
                 "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
                 "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
                 "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
@@ -294,9 +305,9 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
             if OPF == PM.SOCWRPowerModel
                 brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
-                brsol["mu_voltage_prod_quad"] = dual(model[:voltage_prod_quadratic][bp])
+                brsol["mu_voltage_prod_quad"] = dual(model[:jabr][b])
             elseif OPF == PM.SOCWRConicPowerModel
-                nu_voltage_prod_soc = dual(model[:voltage_prod_conic][bp])
+                nu_voltage_prod_soc = dual(model[:jabr][b])
                 brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1]
                 brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2]
                 brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3]
@@ -367,9 +378,9 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCW
         "mu_va_diff_lb"          => zeros(Float64, E),
         "mu_va_diff_ub"          => zeros(Float64, E),
         "mu_wr_lb"               => zeros(Float64, E),
-        "mu_wr_lb"               => zeros(Float64, E),
+        "mu_wr_ub"               => zeros(Float64, E),
         "mu_wi_lb"               => zeros(Float64, E),
-        "mu_wi_lb"               => zeros(Float64, E),
+        "mu_wi_ub"               => zeros(Float64, E),
         "lam_ohm_active_fr"      => zeros(Float64, E),
         "lam_ohm_active_to"      => zeros(Float64, E),
         "lam_ohm_reactive_fr"    => zeros(Float64, E),
@@ -426,9 +437,9 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCW
             "mu_va_diff_lb",
             "mu_va_diff_ub",
             "mu_wr_lb",
-            "mu_wr_lb",
+            "mu_wr_ub",
             "mu_wi_lb",
-            "mu_wi_lb",
+            "mu_wi_ub",
             "lam_ohm_active_fr",
             "lam_ohm_active_to",
             "lam_ohm_reactive_fr",

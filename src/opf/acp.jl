@@ -202,8 +202,8 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
             "vm" => value(model[:vm][bus]),
             "va" => value(model[:va][bus]),
             # dual vars
-            "lam_pb_active" => dual(model[:kirchhoff_active][bus]),
-            "lam_pb_reactive" => dual(model[:kirchhoff_reactive][bus]),
+            "lam_kirchhoff_active" => dual(model[:kirchhoff_active][bus]),
+            "lam_kirchhoff_reactive" => dual(model[:kirchhoff_reactive][bus]),
             "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
             "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
         )
@@ -255,7 +255,11 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
             "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
         )
     end 
-    
+
+    sol["global"] = Dict(
+        "lam_slack_bus" => dual(model[:slack_bus]),
+    )
+
     return res
 end
 
@@ -300,6 +304,7 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
         "lam_ohm_reactive_fr"    => zeros(Float64, E),
         "lam_ohm_reactive_to"    => zeros(Float64, E),
         "mu_va_diff"             => zeros(Float64, E),
+        "lam_slack_bus"          => 0.0,
     )
 
     # extract from ACOPF solution
@@ -311,8 +316,8 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
 
         dres_h5["mu_vm_lb"][i] = bsol["mu_vm_lb"]
         dres_h5["mu_vm_ub"][i] = bsol["mu_vm_ub"]
-        dres_h5["lam_kirchhoff_active"][i] = bsol["lam_pb_active"]
-        dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_pb_reactive"]
+        dres_h5["lam_kirchhoff_active"][i] = bsol["lam_kirchhoff_active"]
+        dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_kirchhoff_reactive"]
     end
     for g in 1:G
         gsol = sol["gen"]["$g"]
@@ -341,6 +346,8 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
         dres_h5["lam_ohm_reactive_to"][e] = brsol["lam_ohm_reactive_to"]
         dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
     end
+
+    dres_h5["lam_slack_bus"] = sol["global"]["lam_slack_bus"]
 
     return res_h5
 end

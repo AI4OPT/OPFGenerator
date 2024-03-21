@@ -213,6 +213,10 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
         )
     end
 
+    sol["global"] = Dict(
+        "lam_slack_bus" => dual(model[:slack_bus]),
+    )
+
     return res
 end
 
@@ -244,6 +248,7 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
         "mu_sm_lb"               => zeros(Float64, E),
         "mu_sm_ub"               => zeros(Float64, E),
         "mu_va_diff"             => zeros(Float64, E),
+        "lam_slack_bus"          => 0.0,
     )
 
     # extract from solution
@@ -272,6 +277,8 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
         dres_h5["mu_sm_ub"][e] = brsol["mu_sm_ub"]
         dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
     end
+
+    dres_h5["lam_slack_bus"] = sol["global"]["lam_slack_bus"]
 
     return res_h5
 end
