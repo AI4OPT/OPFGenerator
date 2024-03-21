@@ -200,9 +200,9 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
 
     res_h5 = Dict{String,Any}(
         "meta" => Dict{String,Any}(
-            "termination_status" => res["termination_status"],
-            "primal_status" => res["primal_status"],
-            "dual_status" => res["dual_status"],
+            "termination_status" => string(res["termination_status"]),
+            "primal_status" => string(res["primal_status"]),
+            "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
         ),
     )
