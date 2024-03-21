@@ -311,7 +311,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |   |   |-- ...
 |   |-- dual
 |       |-- lam_kirchhoff_active
-|       |-- lam_kirchhoff_active
+|       |-- lam_kirchhoff_reactive
 |       |-- ...
 |-- DCPPowerModel
 |   |-- meta
