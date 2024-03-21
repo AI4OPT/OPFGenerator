@@ -228,7 +228,11 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
             "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
         )
     end 
-    
+
+    sol["global"] = Dict(
+        "lam_slack_bus" => dual(model[:slack_bus]),
+    )
+
     return res
 end
 
@@ -273,6 +277,7 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
         "lam_ohm_reactive_fr"    => zeros(Float64, E),
         "lam_ohm_reactive_to"    => zeros(Float64, E),
         "mu_va_diff"             => zeros(Float64, E),
+        "lam_slack_bus"          => 0.0,
     )
 
     # extract from ACOPF solution
@@ -314,6 +319,8 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
         dres_h5["lam_ohm_reactive_to"][e] = brsol["lam_ohm_reactive_to"]
         dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
     end
+
+    dres_h5["lam_slack_bus"] = sol["global"]["lam_slack_bus"]
 
     return res_h5
 end
