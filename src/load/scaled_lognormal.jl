@@ -25,8 +25,8 @@ function ScaledLogNormal(l::Float64, u::Float64, σs::Vector{Float64})
     d_α = Uniform(l, u)
     
     # Generate LogNormal distributions
-    μs = - (σs .^ 2) ./ 2.0
-    d_η = MvLogNormal(μs, σs)
+    σs2 = σs .^ 2
+    d_η = MvLogNormal(-σs2 ./ 2, Diagonal(σs2))
 
     return ScaledLogNormal(d_α, d_η)
 end
