@@ -205,6 +205,8 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
         ),
     )
 
