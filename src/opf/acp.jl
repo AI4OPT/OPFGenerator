@@ -155,7 +155,7 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
     res = Dict{String,Any}()
     res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
-    res["objective_lb"] = -Inf
+    res["objective_lb"] = try JuMP.dual_objective_value(model) catch; NaN end
     res["optimizer"] = JuMP.solver_name(model)
     res["solve_time"] = JuMP.solve_time(model)
     res["termination_status"] = JuMP.termination_status(model)
@@ -250,6 +250,8 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
         ),
     )
 
