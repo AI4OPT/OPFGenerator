@@ -87,7 +87,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
         g, b = PM.calc_branch_y(branch)
 
         # From side of the branch flow
-        model[:ohm_eq][i] = JuMP.@constraint(model, p_fr == -b*(va_fr - va_to))
+        model[:ohm_eq][i] = JuMP.@constraint(model, b*(va_to - va_fr) - p_fr == 0)
 
         # Voltage angle difference limit
         model[:voltage_difference_limit][i] = JuMP.@constraint(model, branch["angmin"] <= va_fr - va_to <= branch["angmax"])
