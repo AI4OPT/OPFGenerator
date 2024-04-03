@@ -25,6 +25,11 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: SOCWRPowerModel}
     @test res["dual_status"] == FEASIBLE_POINT
     # ⚠ we do not check against PowerModels' objective value, 
     #   because our SOC formulation is not equivalent
+    # Check that primal/dual objectives are matching only for conic form
+    #   (Ipopt is not good with dual objective value)
+    if OPF == PM.SOCWRConicPowerModel
+        @test isapprox(res["objective"], res["objective_lb"], rtol=1e-6)
+    end
 
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
