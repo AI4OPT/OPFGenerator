@@ -133,10 +133,10 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     λpt = [res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
     λqt = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_to"] for e in 1:E]
 
-    ωf = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_1"] for e in 1:E]
-    ωt = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_2"] for e in 1:E]
-    ωr = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_3"] for e in 1:E]
-    ωi = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_4"] for e in 1:E]
+    ωf = [res["solution"]["branch"]["$e"]["nu_jabr"][1] for e in 1:E]
+    ωt = [res["solution"]["branch"]["$e"]["nu_jabr"][2] for e in 1:E]
+    ωr = [res["solution"]["branch"]["$e"]["nu_jabr"][3] for e in 1:E]
+    ωi = [res["solution"]["branch"]["$e"]["nu_jabr"][4] for e in 1:E]
 
     μθ_lb = [res["solution"]["branch"]["$e"]["mu_va_diff_lb"] for e in 1:E]
     μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
