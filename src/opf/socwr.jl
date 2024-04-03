@@ -275,7 +275,7 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 brsol["nu_sm_fr"] = [0.0, 0.0, 0.0]
             end
         else
-            sol["branch"]["$b"] = brsol = Dict(
+            sol["branch"]["$b"] = brsol = Dict{String,Any}(
                 "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
@@ -302,9 +302,9 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
                 brsol["mu_jabr"] = dual(model[:jabr][b])
             elseif OPF == PM.SOCWRConicPowerModel
-                brsol["nu_jabr"] .= dual(model[:jabr][b])
-                brsol["nu_sm_to"] .= dual(model[:thermal_limit_to][b])
-                brsol["nu_sm_fr"] .= dual(model[:thermal_limit_fr][b])
+                brsol["nu_jabr"] = dual(model[:jabr][b])
+                brsol["nu_sm_to"] = dual(model[:thermal_limit_to][b])
+                brsol["nu_sm_fr"] = dual(model[:thermal_limit_fr][b])
             end
         end
     end
