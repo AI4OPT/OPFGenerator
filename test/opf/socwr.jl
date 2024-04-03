@@ -213,6 +213,32 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     return nothing
 end
 
+function _test_socwr_DualSolFormat()
+    data = make_basic_network(pglib("pglib_opf_case118_ieee"))
+    N = length(data["bus"])
+    E = length(data["branch"])
+
+    solver = CLRBL_SOLVER
+    opf = OPFGenerator.build_opf(SOCWRConicPowerModel, data, solver)
+    set_silent(opf.model)
+    OPFGenerator.solve!(opf)
+
+    # Check shape of dual solution
+    res = OPFGenerator.extract_result(opf)
+    @test size(res["solution"]["branch"]["1"]["nu_jabr"]) == (4,)
+    @test size(res["solution"]["branch"]["1"]["nu_sm_to"]) == (3,)
+    @test size(res["solution"]["branch"]["1"]["nu_sm_fr"]) == (3,)
+
+    # Check conversion to H5 format
+    h5 = OPFGenerator.json2h5(SOCWRConicPowerModel, res)
+
+    @test Set(collect(keys(h5))) == Set(["meta", "primal", "dual"])
+    @test size(h5["dual"]["nu_jabr"]) == (E, 4)
+    @test size(h5["dual"]["nu_sm_fr"]) == (E, 3)
+    @test size(h5["dual"]["nu_sm_to"]) == (E, 3)
+    return nothing
+end
+
 function _test_socwr128(data::Dict)
     opf = OPFGenerator.build_opf(PM.SOCWRConicPowerModel, data, CLRBL128_SOLVER; T=Float128)
 
