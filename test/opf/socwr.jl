@@ -121,13 +121,12 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     end
 
     # Check dual feasibility for select buses and constraints
-    # ⚠ we need to correct for wrong sign of dual variables
     λp  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_active"] for i in 1:N]
     λq  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_reactive"] for i in 1:N]
-    λpf = -[res["solution"]["branch"]["$e"]["lam_ohm_active_fr"] for e in 1:E]
-    λqf = -[res["solution"]["branch"]["$e"]["lam_ohm_reactive_fr"] for e in 1:E]
-    λpt = -[res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
-    λqt = -[res["solution"]["branch"]["$e"]["lam_ohm_reactive_to"] for e in 1:E]
+    λpf = [res["solution"]["branch"]["$e"]["lam_ohm_active_fr"] for e in 1:E]
+    λqf = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_fr"] for e in 1:E]
+    λpt = [res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
+    λqt = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_to"] for e in 1:E]
 
     ωf = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_1"] for e in 1:E]
     ωt = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_2"] for e in 1:E]
