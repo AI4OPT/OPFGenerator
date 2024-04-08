@@ -70,9 +70,8 @@ function build_models(data, config)
     return opf_models
 end
 
-function main(data, opf_sampler, opf_models, smin, smax, config)
+function main(data, opf_sampler, opf_models, smin, smax, config, D)
     caseref = config["ref"]
-    resdir_json = joinpath(config["export_dir"], "res_json")
 
     @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]"
     for s in smin:smax
@@ -98,8 +97,14 @@ function main(data, opf_sampler, opf_models, smin, smax, config)
             d[dataset_name] = res
             d[dataset_name]["time_build"] = opf_models[dataset_name][2]
         end
-
-        twrite = @elapsed save_json(joinpath(resdir_json, config["ref"] * "_s$s.json.gz"), d)
+        
+        no_json = get(config, "no_json", false)
+        if !no_json
+            twrite = @elapsed save_json(joinpath(config["export_dir"], "res_json", config["ref"] * "_s$s.json.gz"), d)
+        else
+            twrite = @elapsed OPFGenerator.add_datapoint!(D, d)
+        end
+        
         @info "Seed $s" tgen ttrial twrite
     end
 
@@ -115,8 +120,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
 
-    resdir_json = joinpath(config["export_dir"], "res_json")
-    mkpath(resdir_json)
+    no_json = get(config, "no_json", false)
+    if !no_json
+        resdir_json = joinpath(config["export_dir"], "res_json")
+        mkpath(resdir_json)
+        D = nothing
+    else
+        D = OPFGenerator.initialize_res(config)
+    end
 
     # Load reference data and setup OPF sampler
     data = make_basic_network(pglib(config["ref"]))
@@ -124,7 +135,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     opf_models = build_models(data, config)
     
-    main(data, opf_sampler, opf_models, smin, smax, config)
+    main(data, opf_sampler, opf_models, smin, smax, config, D)
+
+    if no_json
+        tconvert = @elapsed OPFGenerator.convert_to_h5!(D)
+        filepath = joinpath(config["export_dir"], "res_h5", caseref * "_s$smin-s$smax.h5")
+        mkpath(dirname(filepath))
+        th5write = @elapsed OPFGenerator.save_h5(filepath, D)
+        @info "Wrote HDF5 to $filepath" tconvert th5write
+    end
 
     return nothing
 end
