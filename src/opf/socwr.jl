@@ -38,8 +38,6 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = OPF
 
-    patch_if_clarabel!(model)
-
     #
     #   I. Variables
     #

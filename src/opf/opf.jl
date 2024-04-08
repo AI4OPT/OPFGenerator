@@ -1,19 +1,4 @@
 using MathOptSymbolicAD
-using Clarabel
-using Quadmath
-
-function patch_if_clarabel!(model)
-    if JuMP.solver_name(model) == "Clarabel"
-        @warn "Removing VectorizeBridge from Clarabel (see MathOptInterface.jl#2452)"
-
-        T = typeof(model).parameters[1]
-
-        JuMP.MOI.Bridges.remove_bridge(
-           JuMP.backend(model).optimizer,
-           JuMP.MOI.Bridges.Variable.VectorizeBridge{T},
-       )
-    end
-end
 
 mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
     data::Dict{String,Any}
