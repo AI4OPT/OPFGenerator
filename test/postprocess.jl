@@ -8,8 +8,8 @@ function test_tensorize()
     # Vector of vectors
     V = [(10*i) .+ collect(1:4) for i in 1:3]
     @test OPFGenerator.tensorize(V) == [
-        10 21 31;
-        11 22 32;
+        11 21 31;
+        12 22 32;
         13 23 33;
         14 24 34;
     ]
