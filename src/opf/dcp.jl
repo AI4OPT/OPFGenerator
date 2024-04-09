@@ -67,7 +67,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
         - sum(pf[a] for a in ref[:bus_arcs][i]) 
         ==
         sum(load["pd"] for load in bus_loads[i])
-        + sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
+        + sum(shunt["gs"] for shunt in bus_shunts[i])
     )
 
     # Branch power flow physics and limit constraints
@@ -115,21 +115,10 @@ function update!(opf::OPFModel{PM.DCPPowerModel}, data::Dict{String,Any})
 
     N = length(ref[:bus])
 
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
-
-    for i in 1:N
-        JuMP.set_normalized_rhs(opf.model[:kirchhoff][i],
-            sum(load["pd"] for load in bus_loads[i]; init=0.0) -
-            sum(shunt["gs"] for shunt in bus_shunts[i]; init=0.0)*1.0^2
-        )
-    end
+    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
+    gs = [sum(ref[:shunt][s]["gs"] for s in ref[:bus_shunts][i]; init=0.0) for i in 1:N]
+    
+    JuMP.set_normalized_rhs.(opf.model[:kirchhoff], pd .+ gs)
 end
 
 """

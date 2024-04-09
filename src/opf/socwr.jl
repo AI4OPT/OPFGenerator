@@ -201,19 +201,11 @@ function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: Union
 
     N = length(ref[:bus])
 
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
+    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
+    qd = [sum(ref[:load][l]["qd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
 
-    for i in 1:N
-        JuMP.set_normalized_rhs(opf.model[:kirchhoff_active][i],
-            sum(load["pd"] for load in bus_loads[i]; init=0.0)
-        )
-        JuMP.set_normalized_rhs(opf.model[:kirchhoff_reactive][i],
-            sum(load["qd"] for load in bus_loads[i]; init=0.0)
-        )
-    end
+    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
+    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
 end
 
 """
