@@ -1,5 +1,4 @@
 using TOML
-using Sys
 
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
