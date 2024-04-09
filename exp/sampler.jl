@@ -88,11 +88,10 @@ function main(data, opf_sampler, opf_models, smin, smax, config, D)
         ttrial = @elapsed for dataset_name in keys(opf_models)
             opf = opf_models[dataset_name][1]
 
-            tupdate = @elapsed OPFGenerator.update!(opf, data)
-            tsolve = @elapsed OPFGenerator.solve!(opf)
+            OPFGenerator.update!(opf, data)
+            OPFGenerator.solve!(opf)
     
-            textract = @elapsed res = OPFGenerator.extract_result(opf)
-            @info "$dataset_name $(termination_status(opf.model))\nUpdated in $tupdate\nSolved in $tsolve\nExtracted in $textract"
+            res = OPFGenerator.extract_result(opf)
             
             d[dataset_name] = res
             d[dataset_name]["time_build"] = opf_models[dataset_name][2]
@@ -139,7 +138,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     if no_json
         tconvert = @elapsed OPFGenerator.convert_to_h5!(D)
-        filepath = joinpath(config["export_dir"], "res_h5", caseref * "_s$smin-s$smax.h5")
+        filepath = joinpath(config["export_dir"], "res_h5", config["ref"] * "_s$smin-s$smax.h5")
         mkpath(dirname(filepath))
         th5write = @elapsed OPFGenerator.save_h5(filepath, D)
         @info "Wrote HDF5 to $filepath" tconvert th5write
