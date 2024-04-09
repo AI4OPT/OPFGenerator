@@ -106,12 +106,40 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
         b_to = branch["b_to"]
 
         # From side of the branch flow
-        model[:ohm_active_fr][i] = JuMP.@constraint(model, p_fr ==  (g+g_fr)/ttm*vm_fr^2 + (-g*tr+b*ti)/ttm*(vm_fr*vm_to*cos(va_fr-va_to)) + (-b*tr-g*ti)/ttm*(vm_fr*vm_to*sin(va_fr-va_to)) )
-        model[:ohm_reactive_fr][i] = JuMP.@constraint(model, q_fr == -(b+b_fr)/ttm*vm_fr^2 - (-b*tr-g*ti)/ttm*(vm_fr*vm_to*cos(va_fr-va_to)) + (-g*tr+b*ti)/ttm*(vm_fr*vm_to*sin(va_fr-va_to)) )
+        model[:ohm_active_fr][i] = JuMP.@constraint(model, 
+              ((g+g_fr)/ttm) * vm_fr^2
+            + ((-g*tr+b*ti)/ttm) * (vm_fr*vm_to*cos(va_fr-va_to)) 
+            + ((-b*tr-g*ti)/ttm) * (vm_fr*vm_to*sin(va_fr-va_to)) 
+            - p_fr 
+            ==
+            0
+        )
+        model[:ohm_reactive_fr][i] = JuMP.@constraint(model, 
+            - (( b+b_fr)/ttm) * vm_fr^2
+            - ((-b*tr-g*ti)/ttm) * (vm_fr*vm_to*cos(va_fr-va_to))
+            + ((-g*tr+b*ti)/ttm) * (vm_fr*vm_to*sin(va_fr-va_to))
+            - q_fr
+            ==
+            0
+        )
 
         # To side of the branch flow
-        model[:ohm_active_to][i] = JuMP.@constraint(model, p_to ==  (g+g_to)*vm_to^2 + (-g*tr-b*ti)/ttm*(vm_to*vm_fr*cos(va_to-va_fr)) + (-b*tr+g*ti)/ttm*(vm_to*vm_fr*sin(va_to-va_fr)) )
-        model[:ohm_reactive_to][i] = JuMP.@constraint(model, q_to == -(b+b_to)*vm_to^2 - (-b*tr+g*ti)/ttm*(vm_to*vm_fr*cos(va_to-va_fr)) + (-g*tr-b*ti)/ttm*(vm_to*vm_fr*sin(va_to-va_fr)) )
+        model[:ohm_active_to][i] = JuMP.@constraint(model,
+              (g+g_to) * vm_to^2 
+            + ((-g*tr-b*ti)/ttm) * (vm_to*vm_fr*cos(va_to-va_fr))
+            + ((-b*tr+g*ti)/ttm) * (vm_to*vm_fr*sin(va_to-va_fr)) 
+            - p_to
+            ==
+            0
+        )
+        model[:ohm_reactive_to][i] = JuMP.@constraint(model,
+            - (b+b_to) * vm_to^2 
+            - ((-b*tr+g*ti)/ttm) * (vm_to*vm_fr*cos(va_to-va_fr)) 
+            + ((-g*tr-b*ti)/ttm) * (vm_to*vm_fr*sin(va_to-va_fr)) 
+            - q_to
+            ==
+            0
+        )
 
         # Voltage angle difference limit
         model[:voltage_difference_limit][i] = JuMP.@constraint(model, branch["angmin"] <= va_fr - va_to <= branch["angmax"])
@@ -180,7 +208,7 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
     res = Dict{String,Any}()
     res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
-    res["objective_lb"] = -Inf
+    res["objective_lb"] = try JuMP.dual_objective_value(model) catch; NaN end
     res["optimizer"] = JuMP.solver_name(model)
     res["solve_time"] = JuMP.solve_time(model)
     res["termination_status"] = JuMP.termination_status(model)
@@ -275,6 +303,8 @@ function json2h5(::Type{PM.ACPPowerModel}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
         ),
     )
 

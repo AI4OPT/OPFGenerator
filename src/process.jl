@@ -38,6 +38,8 @@ function initialize_res(config)
                 "primal_status" => String[],
                 "dual_status" => String[],
                 "solve_time" => Float64[],
+                "primal_objective_value" => Float64[],
+                "dual_objective_value" => Float64[],
             ),
             "primal" => Dict{String,Any}(),
             "dual"   => Dict{String,Any}(),
@@ -86,6 +88,11 @@ function add_datapoint!(D, d)
                 if !haskey(Dsol[cat], k)
                     Dsol[cat][k] = [v]  # Make sure that all relevant keys exist
                 else
+                    # NaN and ±Inf values are not supported by JSON,
+                    #   and will be read (from disk) as `nothing`.
+                    # To avoid any issue, we replace `nothing` with `NaN` when expecting a number.
+                    T = eltype(Dsol[cat][k])
+                    v = (v === nothing &&  (T <: Real)) ? T(NaN) : v
                     push!(Dsol[cat][k], v)
                 end
             end

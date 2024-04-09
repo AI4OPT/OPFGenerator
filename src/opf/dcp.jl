@@ -87,7 +87,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
         g, b = PM.calc_branch_y(branch)
 
         # From side of the branch flow
-        model[:ohm_eq][i] = JuMP.@constraint(model, p_fr == -b*(va_fr - va_to))
+        model[:ohm_eq][i] = JuMP.@constraint(model, b*(va_to - va_fr) - p_fr == 0)
 
         # Voltage angle difference limit
         model[:voltage_difference_limit][i] = JuMP.@constraint(model, branch["angmin"] <= va_fr - va_to <= branch["angmax"])
@@ -152,7 +152,7 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
     res = Dict{String,Any}()
     res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
-    res["objective_lb"] = -Inf
+    res["objective_lb"] = try JuMP.dual_objective_value(model) catch; NaN end
     res["optimizer"] = JuMP.solver_name(model)
     res["solve_time"] = JuMP.solve_time(model)
     res["termination_status"] = JuMP.termination_status(model)
@@ -231,6 +231,8 @@ function json2h5(::Type{PM.DCPPowerModel}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
         ),
     )
 

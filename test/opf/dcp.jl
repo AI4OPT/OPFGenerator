@@ -23,6 +23,7 @@ function test_opf_pm(::Type{PM.DCPPowerModel}, data::Dict)
     @test res["dual_status"] == FEASIBLE_POINT
     # Check objective value against PowerModels
     @test isapprox(res["objective"], res_pm["objective"], atol=1e-6, rtol=1e-6)
+    @test isapprox(res["objective"], res["objective_lb"], rtol=1e-6)
 
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
