@@ -118,7 +118,7 @@ function convert_to_h5!(D::Dict)
     # Input data
     dat  = D["input"]
     for k in ["pd", "qd", "br_status"]
-        dat[k] = _vecvec2mat(dat[k])
+        dat[k] = tensorize(dat[k])
     end
         
     opf_formulations = sort(collect(keys(config["OPF"])))
@@ -126,7 +126,7 @@ function convert_to_h5!(D::Dict)
         opfres = D[opf_formulation]
         for cat in ["meta", "primal", "dual"]
             for (k, v) in opfres[cat]
-                opfres[cat][k] = _vecvec2mat(v)
+                opfres[cat][k] = tensorize(v)
             end
         end
     end
@@ -134,7 +134,31 @@ function convert_to_h5!(D::Dict)
     return nothing
 end
 
-_vecvec2mat(V) = reduce(hcat, V)
+"""
+    tensorize(V::AbstractVector)
+
+Concatenate elements of `V` into a higher-dimensional tensor.
+
+If `V` has length `m`, and its elements are `N`-dimensional,
+    the result is a `N+1`-dimensional array `M` whose last dimension is `m`,
+    and such that `M[:, ..., i] == V[i]`.
+
+If `V` is a vector of scalars, the output is a `1xm` matrix.
+"""
+function tensorize(V::AbstractVector)
+    # Check that all elements have same size
+    length(V) > 0 || error("Trying to tensorize an empty vector")
+    T = eltype(V)
+
+    if T <: AbstractArray
+        mapreduce(isequal(size(V[1])), &, size.(V)) || error("Not all elements have the same size")
+        ns = size(V[1])
+        M = reduce(hcat, V)
+        return reshape(M, (ns..., length(V)))
+    else
+        return reduce(hcat, V)
+    end
+end
 
 function parse_jsons(config::Dict;
     show_progress::Bool=true,
