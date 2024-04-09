@@ -1,4 +1,5 @@
 using TOML
+using Sys
 
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
@@ -126,7 +127,7 @@ function test_sampler_script()
 
     caseref = config["ref"]
     smin, smax = 1, 4
-    proc = run(setenv(`julia --project=. $sampler_script $config_file $smin $smax`, dir=joinpath(@__DIR__, "..")))
+    proc = run(setenv(`$(joinpath(Sys.BINDIR, "julia")) --project=. $sampler_script $config_file $smin $smax`, dir=joinpath(@__DIR__, "..")))
 
     @test success(proc)
 
