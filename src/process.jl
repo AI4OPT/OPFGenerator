@@ -135,36 +135,38 @@ function convert_to_h5!(D::Dict)
 end
 
 """
-    tensorize(V)
+    tensorize(V::Vector)
+
+Concatenate elements of `V` into a higher-dimensional tensor.
+
+If `V` is a collection of scalars, the output is a `1xm` matrix,
+    whose i-th element is equal to `V[i]`.
+"""
+function tensorize(V::Vector)
+    # Check that all elements have same size
+    length(V) > 0 || error("Trying to tensorize an empty collection")
+
+    # We do not use `reduce(hcat, V)` to avoid type instability.
+    # Since `V` may be an arbitrary collection, we explictly allocate the output
+    return reshape(copy(V), (1, length(V)))
+end
+
+"""
+    tensorize(V::Vector{Array})
 
 Concatenate elements of `V` into a higher-dimensional tensor.
 
 If `V` has length `m`, and its elements are `N`-dimensional,
     the result is a `N+1`-dimensional array `M` whose last dimension is `m`,
     and such that `M[:, ..., i] == V[i]`.
-
-If `V` is a collection of scalars, the output is a `1xm` matrix.
 """
-function tensorize(V)
-    # Check that all elements have same size
+function tensorize(V::Vector{Array})
     length(V) > 0 || error("Trying to tensorize an empty collection")
-    T = eltype(V)
-
-    if T <: AbstractArray
-        ns = size(first(V))
-        mapreduce(x -> size(x) == ns, &, V) || error("All elements must have the same size to tensorize.")
-
-        M = reduce(hcat, V)
-        return reshape(M, (ns..., length(V)))
-    else
-        # We do not use `reduce(hcat, V)` to avoid type instability.
-        # Since `V` may be an arbitrary collection, we explictly allocate the output
-        M = Array{T, 2}(undef, 1, length(V))
-        for (i, v) in enumerate(V)
-            M[i] = v
-        end
-        return M
-    end
+    v = V[1]
+    ns = size(v)
+    mapreduce(x -> size(x) == ns, &, V) || error("All elements must have the same size to tensorize.")
+    M = reduce(hcat, V)
+    return reshape(M, (ns..., length(V)))
 end
 
 function parse_jsons(config::Dict;
