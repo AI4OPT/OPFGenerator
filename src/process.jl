@@ -135,7 +135,7 @@ function convert_to_h5!(D::Dict)
 end
 
 """
-    tensorize(V::AbstractVector)
+    tensorize(V)
 
 Concatenate elements of `V` into a higher-dimensional tensor.
 
@@ -143,16 +143,17 @@ If `V` has length `m`, and its elements are `N`-dimensional,
     the result is a `N+1`-dimensional array `M` whose last dimension is `m`,
     and such that `M[:, ..., i] == V[i]`.
 
-If `V` is a vector of scalars, the output is a `1xm` matrix.
+If `V` is a collection of scalars, the output is a `1xm` matrix.
 """
-function tensorize(V::AbstractVector)
+function tensorize(V)
     # Check that all elements have same size
-    length(V) > 0 || error("Trying to tensorize an empty vector")
+    length(V) > 0 || error("Trying to tensorize an empty collection")
     T = eltype(V)
 
     if T <: AbstractArray
-        mapreduce(isequal(size(V[1])), &, size.(V)) || error("Not all elements have the same size")
-        ns = size(V[1])
+        ns = size(first(V))
+        mapreduce(x -> size(x) == ns, &, V) || error("All elements must have the same size to tensorize.")
+
         M = reduce(hcat, V)
         return reshape(M, (ns..., length(V)))
     else
