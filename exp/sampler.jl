@@ -161,6 +161,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
         for (k1, v1) in d, (k2, v2) in v1
             d[k1][k2] = OPFGenerator.tensorize(v2)
         end
+        # Track random seed in dataset meta info, to simplify for post-processing
+        d["meta"]["seed"] = copy(D["input"]["seed"])
     end
 
     # Save to disk in separate h5 files
