@@ -157,7 +157,13 @@ function tensorize(V)
         M = reduce(hcat, V)
         return reshape(M, (ns..., length(V)))
     else
-        return reduce(hcat, V)
+        # We do not use `reduce(hcat, V)` to avoid type instability.
+        # Since `V` may be an arbitrary collection, we explictly allocate the output
+        M = Array{T, 2}(undef, 1, length(V))
+        for (i, v) in enumerate(V)
+            M[i] = v
+        end
+        return M
     end
 end
 
