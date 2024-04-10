@@ -237,12 +237,10 @@ function _merge_h5!(D, args...)
     N = length(args)
     all(d -> isa(d, AbstractDict), args) || throw(ArgumentError("All arguments must be dictionaries"))
     for (k, v) in D
-        if isa(v, AbstractVector)
-            # append both vectors
-            D[k] = reduce(vcat, [d[k] for d in args])
-        elseif isa(v, AbstractMatrix)
-            # concatenate both matrices
-            D[k] = reduce(hcat, [d[k] for d in args])
+        if isa(v, Array)
+            N = ndims(v)
+            M = stack(d[k] for d in args)
+            D[k] = reshape(M, (size(M)[1:end-2]..., prod(size(M)[end-1:end])))
         elseif isa(v, AbstractDict)
             # recursively merge sub-dictionaries
             _merge_h5!(D[k], [d[k] for d in args]...)
