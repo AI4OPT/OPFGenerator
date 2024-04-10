@@ -135,7 +135,24 @@ function convert_to_h5!(D::Dict)
 end
 
 """
-    tensorize(V)
+    tensorize(V::Vector)
+
+Concatenate elements of `V` into a higher-dimensional tensor.
+
+If `V` is a collection of scalars, the output is a `1xm` matrix,
+    whose i-th element is equal to `V[i]`.
+"""
+function tensorize(V::Vector)
+    # Check that all elements have same size
+    length(V) > 0 || error("Trying to tensorize an empty collection")
+
+    # We do not use `reduce(hcat, V)` to avoid type instability.
+    # Since `V` may be an arbitrary collection, we explictly allocate the output
+    return reshape(copy(V), (1, length(V)))
+end
+
+"""
+    tensorize(V::Vector{Array})
 
 Concatenate elements of `V` into a higher-dimensional tensor.
 
