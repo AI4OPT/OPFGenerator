@@ -135,14 +135,18 @@ function convert_to_h5!(D::Dict)
 end
 
 """
-    tensorize(V::Vector)
+    tensorize(V)
 
 Concatenate elements of `V` into a higher-dimensional tensor.
 
-If `V` is a collection of scalars, the output is a `1xm` matrix,
-    whose i-th element is equal to `V[i]`.
+Similar to `Base.stack`, with one major difference: if `V` is a vector of scalars,
+    the result is a 2D array `M` whose last dimension is `length(V)`,
+    and such that `M[:, i] == V[i]`.
+
+This function is only defined for `Vector{T}` and `Vector{Array{T,N}}` inputs,
+    to avoid any unexpected behavior of `Base.stack`.
 """
-function tensorize(V::Vector)
+function tensorize(V::Vector{T}) where {T}
     # Check that all elements have same size
     length(V) > 0 || error("Trying to tensorize an empty collection")
 
@@ -151,22 +155,9 @@ function tensorize(V::Vector)
     return reshape(copy(V), (1, length(V)))
 end
 
-"""
-    tensorize(V::Vector{Array})
-
-Concatenate elements of `V` into a higher-dimensional tensor.
-
-If `V` has length `m`, and its elements are `N`-dimensional,
-    the result is a `N+1`-dimensional array `M` whose last dimension is `m`,
-    and such that `M[:, ..., i] == V[i]`.
-"""
-function tensorize(V::Vector{Array})
+function tensorize(V::Vector{Array{T,N}}) where {T,N}
     length(V) > 0 || error("Trying to tensorize an empty collection")
-    v = V[1]
-    ns = size(v)
-    mapreduce(x -> size(x) == ns, &, V) || error("All elements must have the same size to tensorize.")
-    M = reduce(hcat, V)
-    return reshape(M, (ns..., length(V)))
+    return stack(V)
 end
 
 function parse_jsons(config::Dict;
