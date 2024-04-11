@@ -110,10 +110,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # These are concatenated at the end to create one H5 file per OPF configuration
     D = Dict{String,Any}()
     D["input"] = Dict{String,Any}(
-        "seed" => Int[],
-        "pd" => Vector{Float64}[],
-        "qd" => Vector{Float64}[],
-        "br_status" => Vector{Bool}[],
+        "meta" => Dict{String,Any}("seed" => Int[]),
+        "data" => Dict{String,Any}(
+            "pd" => Vector{Float64}[],
+            "qd" => Vector{Float64}[],
+            "br_status" => Vector{Bool}[],
+        )
     )
     for dataset_name in OPFs
         D[dataset_name] = Dict{String,Any}(
@@ -132,10 +134,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
         res["meta"]["seed"] = s
 
         # Update input data
-        push!(D["input"]["seed"], s)
-        push!(D["input"]["pd"], [data_["load"]["$l"]["pd"] for l in 1:L])
-        push!(D["input"]["qd"], [data_["load"]["$l"]["qd"] for l in 1:L])
-        push!(D["input"]["br_status"], [Bool(data_["branch"]["$e"]["br_status"]) for e in 1:E])
+        push!(D["input"]["meta"]["seed"], s)
+        push!(D["input"]["data"]["pd"], [data_["load"]["$l"]["pd"] for l in 1:L])
+        push!(D["input"]["data"]["qd"], [data_["load"]["$l"]["qd"] for l in 1:L])
+        push!(D["input"]["data"]["br_status"], [Bool(data_["branch"]["$e"]["br_status"]) for e in 1:E])
 
         # Add output results, one for each OPF dataset
         for dataset_name in OPFs
@@ -153,8 +155,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @info "All instances completed."
 
     # Tensorize everything in preparation for saving to disk
-    for (k1, v1) in D["input"]
-        D["input"][k1] = OPFGenerator.tensorize(v1)
+    D["input"]["meta"]["seed"] = OPFGenerator.tensorize(D["input"]["meta"]["seed"])
+    for (k1, v1) in D["input"]["data"]
+        D["input"]["data"][k1] = OPFGenerator.tensorize(v1)
     end
     for dataset_name in OPFs
         d = D[dataset_name]
@@ -162,7 +165,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             d[k1][k2] = OPFGenerator.tensorize(v2)
         end
         # Track random seed in dataset meta info, to simplify for post-processing
-        d["meta"]["seed"] = copy(D["input"]["seed"])
+        d["meta"]["seed"] = copy(D["input"]["meta"]["seed"])
     end
 
     # Save to disk in separate h5 files

@@ -55,17 +55,9 @@ The function expects `D["seed"]` or `D["meta"]["seed"]` to exist and be an array
     An error is thrown if this entry is not found.
 """
 function _sort_h5!(D::Dict{String,Any})
-    seeds = if haskey(D, "seed") 
-        D["seed"][:]
-    elseif haskey(D, "meta") && haskey(D["meta"], "seed")
-        D["meta"]["seed"][:]
-    else
-        # safeguards
-        error("Cannot find random seeds")
-    end
-
+    haskey(D, "meta") && haskey(D["meta"], "seed") || error("Invalid H5 dataset: missing random seeds in the \"meta\" section.")
+    seeds::Vector{Int} = D["meta"]["seed"][:]
     p = sortperm(seeds)
-
     _sort_h5!(D, p)
     return nothing
 end
