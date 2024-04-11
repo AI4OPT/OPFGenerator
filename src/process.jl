@@ -270,12 +270,21 @@ end
 
 function _sort_h5!(D::Dict{String,Any}, p::Vector{Int})
     for (k, v) in D
-        if isa(v, AbstractVector)
-            D[k] = v[p]
-        elseif isa(v, AbstractMatrix)
-            D[k] = v[:, p]
+        if isa(v, Array{T,N} where T)
+            # flatten all dimensions except the last one
+            ns = size(v)
+            M = reshape(v, (prod(ns[1:end-1]), ns[end]))
+            # sort (flattened) columns
+            M = M[:, p]
+            # reshape back to original dimensions
+            D[k] = reshape(M, ns)
         elseif isa(v, AbstractDict)
             _sort_h5!(v, p)
+        elseif isa(v, Union{String,Number})
+            # nothing to do
+        else
+            # safeguard for unexpected types
+            error("Unexpected type $(typeof(v)) for entry $k while sorting H5 dataset")
         end
     end
     return D
