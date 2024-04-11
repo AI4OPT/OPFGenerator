@@ -33,7 +33,7 @@ function _merge_h5(V::Vector{<:Dict})
     v0 = V[1]
     D = Dict{String,Any}()
     for k in keys(v0)
-        D[k] = _merge_h5_new([v[k] for v in V])
+        D[k] = _merge_h5([v[k] for v in V])
     end
 
     return D
