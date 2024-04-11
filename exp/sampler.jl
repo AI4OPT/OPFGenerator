@@ -36,10 +36,6 @@ value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
 function build_models(data, config)
-    caseref = config["ref"]
-    OPFs = keys(config["OPF"])
-    @info "Building models for $caseref\nFormulations: $OPFs"
-
     opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:PowerModels.AbstractPowerModel}, Float64}}()
     for (dataset_name, opf_config) in config["OPF"]
         OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
@@ -122,7 +118,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
-    rand(StableRNG(1), opf_sampler0)
+    rand!(StableRNG(1), opf_sampler0, data0)
     for (opf0, m0) in build_models(data0, config)
         OPFGenerator.solve!(m0[1])
         OPFGenerator.extract_result(m0[1])
