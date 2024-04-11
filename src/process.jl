@@ -155,27 +155,6 @@ function tensorize(V::Vector{T}) where {T}
     return reshape(copy(V), (1, length(V)))
 end
 
-"""
-    tensorize(V::Vector{Array})
-
-Concatenate elements of `V` into a higher-dimensional tensor.
-
-Similar to `Base.stack`, with one major difference: if `V` is a vector of scalars,
-    the result is a 2D array `M` whose last dimension is `length(V)`,
-    and such that `M[:, i] == V[i]`.
-
-This function is only defined for `Vector{T}` and `Vector{Array{T,N}}` inputs,
-    to avoid any unexpected behavior of `Base.stack`.
-"""
-function tensorize(V::Vector{T}) where {T}
-    # Check that all elements have same size
-    length(V) > 0 || error("Trying to tensorize an empty collection")
-
-    # We do not use `reduce(hcat, V)` to avoid type instability.
-    # Since `V` may be an arbitrary collection, we explictly allocate the output
-    return reshape(copy(V), (1, length(V)))
-end
-
 function tensorize(V::Vector{Array{T,N}}) where {T,N}
     length(V) > 0 || error("Trying to tensorize an empty collection")
     return stack(V)
@@ -252,6 +231,23 @@ function _merge_h5(args...)
     _merge_h5!(D, args...)
 
     return D
+end
+
+function _merge_h5_new(V::Vector{<:Dict})
+    length(V) > 0 || error("Cannot merge an empty collection")
+
+    v0 = V[1]
+    D = Dict{String,Any}()
+    for k in keys(v0)
+        D[k] = _merge_h5_new([v[k] for v in V])
+    end
+
+    return D
+end
+
+function _merge_h5_new(V::Vector{Array{T,N}}) where{T,N}
+    M = stack(V)
+    return reshape(M, (size(M)[1:end-2]..., prod(size(M)[end-1:end])))
 end
 
 function _merge_h5!(D, args...)
