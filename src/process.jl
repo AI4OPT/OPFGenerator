@@ -27,20 +27,7 @@ function tensorize(V::Vector{Array{T,N}}) where {T,N}
     return stack(V)
 end
 
-function _merge_h5(args...)
-    N = length(args)
-
-    # Check that all arguments are Dict
-    all(d -> isa(d, AbstractDict), args) || throw(ArgumentError("All arguments must be dictionaries"))
-
-    N == 0 && return Dict{String,Any}()
-    D = deepcopy(first(args))
-    _merge_h5!(D, args...)
-
-    return D
-end
-
-function _merge_h5_new(V::Vector{<:Dict})
+function _merge_h5(V::Vector{<:Dict})
     length(V) > 0 || error("Cannot merge an empty collection")
 
     v0 = V[1]
@@ -52,29 +39,9 @@ function _merge_h5_new(V::Vector{<:Dict})
     return D
 end
 
-function _merge_h5_new(V::Vector{Array{T,N}}) where{T,N}
+function _merge_h5(V::Vector{Array{T,N}}) where{T,N}
     M = stack(V)
     return reshape(M, (size(M)[1:end-2]..., prod(size(M)[end-1:end])))
-end
-
-function _merge_h5!(D, args...)
-    N = length(args)
-    all(d -> isa(d, AbstractDict), args) || throw(ArgumentError("All arguments must be dictionaries"))
-    for (k, v) in D
-        if isa(v, Array)
-            N = ndims(v)
-            M = stack(d[k] for d in args)
-            D[k] = reshape(M, (size(M)[1:end-2]..., prod(size(M)[end-1:end])))
-        elseif isa(v, AbstractDict)
-            # recursively merge sub-dictionaries
-            _merge_h5!(D[k], [d[k] for d in args]...)
-        else
-            # Check that all values are the same
-            all(d[k] == v for d in args) || error("Different values for entry $k of type $(typeof(v))")
-        end
-    end
-
-    return nothing
 end
 
 """
