@@ -109,6 +109,43 @@ function test_inplace_sampler()
     return nothing
 end
 
+function test_update()
+    data1 = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    sampler_config = Dict(
+        "load" => Dict(
+            "noise_type" => "ScaledLogNormal",
+            "l" => 0.8,
+            "u" => 1.2,
+            "sigma" => 0.05,        
+        )
+    )
+
+    rng = StableRNG(42)
+    opf_sampler  = SimpleOPFSampler(data1, sampler_config)
+    for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
+        solver = OPT_SOLVERS[OPF]
+        opf1 = OPFGenerator.build_opf(OPF, data1, solver)
+        (pkgversion(OPFGenerator.MOI) >= v"1.27.2") && OPFGenerator.solve!(opf1) # see MathOptInterface.jl#2452
+        data2 = rand(rng, opf_sampler)
+        OPFGenerator.update!(opf1, data2)
+        opf2 = OPFGenerator.build_opf(OPF, data2, solver)
+        @test _test_update(OPF, opf1, opf2)
+    end
+
+    return nothing
+end
+
+
+function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
+    return all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
+end
+
+function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
+    return all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active])) &&
+            all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
+end
+
+
 function check_results_json(filepath)
     res = load_json(filepath)
     for opf in keys(res)
@@ -147,4 +184,5 @@ end
     test_sampler()
     test_inplace_sampler()
     test_sampler_script()
+    test_update()
 end
