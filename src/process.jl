@@ -118,7 +118,7 @@ function convert_to_h5!(D::Dict)
     # Input data
     dat  = D["input"]
     for k in ["pd", "qd", "br_status"]
-        dat[k] = _vecvec2mat(dat[k])
+        dat[k] = tensorize(dat[k])
     end
         
     opf_formulations = sort(collect(keys(config["OPF"])))
@@ -126,7 +126,7 @@ function convert_to_h5!(D::Dict)
         opfres = D[opf_formulation]
         for cat in ["meta", "primal", "dual"]
             for (k, v) in opfres[cat]
-                opfres[cat][k] = _vecvec2mat(v)
+                opfres[cat][k] = tensorize(v)
             end
         end
     end
@@ -134,7 +134,31 @@ function convert_to_h5!(D::Dict)
     return nothing
 end
 
-_vecvec2mat(V) = reduce(hcat, V)
+"""
+    tensorize(V)
+
+Concatenate elements of `V` into a higher-dimensional tensor.
+
+Similar to `Base.stack`, with one major difference: if `V` is a vector of scalars,
+    the result is a 2D array `M` whose last dimension is `length(V)`,
+    and such that `M[:, i] == V[i]`.
+
+This function is only defined for `Vector{T}` and `Vector{Array{T,N}}` inputs,
+    to avoid any unexpected behavior of `Base.stack`.
+"""
+function tensorize(V::Vector{T}) where {T}
+    # Check that all elements have same size
+    length(V) > 0 || error("Trying to tensorize an empty collection")
+
+    # We do not use `reduce(hcat, V)` to avoid type instability.
+    # Since `V` may be an arbitrary collection, we explictly allocate the output
+    return reshape(copy(V), (1, length(V)))
+end
+
+function tensorize(V::Vector{Array{T,N}}) where {T,N}
+    length(V) > 0 || error("Trying to tensorize an empty collection")
+    return stack(V)
+end
 
 function parse_jsons(config::Dict;
     show_progress::Bool=true,
@@ -213,12 +237,10 @@ function _merge_h5!(D, args...)
     N = length(args)
     all(d -> isa(d, AbstractDict), args) || throw(ArgumentError("All arguments must be dictionaries"))
     for (k, v) in D
-        if isa(v, AbstractVector)
-            # append both vectors
-            D[k] = reduce(vcat, [d[k] for d in args])
-        elseif isa(v, AbstractMatrix)
-            # concatenate both matrices
-            D[k] = reduce(hcat, [d[k] for d in args])
+        if isa(v, Array)
+            N = ndims(v)
+            M = stack(d[k] for d in args)
+            D[k] = reshape(M, (size(M)[1:end-2]..., prod(size(M)[end-1:end])))
         elseif isa(v, AbstractDict)
             # recursively merge sub-dictionaries
             _merge_h5!(D[k], [d[k] for d in args]...)
@@ -248,12 +270,21 @@ end
 
 function _sort_h5!(D::Dict{String,Any}, p::Vector{Int})
     for (k, v) in D
-        if isa(v, AbstractVector)
-            D[k] = v[p]
-        elseif isa(v, AbstractMatrix)
-            D[k] = v[:, p]
+        if isa(v, Array)
+            # flatten all dimensions except the last one
+            ns = size(v)
+            M = reshape(v, (prod(ns[1:end-1]), ns[end]))
+            # sort (flattened) columns
+            M = M[:, p]
+            # reshape back to original dimensions
+            D[k] = reshape(M, ns)
         elseif isa(v, AbstractDict)
             _sort_h5!(v, p)
+        elseif isa(v, Union{String,Number})
+            # nothing to do
+        else
+            # safeguard for unexpected types
+            error("Unexpected type $(typeof(v)) for entry $k while sorting H5 dataset")
         end
     end
     return D

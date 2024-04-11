@@ -133,10 +133,10 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     λpt = [res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
     λqt = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_to"] for e in 1:E]
 
-    ωf = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_1"] for e in 1:E]
-    ωt = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_2"] for e in 1:E]
-    ωr = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_3"] for e in 1:E]
-    ωi = [res["solution"]["branch"]["$e"]["nu_voltage_prod_soc_4"] for e in 1:E]
+    ωf = [res["solution"]["branch"]["$e"]["nu_jabr"][1] for e in 1:E]
+    ωt = [res["solution"]["branch"]["$e"]["nu_jabr"][2] for e in 1:E]
+    ωr = [res["solution"]["branch"]["$e"]["nu_jabr"][3] for e in 1:E]
+    ωi = [res["solution"]["branch"]["$e"]["nu_jabr"][4] for e in 1:E]
 
     μθ_lb = [res["solution"]["branch"]["$e"]["mu_va_diff_lb"] for e in 1:E]
     μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
@@ -210,6 +210,32 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
         for e in 1:E
     ]
     @test norm(δwi, Inf) <= atol
+    return nothing
+end
+
+function _test_socwr_DualSolFormat()
+    data = make_basic_network(pglib("pglib_opf_case118_ieee"))
+    N = length(data["bus"])
+    E = length(data["branch"])
+
+    solver = CLRBL_SOLVER
+    opf = OPFGenerator.build_opf(SOCWRConicPowerModel, data, solver)
+    set_silent(opf.model)
+    OPFGenerator.solve!(opf)
+
+    # Check shape of dual solution
+    res = OPFGenerator.extract_result(opf)
+    @test size(res["solution"]["branch"]["1"]["nu_jabr"]) == (4,)
+    @test size(res["solution"]["branch"]["1"]["nu_sm_to"]) == (3,)
+    @test size(res["solution"]["branch"]["1"]["nu_sm_fr"]) == (3,)
+
+    # Check conversion to H5 format
+    h5 = OPFGenerator.json2h5(SOCWRConicPowerModel, res)
+
+    @test Set(collect(keys(h5))) == Set(["meta", "primal", "dual"])
+    @test size(h5["dual"]["nu_jabr"]) == (E, 4)
+    @test size(h5["dual"]["nu_sm_fr"]) == (E, 3)
+    @test size(h5["dual"]["nu_sm_to"]) == (E, 3)
     return nothing
 end
 
