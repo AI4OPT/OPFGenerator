@@ -160,66 +160,6 @@ function tensorize(V::Vector{Array{T,N}}) where {T,N}
     return stack(V)
 end
 
-function parse_jsons(config::Dict;
-    show_progress::Bool=true,
-    batch_size::Int=0,
-    force_process::Bool=true,
-)
-    exp_folder = config["export_dir"]
-    json_folder = joinpath(exp_folder, "res_json")
-    h5_folder   = joinpath(exp_folder, "res_h5")
-
-    all_files = filter(s -> endswith(s, r".json|.json.gz"), readdir(json_folder))
-    sort!(all_files)
-    N = length(all_files)
-
-    # Read first file
-    fname = all_files[1]
-    ref = load_json(joinpath(json_folder, fname))["meta"]["ref"]
-    data = make_basic_network(pglib(ref))
-
-    # If no batch size was provided, process everything in one go
-    batch_size = (batch_size <= 0) ? N : batch_size
-    F = partition(all_files, batch_size)
-    println("Processing $N results files from $(json_folder)")
-    println("Chunk size: $(batch_size) ($(length(F)) chunks)")
-    println("Results will be exported to $(joinpath(h5_folder, ref * "<chunk_index>.h5."))")
-
-    p = Progress(N; enabled=show_progress)
-
-    for (b, files) in enumerate(F)
-        f5name = joinpath(h5_folder, ref * "_$(b).h5")
-        !force_process && isfile(f5name) && continue
-
-        D = initialize_res(config)
-
-        # Process all files by chunks
-        L = ReentrantLock()
-        num_read_error = Threads.Atomic{Int}(0)
-        @threads for fname in files
-            next!(p)
-            local d = try
-                load_json(joinpath(json_folder, fname))
-            catch err
-                @info "Error while reading $(fname)" err
-                num_read_error[] += 1
-                continue
-            end
-            lock(L) do
-                add_datapoint!(D, d)
-            end
-        end
-
-        (num_read_error[] > 0) && @info "$(num_read_error[]) errors importing JSON files while processing batch $b."
-        @info "Saving batch $b to disk"
-        convert_to_h5!(D)
-        save_h5(f5name, D)
-        GC.gc()  # helps keep memory under control
-    end
-
-    return nothing
-end
-
 function _merge_h5(args...)
     N = length(args)
 
