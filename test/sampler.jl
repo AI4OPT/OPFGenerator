@@ -122,14 +122,28 @@ function test_update()
 
     rng = StableRNG(42)
     opf_sampler  = SimpleOPFSampler(data1, sampler_config)
+    data2 = rand(rng, opf_sampler)
+
     for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         solver = OPT_SOLVERS[OPF]
+
         opf1 = OPFGenerator.build_opf(OPF, data1, solver)
-        (pkgversion(OPFGenerator.MOI) >= v"1.27.2") && OPFGenerator.solve!(opf1) # see MathOptInterface.jl#2452
-        data2 = rand(rng, opf_sampler)
+        OPFGenerator.solve!(opf1)
         OPFGenerator.update!(opf1, data2)
+        
         opf2 = OPFGenerator.build_opf(OPF, data2, solver)
+        
         @test _test_update(OPF, opf1, opf2)
+
+        OPFGenerator.solve!(opf1)
+        res1 = OPFGenerator.extract_result(opf1)
+
+        OPFGenerator.solve!(opf2)
+        res2 = OPFGenerator.extract_result(opf2)
+
+        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
+        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
+        @test res1["objective"] ≈ res2["objective"]
     end
 
     return nothing
