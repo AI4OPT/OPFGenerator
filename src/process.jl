@@ -270,7 +270,7 @@ end
 
 function _sort_h5!(D::Dict{String,Any}, p::Vector{Int})
     for (k, v) in D
-        if isa(v, Array{T,N} where T)
+        if isa(v, Array)
             # flatten all dimensions except the last one
             ns = size(v)
             M = reshape(v, (prod(ns[1:end-1]), ns[end]))
