@@ -119,6 +119,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
 
+    # Dummy run (for pre-compilation)
+    data0 = make_basic_network(pglib("14_ieee"))
+    opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
+    rand(StableRNG(1), opf_sampler0)
+    for (opf0, m0) in build_models(data0, config)
+        OPFGenerator.solve!(m0[1])
+        OPFGenerator.extract_result(m0[1])
+    end
+
     no_json = get(config, "no_json", false)
     if !no_json
         resdir_json = joinpath(config["export_dir"], "res_json")
