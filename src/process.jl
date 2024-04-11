@@ -275,28 +275,46 @@ end
 
 Sort dataset `D` in increasing order of random seeds.
 
-The dictionary `D` should be in h5-compatible format.
-It is modified in-place.
+The dictionary `D` should be in h5-compatible format. It is modified in-place.
+
+The function expects `D["seed"]` or `D["meta"]["seed"]` to exist and be an array that can sorted.
+    An error is thrown if this entry is not found.
 """
 function _sort_h5!(D::Dict{String,Any})
-    p = sortperm(D["input"]["seed"])
+    seeds = if haskey(D, "seed") 
+        D["seed"][:]
+    elseif haskey(D, "meta") && haskey(D["meta"], "seed")
+        D["meta"]["seed"][:]
+    else
+        # safeguards
+        error("Cannot find random seeds")
+    end
+
+    p = sortperm(seeds)
 
     _sort_h5!(D, p)
     return nothing
 end
 
-function _sort_h5!(D::Dict{String,Any}, p::Vector{Int})
+function _sort_h5!(D::Dict{String,Any}, p::Vector{Int}; checkperm=true)
+    (!checkperm || isperm(p)) || error("Input permutation is not a valid permutation.")
     for (k, v) in D
         if isa(v, Array)
-            # flatten all dimensions except the last one
+            # Sanity checks
             ns = size(v)
+            length(p) == ns[end] || error("Invalid permutation size: entry \"$(k)\" has $(ns[end]) entries but permutation has size $(length(p)).")
+
+            # flatten all dimensions except the last one
             M = reshape(v, (prod(ns[1:end-1]), ns[end]))
             # sort (flattened) columns
             M = M[:, p]
             # reshape back to original dimensions
             D[k] = reshape(M, ns)
         elseif isa(v, AbstractDict)
-            _sort_h5!(v, p)
+            # Sort sub-dictionaries
+            # We do not need to re-check that `p` is a valid permutation, since either
+            #   1) `checkperm` was `false`, or `checkperm` was `true` and we already checked
+            _sort_h5!(v, p; checkperm=false)
         elseif isa(v, Union{String,Number})
             # nothing to do
         else
