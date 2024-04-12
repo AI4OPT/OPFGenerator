@@ -71,7 +71,8 @@ function main(data, config)
         tsol = @elapsed res = OPFGenerator.extract_result(opf)
         res["time_build"] = tbuild
         res["time_extract"] = tsol
-        d[dataset_name] = res
+        h = OPFGenerator.json2h5(OPF, res)
+        d[dataset_name] = h
     end
 
     # Done
@@ -85,15 +86,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
 
-    no_json = get(config, "no_json", false)
-
-    if !no_json
-        resdir_json = joinpath(config["export_dir"], "res_json")
-        mkpath(resdir_json)
-    else
-        D = OPFGenerator.initialize_res(config)
-    end
-
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
@@ -104,34 +96,83 @@ if abspath(PROGRAM_FILE) == @__FILE__
     data = make_basic_network(pglib(config["ref"]))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
 
-    OPFs = keys(config["OPF"])
+    # Data info
+    N = length(data["bus"])
+    E = length(data["branch"])
+    L = length(data["load"])
+    G = length(data["gen"])
+
+    OPFs = sort(collect(keys(config["OPF"])))
     caseref = config["ref"]
     
+    # Place-holder for results. 
+    # For each OPF configutation, we keep a Vector of individual h5 outputs
+    # These are concatenated at the end to create one H5 file per OPF configuration
+    D = Dict{String,Any}()
+    D["input"] = Dict{String,Any}(
+        "meta" => Dict{String,Any}("seed" => Int[]),
+        "data" => Dict{String,Any}(
+            "pd" => Vector{Float64}[],
+            "qd" => Vector{Float64}[],
+            "br_status" => Vector{Bool}[],
+        )
+    )
+    for dataset_name in OPFs
+        D[dataset_name] = Dict{String,Any}(
+            "meta" => Dict{String,Any}(),
+            "primal" => Dict{String,Any}(),
+            "dual" => Dict{String,Any}(),
+        )
+    end
+
     # Data generation
     @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]\nDatasets: $OPFs"
     for s in smin:smax
         rng = StableRNG(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
-        tsolve = @elapsed d = main(data_, config)
-        d["meta"]["seed"] = s
+        tsolve = @elapsed res = main(data_, config)
+        res["meta"]["seed"] = s
 
-        if !no_json
-            twrite = @elapsed save_json(joinpath(resdir_json, config["ref"] * "_s$s.json.gz"), d)
-        else
-            twrite = @elapsed OPFGenerator.add_datapoint!(D, d)
+        # Update input data
+        push!(D["input"]["meta"]["seed"], s)
+        push!(D["input"]["data"]["pd"], [data_["load"]["$l"]["pd"] for l in 1:L])
+        push!(D["input"]["data"]["qd"], [data_["load"]["$l"]["qd"] for l in 1:L])
+        push!(D["input"]["data"]["br_status"], [Bool(data_["branch"]["$e"]["br_status"]) for e in 1:E])
+
+        # Add output results, one for each OPF dataset
+        for dataset_name in OPFs
+            h = res[dataset_name]
+            d = D[dataset_name]
+            for (k1, v1) in h
+                for (k2, v2) in v1
+                    get!(d[k1], k2, Vector{typeof(v2)}())
+                    push!(d[k1][k2], v2)
+                end
+            end
         end
-
-        @info "Seed $s" tgen tsolve twrite
+        @info "Seed $s" tgen tsolve
     end
-
     @info "All instances completed."
 
-    if no_json
-        tconvert = @elapsed OPFGenerator.convert_to_h5!(D)
-        filepath = joinpath(config["export_dir"], "res_h5", caseref * "_s$smin-s$smax.h5")
+    # Tensorize everything in preparation for saving to disk
+    D["input"]["meta"]["seed"] = OPFGenerator.tensorize(D["input"]["meta"]["seed"])
+    for (k1, v1) in D["input"]["data"]
+        D["input"]["data"][k1] = OPFGenerator.tensorize(v1)
+    end
+    for dataset_name in OPFs
+        d = D[dataset_name]
+        for (k1, v1) in d, (k2, v2) in v1
+            d[k1][k2] = OPFGenerator.tensorize(v2)
+        end
+        # Track random seed in dataset meta info, to simplify for post-processing
+        d["meta"]["seed"] = copy(D["input"]["meta"]["seed"])
+    end
+
+    # Save to disk in separate h5 files
+    for (k, v) in D
+        filepath = joinpath(config["export_dir"], "res_h5", "$(caseref)_$(k)_s$(smin)-s$(smax).h5")
         mkpath(dirname(filepath))
-        th5write = @elapsed OPFGenerator.save_h5(filepath, D)
-        @info "Wrote HDF5 to $filepath" tconvert th5write
+        th5write = @elapsed OPFGenerator.save_h5(filepath, v)
     end
 
     return nothing
