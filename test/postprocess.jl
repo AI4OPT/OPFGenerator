@@ -1,9 +1,9 @@
 function test_tensorize()
     # Vector of scalars
     V = [1.0, 2.0, 3.0, 4.0]
-    @test OPFGenerator.tensorize(V) == [1.0 2.0 3.0 4.0]
+    @test OPFGenerator.tensorize(V) == [1.0, 2.0, 3.0, 4.0]
     V = ["1.0", "2.0", "3.0", "4.0", "e", "f"]
-    @test OPFGenerator.tensorize(V) == ["1.0" "2.0" "3.0" "4.0" "e" "f"]
+    @test OPFGenerator.tensorize(V) == ["1.0", "2.0", "3.0", "4.0", "e", "f"]
     
     # Vector of vectors
     V = [(10*i) .+ collect(1:4) for i in 1:3]
