@@ -85,3 +85,28 @@ function _sort_h5!(D::Dict{String,Any}, p::Vector{Int}; checkperm=true)
     end
     return D
 end
+
+function _dedupe!(D::Dict{String,Any})
+    seeds = D["meta"]["seed"]
+    unique_seeds_idx = unique(i -> seeds[i], eachindex(seeds))
+    if length(unique_seeds_idx) == length(seeds)
+        return D
+    end
+
+    _dedupe!(D, unique_seeds_idx)
+end
+
+function _dedupe!(D::Dict{String,Any}, unique_seeds_idx::Vector{Int})
+    for (k, v) in D
+        if isa(v, Array)
+            D[k] = convert(typeof(v), selectdim(v, ndims(v), unique_seeds_idx))
+        elseif isa(v, AbstractDict)
+            _dedupe!(v, unique_seeds_idx)
+        elseif isa(v, Union{String,Number})
+            # nothing to do
+        else
+            error("Unexpected type $(typeof(v)) for entry $k while deduping H5 dataset")
+        end
+    end
+    return D
+end

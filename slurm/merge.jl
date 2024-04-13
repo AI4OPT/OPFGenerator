@@ -26,6 +26,7 @@ function main(config::Dict)
         # Merge minibatches, sort, and export to disk
         D = OPFGenerator._merge_h5(Ds)
         OPFGenerator._sort_h5!(D)
+        OPFGenerator._dedupe!(D)
 
         # Save dataset to disk
         get!(D, "meta", Dict{String,Any}())
