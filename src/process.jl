@@ -13,13 +13,9 @@ Similar to `Base.stack`, with one major difference: if `V` is a vector of scalar
 This function is only defined for `Vector{T}` and `Vector{Array{T,N}}` inputs,
     to avoid any unexpected behavior of `Base.stack`.
 """
-function tensorize(V::Vector{T}) where {T}
-    # Check that all elements have same size
+function tensorize(V::Vector{T}) where {T <: Union{String,Number}}
     length(V) > 0 || error("Trying to tensorize an empty collection")
-
-    # We do not use `reduce(hcat, V)` to avoid type instability.
-    # Since `V` may be an arbitrary collection, we explictly allocate the output
-    return reshape(copy(V), (1, length(V)))
+    return V
 end
 
 function tensorize(V::Vector{Array{T,N}}) where {T,N}
@@ -40,8 +36,7 @@ function _merge_h5(V::Vector{<:Dict})
 end
 
 function _merge_h5(V::Vector{Array{T,N}}) where{T,N}
-    M = stack(V)
-    return reshape(M, (size(M)[1:end-2]..., prod(size(M)[end-1:end])))
+    return cat(V..., dims=ndims(first(V)))
 end
 
 """
@@ -56,7 +51,7 @@ The function expects `D["seed"]` or `D["meta"]["seed"]` to exist and be an array
 """
 function _sort_h5!(D::Dict{String,Any})
     haskey(D, "meta") && haskey(D["meta"], "seed") || error("Invalid H5 dataset: missing random seeds in the \"meta\" section.")
-    seeds::Vector{Int} = D["meta"]["seed"][:]
+    seeds::Vector{Int} = D["meta"]["seed"]
     p = sortperm(seeds)
     _sort_h5!(D, p)
     return nothing
