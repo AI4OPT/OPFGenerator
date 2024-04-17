@@ -23,4 +23,34 @@ function test_tensorize()
     return nothing
 end
 
+function test_merge_h5_array()
+    # Merge arrays of multiple dimensions
+    for N in 1:4
+        # ⚠ the memory below is `N!`, so keep `N` under control (no more than 6)
+        V = [i .* ones(Float64, 1:N...) for i in 1:4]
+
+        # Check for type stability
+        M = @inferred Array{Float64,N} OPFGenerator._merge_h5(V)
+
+        # Checck output
+        @test size(M) == (1:(N-1)..., 4*N)
+        # `_merge_h5` should concatenate the arrays along the last dimension
+        # (but uses a more efficient implementation for dealing with many arrays)
+        @test M == cat(V...; dims=ndims(M))
+    end
+
+    # merge with different minibatch sizes
+    # a `Base.stack`-based implementation should fail this
+    V = [
+        [100 * i1 + 10*i2 + i3 for i1 in 1:2, i2 in 1:3, i3 in 1:2],
+        [100 * i1 + 10*i2 + (2+i3) for i1 in 1:2, i2 in 1:3, i3 in 1:4],
+        [100 * i1 + 10*i2 + (6+i3) for i1 in 1:2, i2 in 1:3, i3 in 1:3],
+    ]
+    M = OPFGenerator._merge_h5(V)
+    @test M == [100 * i1 + 10*i2 + i3 for i1 in 1:2, i2 in 1:3, i3 in 1:9]
+
+    return nothing
+end
+
 @testset test_tensorize()
+@testset test_merge_h5_array()
