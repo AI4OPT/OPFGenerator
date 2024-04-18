@@ -72,7 +72,7 @@ The dictionary `D` should be in h5-compatible format. It is modified in-place.
 The function expects `D["meta"]["seed"]` to exist and be a `Vector{Int}`.
     An error is thrown if such an entry is not found.
 """
-function _sort_h5!(D::Dict{String,Any})
+function _sort_h5!(D)
     haskey(D, "meta") && haskey(D["meta"], "seed") || error("Invalid H5 dataset: missing random seeds in the \"meta\" section.")
     seeds::Vector{Int} = D["meta"]["seed"]
     p = sortperm(seeds)
@@ -84,7 +84,7 @@ end
 
 De-duplicate points in h5 dataset `D`, according to their random seed.
 """
-function _dedupe_h5!(D::Dict{String,Any})
+function _dedupe_h5!(D)
     seeds = D["meta"]["seed"]
     unique_seeds_idx = unique(i -> seeds[i], eachindex(seeds))
     if length(unique_seeds_idx) == length(seeds)
@@ -101,7 +101,7 @@ De-duplicated and sort dataset `D` in increasing order of random seeds.
 
 Equivalent to `_dedupe_h5!(D); _sort_h5!(D)`, but more efficient.
 """
-function _dedupe_and_sort_h5!(D::Dict{String,Any})
+function _dedupe_and_sort_h5!(D)
     seeds = D["meta"]["seed"]
     # identify indices of unique seeds
     p = unique(i -> seeds[i], eachindex(seeds))
@@ -125,12 +125,10 @@ Select data points in `D` as indicated by `p`.
 * If `p` is a logical vector, then it should have the same length as `D["meta"]["seed"]`.
     Only datapoints `i` for which `p[i]` is `true` are selected.
 """
-function _select_h5!(D::Dict{String,Any}, p)
+function _select_h5!(D::Dict, p)
     for (k, v) in D
         if isa(v, Array)
-            # Sanity checks
             ns = size(v)
-            length(p) == ns[end] || error("Invalid permutation size: entry \"$(k)\" has $(ns[end]) entries but permutation has size $(length(p)).")
 
             # flatten all dimensions except the last one
             M = reshape(v, (prod(ns[1:end-1]), ns[end]))
