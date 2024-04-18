@@ -69,19 +69,63 @@ Sort dataset `D` in increasing order of random seeds.
 
 The dictionary `D` should be in h5-compatible format. It is modified in-place.
 
-The function expects `D["seed"]` or `D["meta"]["seed"]` to exist and be an array that can sorted.
-    An error is thrown if this entry is not found.
+The function expects `D["meta"]["seed"]` to exist and be a `Vector{Int}`.
+    An error is thrown if such an entry is not found.
 """
 function _sort_h5!(D::Dict{String,Any})
     haskey(D, "meta") && haskey(D["meta"], "seed") || error("Invalid H5 dataset: missing random seeds in the \"meta\" section.")
     seeds::Vector{Int} = D["meta"]["seed"]
     p = sortperm(seeds)
-    _sort_h5!(D, p)
-    return nothing
+    _select_h5!(D, p)
 end
 
-function _sort_h5!(D::Dict{String,Any}, p::Vector{Int}; checkperm=true)
-    (!checkperm || isperm(p)) || error("Input permutation is not a valid permutation.")
+"""
+    _dedupe_h5!(D)
+
+De-duplicate points in h5 dataset `D`, according to their random seed.
+"""
+function _dedupe_h5!(D::Dict{String,Any})
+    seeds = D["meta"]["seed"]
+    unique_seeds_idx = unique(i -> seeds[i], eachindex(seeds))
+    if length(unique_seeds_idx) == length(seeds)
+        return D
+    end
+
+    _select_h5!(D, unique_seeds_idx)
+end
+
+"""
+    _dedupe_and_sort_h5!(D)
+
+De-duplicated and sort dataset `D` in increasing order of random seeds.
+
+Equivalent to `_dedupe_h5!(D); _sort_h5!(D)`, but more efficient.
+"""
+function _dedupe_and_sort_h5!(D::Dict{String,Any})
+    seeds = D["meta"]["seed"]
+    # identify indices of unique seeds
+    p = unique(i -> seeds[i], eachindex(seeds))
+    # sort indices according to the correspodning random seed
+    q = sortperm(seeds[p])
+    p = p[q]
+    # filter dataset based on unique and sorted seeds
+    _select_h5!(D, p)
+end
+
+"""
+    _select_h5!(D, p)
+
+Select data points in `D` as indicated by `p`.
+
+`D` should be a dictionary in h5-compatible format, and `p` is either a
+    vector of indices, or a logical vector of the same length as `D["meta"]["seed"]`.
+
+* If `p` is a vector of indices, then all values of `p` should be integers 
+    between `1` and the number of elements in `D`
+* If `p` is a logical vector, then it should have the same length as `D["meta"]["seed"]`.
+    Only datapoints `i` for which `p[i]` is `true` are selected.
+"""
+function _select_h5!(D::Dict{String,Any}, p)
     for (k, v) in D
         if isa(v, Array)
             # Sanity checks
@@ -90,45 +134,18 @@ function _sort_h5!(D::Dict{String,Any}, p::Vector{Int}; checkperm=true)
 
             # flatten all dimensions except the last one
             M = reshape(v, (prod(ns[1:end-1]), ns[end]))
-            # sort (flattened) columns
+            # select (flattened) columns
             M = M[:, p]
             # reshape back to original dimensions
-            D[k] = reshape(M, ns)
+            D[k] = reshape(M, (ns[1:(end-1)]..., size(M, ndims(M))))
         elseif isa(v, AbstractDict)
-            # Sort sub-dictionaries
-            # We do not need to re-check that `p` is a valid permutation, since either
-            #   1) `checkperm` was `false`, or `checkperm` was `true` and we already checked
-            _sort_h5!(v, p; checkperm=false)
+            # Propagate to child dictionaries
+            _select_h5!(v, p)
         elseif isa(v, Union{String,Number})
-            # nothing to do
+            # Nothing to do
         else
             # safeguard for unexpected types
-            error("Unexpected type $(typeof(v)) for entry $k while sorting H5 dataset")
-        end
-    end
-    return D
-end
-
-function _dedupe!(D::Dict{String,Any})
-    seeds = D["meta"]["seed"]
-    unique_seeds_idx = unique(i -> seeds[i], eachindex(seeds))
-    if length(unique_seeds_idx) == length(seeds)
-        return D
-    end
-
-    _dedupe!(D, unique_seeds_idx)
-end
-
-function _dedupe!(D::Dict{String,Any}, unique_seeds_idx::Vector{Int})
-    for (k, v) in D
-        if isa(v, Array)
-            D[k] = convert(typeof(v), selectdim(v, ndims(v), unique_seeds_idx))
-        elseif isa(v, AbstractDict)
-            _dedupe!(v, unique_seeds_idx)
-        elseif isa(v, Union{String,Number})
-            # nothing to do
-        else
-            error("Unexpected type $(typeof(v)) for entry $k while deduping H5 dataset")
+            error("Unexpected type $(typeof(v)) for entry $k while selecting sub-H5 dataset")
         end
     end
     return D
