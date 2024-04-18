@@ -24,6 +24,14 @@ function test_tensorize()
 end
 
 function test_merge_h5_array()
+    # Cannot merge empty collection
+    V = Array{Float64,1}[]
+    @test_throws ErrorException OPFGenerator._merge_h5(V)
+
+    # Check that trying to merge arrays of wrong sizes yields an error
+    V = [ones(1, 2, 3), ones(2, 1, 3)]
+    @test_throws DimensionMismatch OPFGenerator._merge_h5(V)
+
     # Merge arrays of multiple dimensions
     for N in 1:4
         # ⚠ the memory below is `N!`, so keep `N` under control (no more than 6)
