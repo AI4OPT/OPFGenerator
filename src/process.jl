@@ -35,8 +35,31 @@ function _merge_h5(V::Vector{<:Dict})
     return D
 end
 
+"""
+    _merge_h5(V::Vector{Array{T,N})
+
+Concatenate a collection of `N`-dimensional arrays along their last dimension.
+
+This function is semantically equivalent to `cat(V...; dims=ndims(first(V)))`,
+    but uses a more efficient, splatting-free, implementation.
+All elements of `V` must have the same size in the first `N-1` dimensions.
+"""
 function _merge_h5(V::Vector{Array{T,N}}) where{T,N}
-    return cat(V..., dims=ndims(first(V)))
+    # Dimension checks
+    length(V) > 0 || error("Cannot merge an empty collection")
+    ns = size(V[1])[1:(N-1)]
+    mapreduce(x -> size(x)[1:(N-1)] == ns, &, V) || throw(DimensionMismatch(
+        "Incompatible dimensions for merging H5 dataset: all arrays must have same first `N-1` dimensions"
+    ))
+
+    # The code below does the same as `cat(V...; dims=ndims(first(V)))`
+    # 1. each array is reshaped to flatten its first `N-1` dimensions
+    nt = prod(ns)
+    U = map(x -> reshape(x, (nt, size(x, ndims(x)))), V)
+    # 2. use efficient reduce+hcat to concatenate the (reshaped) arrays
+    W = reduce(hcat, U)
+    # 3. reshape back to original dimensions
+    return reshape(W, (ns..., size(W, ndims(W))))
 end
 
 """
