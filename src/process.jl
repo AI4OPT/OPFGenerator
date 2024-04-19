@@ -13,9 +13,9 @@ Similar to `Base.stack`, with one major difference: if `V` is a vector of scalar
 This function is only defined for `Vector{T}` and `Vector{Array{T,N}}` inputs,
     to avoid any unexpected behavior of `Base.stack`.
 """
-function tensorize(V::Vector{T}) where {T <: Union{String,Number}}
+function tensorize(V::Vector{T}) where {T}
     length(V) > 0 || error("Trying to tensorize an empty collection")
-    return V
+    return copy(V)
 end
 
 function tensorize(V::Vector{Array{T,N}}) where {T,N}
