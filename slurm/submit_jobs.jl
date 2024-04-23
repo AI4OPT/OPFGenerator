@@ -30,7 +30,6 @@ datasetname = splitdir(result_dir)[end]
 
 opfgenerator_dir = "$(@__DIR__)/../"
 sampler_script = joinpath(opfgenerator_dir, "exp", "sampler.jl")
-extract_script = joinpath(opfgenerator_dir, "exp", "extract.jl")
 
 slurm_dir = joinpath(result_dir, "slurm")
 json_dir = joinpath(result_dir, "res_json")
@@ -105,8 +104,7 @@ extract_sbatch = Mustache.render(
         charge_account=charge_account, 
         logs_dir=logs_dir, 
         queue=queue, 
-        opfgenerator_dir=opfgenerator_dir, 
-        extract_script=extract_script, 
+        opfgenerator_dir=opfgenerator_dir,
         config_file=config_file,
         extract_memory=extract_memory,
         cpus_per_task=cpus_per_task,

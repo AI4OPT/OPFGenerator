@@ -9,7 +9,6 @@ config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 casename = config["ref"]
 export_dir = config["export_dir"]
-datasetname = splitdir(export_dir)[end]
 
 data = make_basic_network(pglib(casename))
 
@@ -34,4 +33,4 @@ ttrial = @elapsed for dataset_name in keys(opf_models)
     d[dataset_name]["time_build"] = opf_models[dataset_name][2]
 end
 
-OPFGenerator.save_json("$(export_dir)/$(datasetname).ref.json", d)
+OPFGenerator.save_json("$(export_dir)/$(casename).ref.json", d)

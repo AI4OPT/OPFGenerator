@@ -13,5 +13,4 @@
 
 cd {{{:opfgenerator_dir}}}
 
-julia --project=. -t{{:cpus_per_task}} {{{:extract_script}}} {{{:config_file}}}
 julia --project=. -t{{:cpus_per_task}} slurm/merge.jl {{{:config_file}}}

@@ -283,23 +283,15 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
             if OPF == PM.SOCWRPowerModel
                 brsol["mu_sm_to"] = 0.0
                 brsol["mu_sm_fr"] = 0.0
-                brsol["mu_voltage_prod_quad"] = 0.0
+                brsol["mu_jabr"] = 0.0
             elseif OPF == PM.SOCWRConicPowerModel
-                # conic duals (unrolled)
-                brsol["nu_voltage_prod_soc_1"] = 0.0
-                brsol["nu_voltage_prod_soc_2"] = 0.0
-                brsol["nu_voltage_prod_soc_3"] = 0.0
-                brsol["nu_voltage_prod_soc_4"] = 0.0
-                brsol["nu_sm_to_1"] = 0.0
-                brsol["nu_sm_to_2"] = 0.0
-                brsol["nu_sm_to_3"] = 0.0
-                brsol["nu_sm_fr_1"] = 0.0
-                brsol["nu_sm_fr_2"] = 0.0
-                brsol["nu_sm_fr_3"] = 0.0
+                # conic duals (vector-shaped)
+                brsol["nu_jabr"] = [0.0, 0.0, 0.0, 0.0]
+                brsol["nu_sm_to"] = [0.0, 0.0, 0.0]
+                brsol["nu_sm_fr"] = [0.0, 0.0, 0.0]
             end
         else
-            bp = (ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"])
-            sol["branch"]["$b"] = brsol = Dict(
+            sol["branch"]["$b"] = brsol = Dict{String,Any}(
                 "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
@@ -324,21 +316,11 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
             if OPF == PM.SOCWRPowerModel
                 brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
-                brsol["mu_voltage_prod_quad"] = dual(model[:jabr][b])
+                brsol["mu_jabr"] = dual(model[:jabr][b])
             elseif OPF == PM.SOCWRConicPowerModel
-                nu_voltage_prod_soc = dual(model[:jabr][b])
-                brsol["nu_voltage_prod_soc_1"] = nu_voltage_prod_soc[1]
-                brsol["nu_voltage_prod_soc_2"] = nu_voltage_prod_soc[2]
-                brsol["nu_voltage_prod_soc_3"] = nu_voltage_prod_soc[3]
-                brsol["nu_voltage_prod_soc_4"] = nu_voltage_prod_soc[4]
-                nu_sm_to = dual(model[:thermal_limit_to][b])
-                brsol["nu_sm_to_1"] = nu_sm_to[1]
-                brsol["nu_sm_to_2"] = nu_sm_to[2]
-                brsol["nu_sm_to_3"] = nu_sm_to[3]
-                nu_sm_fr = dual(model[:thermal_limit_fr][b])
-                brsol["nu_sm_fr_1"] = nu_sm_fr[1]
-                brsol["nu_sm_fr_2"] = nu_sm_fr[2]
-                brsol["nu_sm_fr_3"] = nu_sm_fr[3]
+                brsol["nu_jabr"] = dual(model[:jabr][b])
+                brsol["nu_sm_to"] = dual(model[:thermal_limit_to][b])
+                brsol["nu_sm_fr"] = dual(model[:thermal_limit_fr][b])
             end
         end
     end
@@ -411,19 +393,12 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCW
     if OPF == PM.SOCWRPowerModel
         dres_h5["mu_sm_to"] = zeros(Float64, E)
         dres_h5["mu_sm_fr"] = zeros(Float64, E)
-        dres_h5["mu_voltage_prod_quad"] = zeros(Float64, E)
+        dres_h5["mu_jabr"] = zeros(Float64, E)
     elseif OPF == PM.SOCWRConicPowerModel
         # conic duals (unrolled)
-        dres_h5["nu_voltage_prod_soc_1"] = zeros(Float64, E)
-        dres_h5["nu_voltage_prod_soc_2"] = zeros(Float64, E)
-        dres_h5["nu_voltage_prod_soc_3"] = zeros(Float64, E)
-        dres_h5["nu_voltage_prod_soc_4"] = zeros(Float64, E)
-        dres_h5["nu_sm_to_1"] = zeros(Float64, E)
-        dres_h5["nu_sm_to_2"] = zeros(Float64, E)
-        dres_h5["nu_sm_to_3"] = zeros(Float64, E)
-        dres_h5["nu_sm_fr_1"] = zeros(Float64, E)
-        dres_h5["nu_sm_fr_2"] = zeros(Float64, E)
-        dres_h5["nu_sm_fr_3"] = zeros(Float64, E)
+        dres_h5["nu_jabr"] = zeros(Float64, E, 4)
+        dres_h5["nu_sm_to"] = zeros(Float64, E, 3)
+        dres_h5["nu_sm_fr"] = zeros(Float64, E, 3)
     end
 
     # extract from ACOPF solution
@@ -473,19 +448,12 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCW
         if OPF == PM.SOCWRPowerModel
             dres_h5["mu_sm_to"][e] = brsol["mu_sm_to"]
             dres_h5["mu_sm_fr"][e] = brsol["mu_sm_fr"]
-            dres_h5["mu_voltage_prod_quad"][e] = brsol["mu_voltage_prod_quad"]
+            dres_h5["mu_jabr"][e] = brsol["mu_jabr"]
         elseif OPF == PM.SOCWRConicPowerModel
             # conic duals (unrolled)
-            dres_h5["nu_voltage_prod_soc_1"][e] = brsol["nu_voltage_prod_soc_1"]
-            dres_h5["nu_voltage_prod_soc_2"][e] = brsol["nu_voltage_prod_soc_2"]
-            dres_h5["nu_voltage_prod_soc_3"][e] = brsol["nu_voltage_prod_soc_3"]
-            dres_h5["nu_voltage_prod_soc_4"][e] = brsol["nu_voltage_prod_soc_4"]
-            dres_h5["nu_sm_to_1"][e] = brsol["nu_sm_to_1"]
-            dres_h5["nu_sm_to_2"][e] = brsol["nu_sm_to_2"]
-            dres_h5["nu_sm_to_3"][e] = brsol["nu_sm_to_3"]
-            dres_h5["nu_sm_fr_1"][e] = brsol["nu_sm_fr_1"]
-            dres_h5["nu_sm_fr_2"][e] = brsol["nu_sm_fr_2"]
-            dres_h5["nu_sm_fr_3"][e] = brsol["nu_sm_fr_3"]
+            dres_h5["nu_jabr"][e, :] .= brsol["nu_jabr"]
+            dres_h5["nu_sm_to"][e, :] .= brsol["nu_sm_to"]
+            dres_h5["nu_sm_fr"][e, :] .= brsol["nu_sm_fr"]
         end
     end
 

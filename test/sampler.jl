@@ -160,16 +160,6 @@ function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerMo
 end
 
 
-function check_results_json(filepath)
-    res = load_json(filepath)
-    for opf in keys(res)
-        (opf == "meta" || opf == "data") && continue
-        @test res[opf]["termination_status"] ∈ ["LOCALLY_SOLVED", "OPTIMAL"]
-        @test res[opf]["primal_status"] == "FEASIBLE_POINT"
-        @test res[opf]["dual_status"] == "FEASIBLE_POINT"
-    end
-end
-
 function test_sampler_script()
     sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
     config_file = joinpath(@__DIR__, "config.toml")
@@ -181,16 +171,32 @@ function test_sampler_script()
 
     @test success(proc)
 
-    # test that the output files are created and termination status is as expected
-    for s in smin:smax
-        path_parts = [config["export_dir"], "res_json", "$(caseref)_s$s.json.gz"]
-        if !isabspath(config["export_dir"])
-            path_parts = ["..", path_parts...]
-        end
-        resfile = joinpath(path_parts...)
+    OPFs = collect(keys(config["OPF"]))
 
-        @test isfile(resfile)
-        check_results_json(resfile)
+    h5_dir = joinpath(@__DIR__, "..", config["export_dir"], "res_h5")
+
+    @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
+
+    h5_paths = [
+        joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
+        for opf in OPFs
+    ]
+    @test all(isfile.(h5_paths))
+    
+    for h5_path in h5_paths
+        h5open(h5_path, "r") do h5
+            @test haskey(h5, "meta")
+            @test haskey(h5, "primal")
+            @test haskey(h5, "dual")
+            n_seed = length(h5["meta"]["seed"])
+            @test n_seed == smax - smin + 1
+            for i in 1:n_seed
+                @test h5["meta"]["termination_status"][i] ∈ ["OPTIMAL", "LOCALLY_SOLVED"]
+                @test h5["meta"]["primal_status"][i] == "FEASIBLE_POINT"
+                @test h5["meta"]["dual_status"][i] == "FEASIBLE_POINT"
+                @test h5["meta"]["seed"][i] == smin + i - 1
+            end
+        end
     end
 end
 

@@ -1,234 +1,65 @@
 using Base.Iterators
 using Base.Threads
-using ProgressMeter
 
 """
-    initialize_res(data)
+    tensorize(V)
 
-Create an empty dataset for original instance `data`.
+Concatenate elements of `V` into a higher-dimensional tensor.
 
-This function outputs a dictionary `D` that is meant to be passed to
-    [`add_datapoint!`](@ref).
+Similar to `Base.stack`, with one major difference: if `V` is a vector of scalars,
+    the result is a 2D array `M` whose last dimension is `length(V)`,
+    and such that `M[:, i] == V[i]`.
+
+This function is only defined for `Vector{T}` and `Vector{Array{T,N}}` inputs,
+    to avoid any unexpected behavior of `Base.stack`.
 """
-function initialize_res(config)
-    casename = config["ref"]
-    data     = make_basic_network(pglib(casename))
-
-    # Grab some information
-    opf_formulations = sort(collect(keys(config["OPF"])))
-
-    # initialize dataset
-    D = Dict{String,Any}(
-        "meta" => Dict{String,Any}(
-            "ref"  => data["name"],
-            "config" => deepcopy(config),
-        ),
-        "input" => Dict{String,Any}(
-            "seed"      => Int[],
-            "pd"        => Vector{Float64}[],
-            "qd"        => Vector{Float64}[],
-            "br_status" => Vector{Bool}[],
-        ),
-    )
-
-    for opf_formulation in opf_formulations
-        D[opf_formulation] = Dict{String,Any}(
-            "meta" => Dict{String,Any}(
-                "termination_status" => String[],
-                "primal_status" => String[],
-                "dual_status" => String[],
-                "solve_time" => Float64[],
-                "primal_objective_value" => Float64[],
-                "dual_objective_value" => Float64[],
-            ),
-            "primal" => Dict{String,Any}(),
-            "dual"   => Dict{String,Any}(),
-        )
-    end
-
-    return D
+function tensorize(V::Vector{T}) where {T}
+    length(V) > 0 || error("Trying to tensorize an empty collection")
+    return copy(V)
 end
 
-function add_datapoint!(D, d)
-    config = D["meta"]["config"]
+function tensorize(V::Vector{Array{T,N}}) where {T,N}
+    length(V) > 0 || error("Trying to tensorize an empty collection")
+    return stack(V)
+end
 
-    D_input::Dict{String,Any}    = D["input"]
-    meta::Dict{String,Any} = d["meta"]
-    data::Dict{String,Any} = d["data"]
+function _merge_h5(V::Vector{<:Dict})
+    length(V) > 0 || error("Cannot merge an empty collection")
 
-    N = length(data["bus"])
-    E = length(data["branch"])
-    L = length(data["load"])
-    G = length(data["gen"])
-
-    # TODO: sanity checks
-    @assert d["meta"]["ref"] == config["ref"]
-    @assert all(haskey(d, k) for (k, v) in config["OPF"])
-
-    # Meta info
-    seed::Int = meta["seed"]
-    push!(D["input"]["seed"], seed)
-
-    # Input data
-    pd::Vector{Float64} = [data["load"]["$l"]["pd"] for l in 1:L]
-    qd::Vector{Float64} = [data["load"]["$l"]["qd"] for l in 1:L]
-    br::Vector{Bool}    = [Bool(data["branch"]["$e"]["br_status"]) for e in 1:E]
-    push!(D_input["pd"], pd)
-    push!(D_input["qd"], qd)
-    push!(D_input["br_status"], br)
-
-    # Add OPF solutions
-    opf_formulations = sort(collect((k, d["type"]) for (k, d) in config["OPF"]))
-    for (opf_name, opf_type) in opf_formulations
-        Dsol = get!(D, opf_name, Dict{String,Any}())
-        resh5 = json2h5(OPF2TYPE[opf_type], d[opf_name])
-        for cat in ["meta", "primal", "dual"]
-            get!(Dsol, cat, Dict{String,Any}())
-            for (k, v) in resh5[cat]
-                if !haskey(Dsol[cat], k)
-                    Dsol[cat][k] = [v]  # Make sure that all relevant keys exist
-                else
-                    # NaN and ±Inf values are not supported by JSON,
-                    #   and will be read (from disk) as `nothing`.
-                    # To avoid any issue, we replace `nothing` with `NaN` when expecting a number.
-                    T = eltype(Dsol[cat][k])
-                    v = (v === nothing &&  (T <: Real)) ? T(NaN) : v
-                    push!(Dsol[cat][k], v)
-                end
-            end
-        end
+    v0 = V[1]
+    D = Dict{String,Any}()
+    for k in keys(v0)
+        D[k] = _merge_h5([v[k] for v in V])
     end
 
     return D
 end
 
 """
-    convert_to_h5!(D)
+    _merge_h5(V::Vector{Array{T,N})
 
-Convert dataset `D` from list-of-list to h5-compatible format.
+Concatenate a collection of `N`-dimensional arrays along their last dimension.
 
-The input dictionary `D` should be the output of [`initialize_res`](@ref),
-    to which an arbitrary number of datapoints have been added.
-This function replaces non h5-compatible arrays (namely vectors of vectors)
-    with contiguous arrays (`Matrix`).
-The dataset `D` is modified in-place.
+This function is semantically equivalent to `cat(V...; dims=ndims(first(V)))`,
+    but uses a more efficient, splatting-free, implementation.
+All elements of `V` must have the same size in the first `N-1` dimensions.
 """
-function convert_to_h5!(D::Dict)
-    config = D["meta"]["config"]
-    # Input data
-    dat  = D["input"]
-    for k in ["pd", "qd", "br_status"]
-        dat[k] = _vecvec2mat(dat[k])
-    end
-        
-    opf_formulations = sort(collect(keys(config["OPF"])))
-    for opf_formulation in opf_formulations
-        opfres = D[opf_formulation]
-        for cat in ["meta", "primal", "dual"]
-            for (k, v) in opfres[cat]
-                opfres[cat][k] = _vecvec2mat(v)
-            end
-        end
-    end
+function _merge_h5(V::Vector{Array{T,N}}) where{T,N}
+    # Dimension checks
+    length(V) > 0 || error("Cannot merge an empty collection")
+    ns = size(V[1])[1:(N-1)]
+    mapreduce(x -> size(x)[1:(N-1)] == ns, &, V) || throw(DimensionMismatch(
+        "Incompatible dimensions for merging H5 dataset: all arrays must have same first `N-1` dimensions"
+    ))
 
-    return nothing
-end
-
-_vecvec2mat(V) = reduce(hcat, V)
-
-function parse_jsons(config::Dict;
-    show_progress::Bool=true,
-    batch_size::Int=0,
-    force_process::Bool=true,
-)
-    exp_folder = config["export_dir"]
-    json_folder = joinpath(exp_folder, "res_json")
-    h5_folder   = joinpath(exp_folder, "res_h5")
-
-    all_files = filter(s -> endswith(s, r".json|.json.gz"), readdir(json_folder))
-    sort!(all_files)
-    N = length(all_files)
-
-    # Read first file
-    fname = all_files[1]
-    ref = load_json(joinpath(json_folder, fname))["meta"]["ref"]
-    data = make_basic_network(pglib(ref))
-
-    # If no batch size was provided, process everything in one go
-    batch_size = (batch_size <= 0) ? N : batch_size
-    F = partition(all_files, batch_size)
-    println("Processing $N results files from $(json_folder)")
-    println("Chunk size: $(batch_size) ($(length(F)) chunks)")
-    println("Results will be exported to $(joinpath(h5_folder, ref * "<chunk_index>.h5."))")
-
-    p = Progress(N; enabled=show_progress)
-
-    for (b, files) in enumerate(F)
-        f5name = joinpath(h5_folder, ref * "_$(b).h5")
-        !force_process && isfile(f5name) && continue
-
-        D = initialize_res(config)
-
-        # Process all files by chunks
-        L = ReentrantLock()
-        num_read_error = Threads.Atomic{Int}(0)
-        @threads for fname in files
-            next!(p)
-            local d = try
-                load_json(joinpath(json_folder, fname))
-            catch err
-                @info "Error while reading $(fname)" err
-                num_read_error[] += 1
-                continue
-            end
-            lock(L) do
-                add_datapoint!(D, d)
-            end
-        end
-
-        (num_read_error[] > 0) && @info "$(num_read_error[]) errors importing JSON files while processing batch $b."
-        @info "Saving batch $b to disk"
-        convert_to_h5!(D)
-        save_h5(f5name, D)
-        GC.gc()  # helps keep memory under control
-    end
-
-    return nothing
-end
-
-function _merge_h5(args...)
-    N = length(args)
-
-    # Check that all arguments are Dict
-    all(d -> isa(d, AbstractDict), args) || throw(ArgumentError("All arguments must be dictionaries"))
-
-    N == 0 && return Dict{String,Any}()
-    D = deepcopy(first(args))
-    _merge_h5!(D, args...)
-
-    return D
-end
-
-function _merge_h5!(D, args...)
-    N = length(args)
-    all(d -> isa(d, AbstractDict), args) || throw(ArgumentError("All arguments must be dictionaries"))
-    for (k, v) in D
-        if isa(v, AbstractVector)
-            # append both vectors
-            D[k] = reduce(vcat, [d[k] for d in args])
-        elseif isa(v, AbstractMatrix)
-            # concatenate both matrices
-            D[k] = reduce(hcat, [d[k] for d in args])
-        elseif isa(v, AbstractDict)
-            # recursively merge sub-dictionaries
-            _merge_h5!(D[k], [d[k] for d in args]...)
-        else
-            # Check that all values are the same
-            all(d[k] == v for d in args) || error("Different values for entry $k of type $(typeof(v))")
-        end
-    end
-
-    return nothing
+    # The code below does the same as `cat(V...; dims=ndims(first(V)))`
+    # 1. each array is reshaped to flatten its first `N-1` dimensions
+    nt = prod(ns)
+    U = map(x -> reshape(x, (nt, size(x, ndims(x)))), V)
+    # 2. use efficient reduce+hcat to concatenate the (reshaped) arrays
+    W = reduce(hcat, U)
+    # 3. reshape back to original dimensions
+    return reshape(W, (ns..., size(W, ndims(W))))
 end
 
 """
@@ -236,24 +67,83 @@ end
 
 Sort dataset `D` in increasing order of random seeds.
 
-The dictionary `D` should be in h5-compatible format.
-It is modified in-place.
-"""
-function _sort_h5!(D::Dict{String,Any})
-    p = sortperm(D["input"]["seed"])
+The dictionary `D` should be in h5-compatible format. It is modified in-place.
 
-    _sort_h5!(D, p)
-    return nothing
+The function expects `D["meta"]["seed"]` to exist and be a `Vector{Int}`.
+    An error is thrown if such an entry is not found.
+"""
+function _sort_h5!(D)
+    haskey(D, "meta") && haskey(D["meta"], "seed") || error("Invalid H5 dataset: missing random seeds in the \"meta\" section.")
+    seeds::Vector{Int} = D["meta"]["seed"]
+    p = sortperm(seeds)
+    _select_h5!(D, p)
 end
 
-function _sort_h5!(D::Dict{String,Any}, p::Vector{Int})
+"""
+    _dedupe_h5!(D)
+
+De-duplicate points in h5 dataset `D`, according to their random seed.
+"""
+function _dedupe_h5!(D)
+    seeds = D["meta"]["seed"]
+    unique_seeds_idx = unique(i -> seeds[i], eachindex(seeds))
+    if length(unique_seeds_idx) == length(seeds)
+        return D
+    end
+
+    _select_h5!(D, unique_seeds_idx)
+end
+
+"""
+    _dedupe_and_sort_h5!(D)
+
+De-duplicated and sort dataset `D` in increasing order of random seeds.
+
+Equivalent to `_dedupe_h5!(D); _sort_h5!(D)`, but more efficient.
+"""
+function _dedupe_and_sort_h5!(D)
+    seeds = D["meta"]["seed"]
+    # identify indices of unique seeds
+    p = unique(i -> seeds[i], eachindex(seeds))
+    # sort indices according to the correspodning random seed
+    q = sortperm(seeds[p])
+    p = p[q]
+    # filter dataset based on unique and sorted seeds
+    _select_h5!(D, p)
+end
+
+"""
+    _select_h5!(D, p)
+
+Select data points in `D` as indicated by `p`.
+
+`D` should be a dictionary in h5-compatible format, and `p` is either a
+    vector of indices, or a logical vector of the same length as `D["meta"]["seed"]`.
+
+* If `p` is a vector of indices, then all values of `p` should be integers 
+    between `1` and the number of elements in `D`
+* If `p` is a logical vector, then it should have the same length as `D["meta"]["seed"]`.
+    Only datapoints `i` for which `p[i]` is `true` are selected.
+"""
+function _select_h5!(D::Dict, p)
     for (k, v) in D
-        if isa(v, AbstractVector)
-            D[k] = v[p]
-        elseif isa(v, AbstractMatrix)
-            D[k] = v[:, p]
+        if isa(v, Array)
+            ns = size(v)
+
+            # flatten all dimensions except the last one
+            M = reshape(v, (prod(ns[1:end-1]), ns[end]))
+            # select (flattened) columns
+            M = M[:, p]
+            # reshape back to original dimensions
+            D[k] = reshape(M, (ns[1:(end-1)]..., size(M, ndims(M))))
         elseif isa(v, AbstractDict)
-            _sort_h5!(v, p)
+            # Propagate to child dictionaries
+            _select_h5!(v, p)
+        elseif isa(v, Union{String,Number})
+            # Nothing to do
+        else
+            # safeguard for unexpected types
+            error("Unexpected type $(typeof(v)) for entry $k while selecting sub-H5 dataset")
         end
     end
     return D
