@@ -173,7 +173,13 @@ function test_sampler_script()
 
     OPFs = collect(keys(config["OPF"]))
 
-    h5_dir = joinpath(@__DIR__, "..", config["export_dir"], "res_h5")
+    if isabspath(config["export_dir"])
+        h5_dir = joinpath(config["export_dir"], "res_h5")
+    else
+        h5_dir = joinpath(@__DIR__, "..", config["export_dir"], "res_h5")
+    end
+
+    @test isdir(h5_dir)
 
     @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
 
