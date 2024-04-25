@@ -173,11 +173,7 @@ function test_sampler_script()
 
     OPFs = collect(keys(config["OPF"]))
 
-    if isabspath(config["export_dir"])
-        h5_dir = joinpath(config["export_dir"], "res_h5")
-    else
-        h5_dir = joinpath(@__DIR__, "..", config["export_dir"], "res_h5")
-    end
+    h5_dir = joinpath(@__DIR__, "..", config["export_dir"], "res_h5")
 
     @test isdir(h5_dir)
 
