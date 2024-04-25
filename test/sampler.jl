@@ -162,8 +162,75 @@ end
 
 function test_sampler_script()
     sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
-    config_file = joinpath(@__DIR__, "config.toml")
-    config = TOML.parsefile(config_file)
+    temp_dir = mktempdir()
+    config = Dict(
+        "ref" => "pglib_opf_case14_ieee",
+        "export_dir" => temp_dir,
+        "sampler" => Dict(
+            "load" => Dict(
+                "noise_type" => "ScaledLogNormal",
+                "l" => 0.6,
+                "u" => 0.8,
+                "sigma" => 0.05,
+            )
+        ),
+        "OPF" => Dict(
+            "DCOPF" => Dict(
+                "type" => "DCPPowerModel",
+                "solver" => Dict(
+                    "name" => "Clarabel",
+                )
+            ),
+            "ACOPF" => Dict(
+                "type" => "ACPPowerModel",
+                "solver" => Dict(
+                    "name" => "Ipopt",
+                    "attributes" => Dict(
+                        "tol" => 1e-6,
+                    )
+                )
+            ),
+            "SOCWRConic" => Dict(
+                "type" => "SOCWRConicPowerModel",
+                "solver" => Dict(
+                    "name" => "Clarabel",
+                )
+            ),
+            "SOCWRConic128" => Dict(
+                "type" => "SOCWRConicPowerModel",
+                "solver" => Dict(
+                    "name" => "Clarabel128",
+                    "attributes" => Dict(
+                        "max_iter" => 2000,
+                        "max_step_fraction" => 0.995,
+                        "equilibrate_enable" => true,
+                        "tol_gap_abs" => 1e-12,
+                        "tol_gap_rel" => 1e-12,
+                        "tol_feas" => 1e-12,
+                        "tol_infeas_rel" => 1e-12,
+                        "tol_ktratio" => 1e-10,
+                        "reduced_tol_gap_abs" => 1e-8,
+                        "reduced_tol_gap_rel" => 1e-8,
+                        "reduced_tol_feas" => 1e-8,
+                        "reduced_tol_infeas_abs" => 1e-8,
+                        "reduced_tol_infeas_rel" => 1e-8,
+                        "reduced_tol_ktratio" => 1e-7,
+                        "static_regularization_enable" => false,
+                        "dynamic_regularization_enable" => true,
+                        "dynamic_regularization_eps" => 1e-28,
+                        "dynamic_regularization_delta" => 1e-14,
+                        "iterative_refinement_reltol" => 1e-18,
+                        "iterative_refinement_abstol" => 1e-18,
+                    )
+                )
+            )
+        )
+    )
+
+    config_file = joinpath(temp_dir, "config.toml")
+    open(config_file, "w") do io
+        TOML.print(io, config)
+    end
 
     caseref = config["ref"]
     smin, smax = 1, 4
