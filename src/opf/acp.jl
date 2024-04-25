@@ -177,6 +177,8 @@ function update!(opf::OPFModel{PM.ACPPowerModel}, data::Dict{String,Any})
     
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
+
+    return nothing
 end
 
 

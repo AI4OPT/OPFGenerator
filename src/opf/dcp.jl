@@ -119,6 +119,8 @@ function update!(opf::OPFModel{PM.DCPPowerModel}, data::Dict{String,Any})
     gs = [sum(ref[:shunt][s]["gs"] for s in ref[:bus_shunts][i]; init=0.0) for i in 1:N]
     
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff], pd .+ gs)
+
+    return nothing
 end
 
 """

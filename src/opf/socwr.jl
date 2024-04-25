@@ -206,6 +206,8 @@ function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: Union
 
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
+
+    return nothing
 end
 
 """
