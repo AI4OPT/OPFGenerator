@@ -9,7 +9,7 @@ export_dir = "data/300_ieee"
 [sampler.load]
 noise_type = "ScaledLogNormal"  # Only "ScaledLogNormal" is supported at the moment
 l          = 0.8                # Lower bound of base load factor
-u          = 1.20               # Upper bound of base load factor
+u          = 1.05               # Upper bound of base load factor
 sigma      = 0.15               # Relative (multiplicative) noise level.
 
 

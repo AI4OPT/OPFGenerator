@@ -55,7 +55,7 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     JuMP.@constraint(model, slack_bus, va[i0] == 0.0)
 
     # Nodal power balance
-    JuMP.@constraint(model, 
+    JuMP.@constraint(model,
         kirchhoff_active[i in 1:N],
         sum(pg[g] for g in ref[:bus_gens][i]) 
         - sum(pf[a] for a in ref[:bus_arcs][i])
@@ -162,6 +162,25 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
 
     return OPFModel{PM.ACPPowerModel}(data, model)
 end
+
+function update!(opf::OPFModel{PM.ACPPowerModel}, data::Dict{String,Any})
+    PM.standardize_cost_terms!(data, order=2)
+    PM.calc_thermal_limits!(data)
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+
+    opf.data = data
+
+    N = length(ref[:bus])
+
+    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
+    qd = [sum(ref[:load][l]["qd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
+    
+    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
+    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
+
+    return nothing
+end
+
 
 """
     _extract_acopf_solution(model, data)

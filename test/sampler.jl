@@ -1,3 +1,5 @@
+using TOML
+
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
     _data = deepcopy(data)  # keep a deepcopy nearby
@@ -107,7 +109,169 @@ function test_inplace_sampler()
     return nothing
 end
 
+function test_update()
+    data1 = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    sampler_config = Dict(
+        "load" => Dict(
+            "noise_type" => "ScaledLogNormal",
+            "l" => 0.8,
+            "u" => 1.2,
+            "sigma" => 0.05,        
+        )
+    )
+
+    rng = StableRNG(42)
+    opf_sampler  = SimpleOPFSampler(data1, sampler_config)
+    data2 = rand(rng, opf_sampler)
+
+    for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
+        solver = OPT_SOLVERS[OPF]
+
+        opf1 = OPFGenerator.build_opf(OPF, data1, solver)
+        OPFGenerator.solve!(opf1)
+        OPFGenerator.update!(opf1, data2)
+        
+        opf2 = OPFGenerator.build_opf(OPF, data2, solver)
+        
+        @test _test_update(OPF, opf1, opf2)
+
+        OPFGenerator.solve!(opf1)
+        res1 = OPFGenerator.extract_result(opf1)
+
+        OPFGenerator.solve!(opf2)
+        res2 = OPFGenerator.extract_result(opf2)
+
+        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
+        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
+        @test res1["objective"] ≈ res2["objective"]
+    end
+
+    return nothing
+end
+
+
+function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
+    return all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
+end
+
+function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
+    return all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active])) &&
+            all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
+end
+
+
+function test_sampler_script()
+    sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
+    temp_dir = mktempdir()
+    config = Dict(
+        "ref" => "pglib_opf_case14_ieee",
+        "export_dir" => temp_dir,
+        "sampler" => Dict(
+            "load" => Dict(
+                "noise_type" => "ScaledLogNormal",
+                "l" => 0.6,
+                "u" => 0.8,
+                "sigma" => 0.05,
+            )
+        ),
+        "OPF" => Dict(
+            "DCOPF" => Dict(
+                "type" => "DCPPowerModel",
+                "solver" => Dict(
+                    "name" => "Clarabel",
+                )
+            ),
+            "ACOPF" => Dict(
+                "type" => "ACPPowerModel",
+                "solver" => Dict(
+                    "name" => "Ipopt",
+                    "attributes" => Dict(
+                        "tol" => 1e-6,
+                    )
+                )
+            ),
+            "SOCWRConic" => Dict(
+                "type" => "SOCWRConicPowerModel",
+                "solver" => Dict(
+                    "name" => "Clarabel",
+                )
+            ),
+            "SOCWRConic128" => Dict(
+                "type" => "SOCWRConicPowerModel",
+                "solver" => Dict(
+                    "name" => "Clarabel128",
+                    "attributes" => Dict(
+                        "max_iter" => 2000,
+                        "max_step_fraction" => 0.995,
+                        "equilibrate_enable" => true,
+                        "tol_gap_abs" => 1e-12,
+                        "tol_gap_rel" => 1e-12,
+                        "tol_feas" => 1e-12,
+                        "tol_infeas_rel" => 1e-12,
+                        "tol_ktratio" => 1e-10,
+                        "reduced_tol_gap_abs" => 1e-8,
+                        "reduced_tol_gap_rel" => 1e-8,
+                        "reduced_tol_feas" => 1e-8,
+                        "reduced_tol_infeas_abs" => 1e-8,
+                        "reduced_tol_infeas_rel" => 1e-8,
+                        "reduced_tol_ktratio" => 1e-7,
+                        "static_regularization_enable" => false,
+                        "dynamic_regularization_enable" => true,
+                        "dynamic_regularization_eps" => 1e-28,
+                        "dynamic_regularization_delta" => 1e-14,
+                        "iterative_refinement_reltol" => 1e-18,
+                        "iterative_refinement_abstol" => 1e-18,
+                    )
+                )
+            )
+        )
+    )
+
+    config_file = joinpath(temp_dir, "config.toml")
+    open(config_file, "w") do io
+        TOML.print(io, config)
+    end
+
+    caseref = config["ref"]
+    smin, smax = 1, 4
+    proc = run(setenv(`$(joinpath(Sys.BINDIR, "julia")) --project=. $sampler_script $config_file $smin $smax`, dir=joinpath(@__DIR__, "..")))
+
+    @test success(proc)
+
+    OPFs = collect(keys(config["OPF"]))
+
+    h5_dir = joinpath(@__DIR__, "..", config["export_dir"], "res_h5")
+
+    @test isdir(h5_dir)
+
+    @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
+
+    h5_paths = [
+        joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
+        for opf in OPFs
+    ]
+    @test all(isfile.(h5_paths))
+    
+    for h5_path in h5_paths
+        h5open(h5_path, "r") do h5
+            @test haskey(h5, "meta")
+            @test haskey(h5, "primal")
+            @test haskey(h5, "dual")
+            n_seed = length(h5["meta"]["seed"])
+            @test n_seed == smax - smin + 1
+            for i in 1:n_seed
+                @test h5["meta"]["termination_status"][i] ∈ ["OPTIMAL", "LOCALLY_SOLVED"]
+                @test h5["meta"]["primal_status"][i] == "FEASIBLE_POINT"
+                @test h5["meta"]["dual_status"][i] == "FEASIBLE_POINT"
+                @test h5["meta"]["seed"][i] == smin + i - 1
+            end
+        end
+    end
+end
+
 @testset "Sampler" begin
     test_sampler()
     test_inplace_sampler()
+    test_sampler_script()
+    test_update()
 end

@@ -1,8 +1,6 @@
 using LinearAlgebra
 
-const SOCWRPowerModel = Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}
-
-function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: SOCWRPowerModel}
+function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
     E = length(data["branch"])

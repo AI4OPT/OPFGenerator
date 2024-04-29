@@ -67,7 +67,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
         - sum(pf[a] for a in ref[:bus_arcs][i]) 
         ==
         sum(load["pd"] for load in bus_loads[i])
-        + sum(shunt["gs"] for shunt in bus_shunts[i])*1.0^2
+        + sum(shunt["gs"] for shunt in bus_shunts[i])
     )
 
     # Branch power flow physics and limit constraints
@@ -104,6 +104,23 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
     ))
 
     return OPFModel{PM.DCPPowerModel}(data, model)
+end
+
+function update!(opf::OPFModel{PM.DCPPowerModel}, data::Dict{String,Any})
+    PM.standardize_cost_terms!(data, order=2)
+    PM.calc_thermal_limits!(data)
+    ref = PM.build_ref(data)[:it][:pm][:nw][0]
+
+    opf.data = data
+
+    N = length(ref[:bus])
+
+    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
+    gs = [sum(ref[:shunt][s]["gs"] for s in ref[:bus_shunts][i]; init=0.0) for i in 1:N]
+    
+    JuMP.set_normalized_rhs.(opf.model[:kirchhoff], pd .+ gs)
+
+    return nothing
 end
 
 """

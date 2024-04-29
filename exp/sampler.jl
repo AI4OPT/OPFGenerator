@@ -35,14 +35,8 @@ value_type(::Any) = Float64
 value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
-function main(data, config)
-    d = Dict{String,Any}()
-    d["meta"] = deepcopy(config)
-
-    # Keep track of initial data file
-    d["data"] = data
-
-    # Solve all OPF formulations
+function build_models(data, config)
+    opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:PowerModels.AbstractPowerModel}, Float64}}()
     for (dataset_name, opf_config) in config["OPF"]
         OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
         solver_config = get(opf_config, "solver", Dict())
@@ -64,18 +58,35 @@ function main(data, config)
             build_kwargs...
         )
 
-        # Solve OPF model
         set_silent(opf.model)
+        opf_models[dataset_name] = (opf, tbuild)
+        @info "Built $dataset_name in $tbuild seconds"
+    end
+
+    return opf_models
+end
+
+function main(data, opf_models, config)
+    d = Dict{String,Any}()
+    d["meta"] = deepcopy(config)
+    
+    # Keep track of input data
+    d["data"] = data
+
+    for dataset_name in keys(opf_models)
+        opf = opf_models[dataset_name][1]
+
+        OPFGenerator.update!(opf, data)
         OPFGenerator.solve!(opf)
 
-        tsol = @elapsed res = OPFGenerator.extract_result(opf)
-        res["time_build"] = tbuild
-        res["time_extract"] = tsol
-        h = OPFGenerator.json2h5(OPF, res)
+        time_extract = @elapsed res = OPFGenerator.extract_result(opf)
+        
+        res["time_build"] = opf_models[dataset_name][2]
+        res["time_extract"] = time_extract
+        h = OPFGenerator.json2h5(opf.model.ext[:opf_model], res)
         d[dataset_name] = h
     end
 
-    # Done
     return d
 end
 
@@ -89,12 +100,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
-    rand(StableRNG(1), opf_sampler0)
-    d0 = main(data0, config)
+    rand!(StableRNG(1), opf_sampler0, data0)
+    for (opf0, m0) in build_models(data0, config)
+        OPFGenerator.solve!(m0[1])
+        OPFGenerator.extract_result(m0[1])
+    end
 
     # Load reference data and setup OPF sampler
     data = make_basic_network(pglib(config["ref"]))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
+
+    opf_models = build_models(data, config)
 
     # Data info
     N = length(data["bus"])
@@ -130,7 +146,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     for s in smin:smax
         rng = StableRNG(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
-        tsolve = @elapsed res = main(data_, config)
+        tsolve = @elapsed res = main(data_, opf_models, config)
         res["meta"]["seed"] = s
 
         # Update input data
