@@ -44,21 +44,33 @@ function test_h5_precision_warning()
     f5 = tempname()
 
     x = 3.141592653589 * one(BigFloat)
+    z = Complex(x) + im
 
-    d = Dict("x" => x)
     msg = """Unsupported data type for writing to an HDF5 group: \"x\"::BigFloat.
     This value was converted to Float64, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, d)
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, Dict("x" => x))
     h = HDF5.h5read(f5, "/")
     @test h["x"] == convert(Float64, x)
 
-    v = [x]
-    d = Dict("v" => v)
+    msg = """Unsupported data type for writing to an HDF5 group: \"z\"::Complex{BigFloat}.
+    This value was converted to ComplexF64, which may incur a loss of precision."""
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5,  Dict("z" => z))
+    h = HDF5.h5read(f5, "/")
+    @test h["z"] == convert(Complex{Float64}, z)
+
     msg = """Unsupported data type for writing to an HDF5 group: \"v\"::Vector{BigFloat}.
     This value was converted to Vector{Float64}, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, d)
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, Dict("v" => [x]))
     h = HDF5.h5read(f5, "/")
-    @test h["v"] == convert(Vector{Float64}, v)
+    @test h["v"] == convert(Vector{Float64}, [x])
+
+    msg = """Unsupported data type for writing to an HDF5 group: \"w\"::Vector{Complex{BigFloat}}.
+    This value was converted to Vector{ComplexF64}, which may incur a loss of precision."""
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5,  Dict("w" => [z]))
+    h = HDF5.h5read(f5, "/")
+    @test h["w"] == convert(Vector{Complex{Float64}}, [z])
+
+    rm(f5)  # delete temp file
 
     return nothing
 end
