@@ -32,7 +32,7 @@ StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
-Clarabel = "0.6, 0.7"
+Clarabel = "0.9"
 Graphs = "1.8"
 Ipopt = "1.6"
 JuMP = "1"
