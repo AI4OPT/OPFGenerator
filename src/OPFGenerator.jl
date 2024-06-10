@@ -19,7 +19,6 @@ include("utils/json.jl")
 include("utils/hdf5.jl")
 
 include("bridges.jl")
-include("checker.jl")
 include("process.jl")
 
 # Load samplers
