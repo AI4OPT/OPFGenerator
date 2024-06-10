@@ -1,9 +1,12 @@
 Copyright Georgia Tech 2022-2024
 
 [![Build][build-img]][build-url]
-
+[![codecov][codecov-img]][codecov-url]
+ 
 [build-img]: https://github.com/ai4opt/OPFGenerator/workflows/CI/badge.svg?branch=main
 [build-url]: https://github.com/ai4opt/OPFGenerator/actions?query=workflow%3ACI
+[codecov-img]: https://codecov.io/gh/AI4OPT/OPFGenerator/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/AI4OPT/OPFGenerator
 
 # OPFGenerator
 Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
