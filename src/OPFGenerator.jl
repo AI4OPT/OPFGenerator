@@ -1,5 +1,6 @@
 module OPFGenerator
 
+using LinearAlgebra
 using Random
 using StableRNGs
 using Distributions
