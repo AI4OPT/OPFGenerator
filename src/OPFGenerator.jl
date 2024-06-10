@@ -1,5 +1,6 @@
 module OPFGenerator
 
+using LinearAlgebra
 using Random
 using StableRNGs
 using Distributions
@@ -19,7 +20,6 @@ include("utils/json.jl")
 include("utils/hdf5.jl")
 
 include("bridges.jl")
-include("checker.jl")
 include("process.jl")
 
 # Load samplers
