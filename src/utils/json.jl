@@ -27,7 +27,7 @@ function load_json(filename::AbstractString)::Dict{String,Any}
         return data
     else
         error("""
-        Unsupported JSON extension: \"$(basename(filename))\".
+        Unsupported JSON extension: \"$(basename(filename))\"
         Supported extensions are: \".json\", \".json.bz2\" and \".json.gz\".
         """)
     end
@@ -58,8 +58,8 @@ function save_json(filename::AbstractString, data; indent=nothing)
         end
     else
         error("""
-        Unsupported format for data file $(basename(filename)).
-        Supported formats are: \".json\", \".json.bz2\" and \".json.gz\".
+        Unsupported JSON extension: \"$(basename(filename))\"
+        Supported extensions are: \".json\", \".json.bz2\" and \".json.gz\".
         """)
     end
     return nothing
