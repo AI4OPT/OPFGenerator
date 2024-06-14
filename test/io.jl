@@ -44,21 +44,33 @@ function test_h5_precision_warning()
     f5 = tempname()
 
     x = 3.141592653589 * one(BigFloat)
+    z = Complex(x) + im
 
-    d = Dict("x" => x)
     msg = """Unsupported data type for writing to an HDF5 group: \"x\"::BigFloat.
     This value was converted to Float64, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, d)
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, Dict("x" => x))
     h = HDF5.h5read(f5, "/")
     @test h["x"] == convert(Float64, x)
 
-    v = [x]
-    d = Dict("v" => v)
+    msg = """Unsupported data type for writing to an HDF5 group: \"z\"::Complex{BigFloat}.
+    This value was converted to ComplexF64, which may incur a loss of precision."""
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5,  Dict("z" => z))
+    h = HDF5.h5read(f5, "/")
+    @test h["z"] == convert(Complex{Float64}, z)
+
     msg = """Unsupported data type for writing to an HDF5 group: \"v\"::Vector{BigFloat}.
     This value was converted to Vector{Float64}, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, d)
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, Dict("v" => [x]))
     h = HDF5.h5read(f5, "/")
-    @test h["v"] == convert(Vector{Float64}, v)
+    @test h["v"] == convert(Vector{Float64}, [x])
+
+    msg = """Unsupported data type for writing to an HDF5 group: \"w\"::Vector{Complex{BigFloat}}.
+    This value was converted to Vector{ComplexF64}, which may incur a loss of precision."""
+    @test_logs (:warn, msg) OPFGenerator.save_h5(f5,  Dict("w" => [z]))
+    h = HDF5.h5read(f5, "/")
+    @test h["w"] == convert(Vector{Complex{Float64}}, [z])
+
+    rm(f5)  # delete temp file
 
     return nothing
 end
@@ -111,15 +123,39 @@ function test_h5_io()
     @test h == d
 end
 
+function test_json_io()
+    d = Dict("a" => "a", "b" => 1, "c" => 2.0, "dd" => [3.0, 4.1])
+    fjson = tempname()
+
+    @testset "$ext" for ext in [".json", ".json.gz", ".json.bz2"]
+        OPFGenerator.save_json(fjson * ext, d)
+        @test isfile(fjson * ext)
+        @test OPFGenerator.load_json(fjson * ext) == d
+        rm(fjson * ext)
+    end
+
+    # Check that non-JSON extensions are not OK
+    @testset "$ext" for ext in [".h5", ".json.xy"]
+        msg = """
+        Unsupported JSON extension: \"$(basename(fjson*ext))\"
+        Supported extensions are: \".json\", \".json.bz2\" and \".json.gz\".
+        """
+        @test_throws msg OPFGenerator.save_json(fjson * ext, d)
+        @test !isfile(fjson * ext)
+        @test_throws msg OPFGenerator.load_json(fjson * ext)
+    end
+
+    return nothing
+end
+
 @testset "I/O" begin
-    @testset "HDF5" begin 
+    @testset "HDF5" begin
         @testset test_h5_supported_types()
         @testset test_h5_precision_warning()
         @testset test_h5_invalid_types()
         @testset test_h5_io()
     end
-    @testset "JSON" begin 
-        # TODO: add unit tests for JSON
-        @test_skip false
+    @testset "JSON" begin
+        @testset test_json_io()
     end
 end
