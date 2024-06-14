@@ -98,6 +98,6 @@ function ReserveScaler(data::Dict, options::Dict)
 
     #     return UCjlReserveScaler(min_frac, max_frac, pd_ref, pg_max)
     else
-        error("Invalid noise type: $(reserve_type).\nOnly \"E2ELR\" and \"UCjl\" are supported.")
+        error("Invalid noise type: $(reserve_type).\nOnly \"E2ELR\" is supported.")
     end
 end
