@@ -23,7 +23,7 @@ include("bridges.jl")
 include("process.jl")
 
 # Load samplers
-include("load/load.jl")
+include("sampler/opf.jl")
 
 abstract type AbstractOPFSampler end
 
