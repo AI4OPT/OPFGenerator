@@ -148,12 +148,26 @@ function test_json_io()
     return nothing
 end
 
+function test_export_ptdf()
+    data = make_basic_network(pglib("14_ieee"))
+    solver = OPT_SOLVERS[OPFGenerator.EconomicDispatch]
+    opf = OPFGenerator.build_opf(OPFGenerator.EconomicDispatch, data, solver)
+    
+    f5 = tempname()
+    OPFGenerator.export_ptdf(opf, f5)
+
+    h = HDF5.h5read(f5, "/")
+    @test haskey(h, "PTDF")
+    @test h["PTDF"] == opf.model.ext[:PTDF]
+end
+
 @testset "I/O" begin
     @testset "HDF5" begin
         @testset test_h5_supported_types()
         @testset test_h5_precision_warning()
         @testset test_h5_invalid_types()
         @testset test_h5_io()
+        @testset test_export_ptdf()
     end
     @testset "JSON" begin
         @testset test_json_io()
