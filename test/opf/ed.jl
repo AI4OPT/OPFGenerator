@@ -24,6 +24,37 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     @test isapprox(res["objective"], res_pm["objective"], atol=1e-6, rtol=1e-6)
     @test res["ptdf_iterations"] == res_pm["iterations"]
 
+
+    h5 = OPFGenerator.json2h5(OPF, res)
+    @test haskey(h5, "meta")
+    @test haskey(h5, "primal")
+    @test haskey(h5, "dual")
+    Gs = [
+        h5["primal"]["pg"], h5["primal"]["r"],
+        h5["dual"]["mu_pg"], h5["dual"]["mu_r"],
+        h5["dual"]["mu_total_generation"],
+         # TODO: move reserve bounds to input
+        h5["primal"]["rmin"], h5["primal"]["rmax"],
+    ]
+    Es = [
+        h5["primal"]["pf"], h5["primal"]["df"],
+        h5["dual"]["mu_pf"], h5["dual"]["mu_df"],
+        h5["dual"]["lam_ptdf"],
+    ]
+    singles = [
+        h5["primal"]["dpb_surplus"],
+        h5["primal"]["dpb_shortage"],
+        h5["primal"]["dr_shortage"],
+        h5["dual"]["mu_dpb_surplus"],
+        h5["dual"]["mu_dpb_shortage"],
+        h5["dual"]["mu_dr_shortage"],
+        h5["dual"]["mu_power_balance"],
+        h5["dual"]["mu_reserve_requirement"],
+    ]
+    @test all(size(v) == (G,) for v in Gs)
+    @test all(size(v) == (E,) for v in Es)
+    @test all(size(v) == () for v in singles)
+
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
     #    (would require extracting a variable => value Dict)
