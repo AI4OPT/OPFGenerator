@@ -1,3 +1,6 @@
+# common distributions
+include("glocal.jl")
+
 abstract type AbstractOPFSampler end
 
 function Random.rand(::AbstractRNG, ::AbstractOPFSampler)
