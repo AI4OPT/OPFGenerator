@@ -21,11 +21,10 @@ include("utils/hdf5.jl")
 include("bridges.jl")
 include("process.jl")
 
-# Load samplers
-include("sampler/opf.jl")
+# Data samplers
+include("sampler/sampler.jl")
 
-
-
+# OPF formulations
 include("opf/opf.jl")
 
 end # module
