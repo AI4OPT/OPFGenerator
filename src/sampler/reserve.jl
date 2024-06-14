@@ -30,7 +30,7 @@ function Random.rand(rng::AbstractRNG, rs::E2ELRReserveScaler)
     # generate reserve requirements
     pg_ranges = max.(0.0, rs.pg_max .- rs.pg_min)
     α = rs.factor * pmax / sum(pg_ranges)
-    rmax = α * pg_ranges
+    rmax = α .* pg_ranges
     rmin = zeros(Float64, length(rmax))
     return MRR, rmin, rmax
 end
