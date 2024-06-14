@@ -1,17 +1,58 @@
+const UvDist = Distributions.ContinuousUnivariateDistribution
+const MvDist = Distributions.ContinuousMultivariateDistribution
+
+"""
+    Glocal{G,L}
+
+A glocal distribution with global/local factors `α::G` and  `η::L`.
+
+This distribution represents a random variable of the form `ϵ = α×η`, where
+* `α` is a _scalar_ random variable, with distribution `d_α::G`
+* `η` is a _vector_ random variable, with distribution `d_η::L`
+* `α` and `η` are independent random variables
+"""
+struct Glocal{G<:UvDist,L<:MvDist} <: MvDist
+    d_α::G
+    d_η::L
+end
+
+Distributions.length(d::Glocal) = length(d.d_η)
+Distributions.eltype(::Glocal) = Float64
+
+# custom samplers for Array-shaped data
+function Distributions._rand!(::AbstractRNG, ::Glocal, ::AbstractArray)
+    throw(DimensionMismatch(
+        "Inconsistent argument dimensions: only vector and matrix-shaped `x` is supported."
+    ))
+end
+function Distributions._rand!(rng::AbstractRNG, d::Glocal, x::AbstractVector)
+    length(x) == length(d) || throw(DimensionMismatch("Inconsistent argument dimensions."))
+
+    α = rand(rng, d.d_α)
+    η = rand(rng, d.d_η)
+
+    x .= α .* η
+
+    return x
+end
+function Distributions._rand!(rng::AbstractRNG, d::Glocal, x::AbstractMatrix)
+    size(x, 1) == length(d) || throw(DimensionMismatch("Inconsistent argument dimensions."))
+    n = size(x, 2)
+
+    α = rand(rng, d.d_α, n)
+    η = rand(rng, d.d_η, n)
+
+    mul!(x, η, Diagonal(a))  # re-scales every column `η[:, j]` by `α[j]`
+
+    return x
+end
+
 """
     ScaledLogNormal
 
-Generate correlated, multiplicative noise of the form `ϵ = α×η`, where
-    ``α~U[l,u]`` is the same for all loads, and ``η~LogNormal(μ, σ)`` (uncorrelated).
-The resulting multiplicative noise at load `i` has distribution `LogNormal(μᵢ+log α, σᵢ)`.
-
-This distribution allows to control the total demand (via `α`),
-    and the per-load noise level (via `σ`).
+A [`Glocal`](@ref) distribution `ϵ = α×η` where `α` is uniform and `η` is LogNormal.
 """
-struct ScaledLogNormal <: Distributions.ContinuousMultivariateDistribution
-    d_α::Uniform{Float64}
-    d_η::MvLogNormal
-end
+const ScaledLogNormal = Glocal{Uniform{Float64},MvLogNormal}
 
 """
     ScaledLogNormal(l, u, σs)
@@ -28,38 +69,5 @@ function ScaledLogNormal(l::Float64, u::Float64, σs::Vector{Float64})
     σs2 = σs .^ 2
     d_η = MvLogNormal(-σs2 ./ 2, Diagonal(σs2))
 
-    return ScaledLogNormal(d_α, d_η)
-end
-
-Distributions.length(d::ScaledLogNormal) = length(d.d_η)
-Distributions.eltype(::ScaledLogNormal) = Float64
-
-# custom samplers for Vector- and Matrix-shaped data
-function Distributions._rand!(::AbstractRNG, ::ScaledLogNormal, ::AbstractArray)
-    throw(DimensionMismatch(
-        "Inconsistent argument dimensions: only vector and matrix-shaped `x` is supported."
-    ))
-end
-function Distributions._rand!(rng::AbstractRNG, d::ScaledLogNormal, x::AbstractVector)
-    length(x) == length(d) || throw(DimensionMismatch("Inconsistent argument dimensions."))
-
-    α = rand(rng, d.d_α)
-    η = rand(rng, d.d_η)
-
-    x .= α .* η
-
-    return x
-end
-function Distributions._rand!(rng::AbstractRNG, d::ScaledLogNormal, x::AbstractMatrix)
-    size(x, 1) == length(d) || throw(DimensionMismatch("Inconsistent argument dimensions."))
-    n = size(x, 2)
-
-    α = rand(rng, d.d_α, n)
-    η = rand(rng, d.d_η, n)
-
-    for j in 1:n
-        @views x[:, j] .= α[j] .* η[:, j]
-    end
-
-    return x
+    return Glocal(d_α, d_η)
 end

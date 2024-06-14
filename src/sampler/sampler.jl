@@ -14,8 +14,6 @@ function SimpleOPFSampler(data::Dict, config::Dict)
 
     # Instantiate load sampler
     load_sampler = LoadScaler(data, config["load"])
-    # Instantiate other stuff
-    # TODO
 
     return SimpleOPFSampler(data, load_sampler)
 end
