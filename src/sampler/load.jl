@@ -56,5 +56,3 @@ function LoadScaler(data::Dict, options::Dict)
     
     return LoadScaler(d, pd, qd)
 end
-
-include("scaled_lognormal.jl")
