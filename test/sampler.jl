@@ -1,4 +1,21 @@
+using Distributions
 using TOML
+
+function test_glocal()
+    d = OPFGenerator.Glocal(
+        Uniform(0.0, 1.0),
+        Distributions.MvNormal(zeros(4), ones(4))
+    )
+
+    @test eltype(d) == Float64
+    @test length(d) == 4
+
+    @test size(rand(d)) == (4,)
+    @test size(rand(d, 1)) == (4, 1)
+    @test size(rand(d, 2)) == (4, 2)
+
+    return nothing
+end
 
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
@@ -270,6 +287,7 @@ function test_sampler_script()
 end
 
 @testset "Sampler" begin
+    @testset test_glocal()
     test_sampler()
     test_inplace_sampler()
     test_sampler_script()

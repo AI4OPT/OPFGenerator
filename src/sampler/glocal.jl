@@ -42,7 +42,7 @@ function Distributions._rand!(rng::AbstractRNG, d::Glocal, x::AbstractMatrix)
     α = rand(rng, d.d_α, n)
     η = rand(rng, d.d_η, n)
 
-    mul!(x, η, Diagonal(a))  # re-scales every column `η[:, j]` by `α[j]`
+    mul!(x, η, Diagonal(α))  # re-scales every column `η[:, j]` by `α[j]`
 
     return x
 end
