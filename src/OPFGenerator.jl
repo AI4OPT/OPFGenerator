@@ -4,6 +4,7 @@ using LinearAlgebra
 using Random
 using StableRNGs
 using Distributions
+using LinearAlgebra
 
 using PowerModels
 const PM = PowerModels

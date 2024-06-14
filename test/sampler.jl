@@ -132,13 +132,19 @@ function test_update()
     sampler_config = Dict(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
-            "l" => 0.8,
-            "u" => 1.2,
+            "l" => 0.6,
+            "u" => 0.8,
             "sigma" => 0.05,        
+        ),
+        "reserve" => Dict( # tiny reserve requirement
+            "type" => "E2ELR",
+            "l" => 0.0,
+            "u" => 0.1,
+            "factor" => 5.0,
         )
     )
 
-    rng = StableRNG(42)
+    rng = StableRNG(1)
     opf_sampler  = SimpleOPFSampler(data1, sampler_config)
     data2 = rand(rng, opf_sampler)
 
@@ -177,6 +183,17 @@ function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerMo
             all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
 
+function _test_update(::Type{OPFGenerator.EconomicDispatch}, opf1, opf2)
+    return (
+        normalized_rhs(opf1.model[:power_balance]) == normalized_rhs(opf2.model[:power_balance])
+    ) && (
+        normalized_rhs(opf1.model[:reserve_requirement]) == normalized_rhs(opf2.model[:reserve_requirement])
+    ) && (
+        all(upper_bound.(opf1.model[:r]) .== upper_bound.(opf2.model[:r]))
+    ) && (
+        all(lower_bound.(opf1.model[:r]) .== lower_bound.(opf2.model[:r]))
+    )
+end
 
 function test_sampler_script()
     sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
@@ -190,6 +207,12 @@ function test_sampler_script()
                 "l" => 0.6,
                 "u" => 0.8,
                 "sigma" => 0.05,
+            ),
+            "reserve" => Dict( # tiny reserve requirement
+                "type" => "E2ELR",
+                "l" => 0.0,
+                "u" => 0.1,
+                "factor" => 5.0,
             )
         ),
         "OPF" => Dict(
@@ -206,6 +229,12 @@ function test_sampler_script()
                     "attributes" => Dict(
                         "tol" => 1e-6,
                     )
+                )
+            ),
+            "ED" => Dict(
+                "type" => "EconomicDispatch",
+                "solver" => Dict(
+                    "name" => "Clarabel",
                 )
             ),
             "SOCWRConic" => Dict(

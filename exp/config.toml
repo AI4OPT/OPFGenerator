@@ -12,6 +12,12 @@ l          = 0.8                # Lower bound of base load factor
 u          = 1.05               # Upper bound of base load factor
 sigma      = 0.15               # Relative (multiplicative) noise level.
 
+[sampler.reserve]
+type   = "E2ELR"
+l      = 1.0
+u      = 2.0
+factor = 5.0
+
 
 [OPF]
 # OPF formulations to solve for each sample
@@ -25,6 +31,11 @@ type = "ACPPowerModel"
 solver.name = "Ipopt"
 solver.attributes.tol = 1e-6
 solver.attributes.linear_solver = "ma27"
+
+[OPF.ED]
+type = "EconomicDispatch"
+kwargs.soft_thermal_limit = true
+solver.name = "Mosek"
 
 [OPF.SOCWRConic]
 type = "SOCWRConicPowerModel"

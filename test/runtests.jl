@@ -26,6 +26,7 @@ const OPT_SOLVERS = Dict(
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
+    OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
 )
 
 include("io.jl")

@@ -7,9 +7,10 @@ function Random.rand(::AbstractRNG, ::AbstractOPFSampler)
     error("`rand` function not implemented for $(typeof(s)).")
 end
 
-struct SimpleOPFSampler{LS}
+struct SimpleOPFSampler{LS,RS}
     data::Dict
     load_sampler::LS
+    reserve_sampler::RS
 end
 
 function SimpleOPFSampler(data::Dict, config::Dict)
@@ -18,7 +19,14 @@ function SimpleOPFSampler(data::Dict, config::Dict)
     # Instantiate load sampler
     load_sampler = LoadScaler(data, config["load"])
 
-    return SimpleOPFSampler(data, load_sampler)
+    # Instantiate reserve sampler
+    if haskey(config, "reserve")
+        reserve_sampler = ReserveScaler(data, config["reserve"])
+    else
+        reserve_sampler = nothing
+    end 
+
+    return SimpleOPFSampler(data, load_sampler, reserve_sampler)
 end
 
 function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
@@ -37,6 +45,12 @@ Sample one new OPF instance and modify `data` in-place.
 function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
     pd, qd = rand(rng, s.load_sampler)
     _set_loads!(data, pd, qd)
+
+    if !isnothing(s.reserve_sampler)
+        MRR, rmin, rmax = rand(rng, s.reserve_sampler)
+        _set_reserve!(data, MRR, rmin, rmax)
+    end
+
     return data
 end
 
@@ -54,4 +68,21 @@ function _set_loads!(data, pd, qd)
     return nothing
 end
 
+function _set_reserve!(data, MRR, rmin, rmax)
+    G = length(data["gen"])
+    length(rmin) == G || throw(DimensionMismatch())
+    length(rmax) == G || throw(DimensionMismatch())
+
+    for i in 1:length(data["gen"])
+        gdat = data["gen"]["$i"]
+        gdat["rmin"] = rmin[i]
+        gdat["rmax"] = rmax[i]
+    end
+
+    data["minimum_reserve"] = MRR
+
+    return nothing
+end
+
 include("load.jl")
+include("reserve.jl")
