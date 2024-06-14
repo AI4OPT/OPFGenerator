@@ -1,10 +1,11 @@
 using Distributions
+using LinearAlgebra
 using TOML
 
 function test_glocal()
     d = OPFGenerator.Glocal(
         Uniform(0.0, 1.0),
-        Distributions.MvNormal(zeros(4), ones(4))
+        Distributions.MvNormal(zeros(4), Diagonal(ones(4)))
     )
 
     @test eltype(d) == Float64
