@@ -163,11 +163,6 @@ function solve!(opf::OPFModel{EconomicDispatch})
     model = opf.model
     T = typeof(model).parameters[1]
     tol = model.ext[:solve_metadata][:iterative_ptdf_tol]
-    
-    if !model.ext[:solve_metadata][:iterative_ptdf]
-        optimize!(opf.model, _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
-        return
-    end
 
     N = length(data["bus"])
     G = length(data["gen"])
@@ -193,6 +188,13 @@ function solve!(opf::OPFModel{EconomicDispatch})
     rate_a = [data["branch"]["$e"]["rate_a"] for e in 1:E]
 
     p_expr = Ag * model[:pg] - Al * pd
+
+    if !model.ext[:solve_metadata][:iterative_ptdf]
+        # add entire PTDF
+        @constraint(model, model[:pf] .== model.ext[:PTDF] * p_expr)
+        optimize!(opf.model, _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
+        return
+    end
 
     solved = false
     niter = 0
