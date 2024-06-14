@@ -3,6 +3,7 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
 
     data["basic_network"] || error("Input data must be in basic format to test")
     G = length(data["gen"])
+    E = length(data["branch"])
 
     # Build and solve OPF with OPFGenerator
     solver = OPT_SOLVERS[OPF]
