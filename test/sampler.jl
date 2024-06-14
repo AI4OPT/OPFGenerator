@@ -144,7 +144,7 @@ function test_update()
         )
     )
 
-    rng = StableRNG(1)
+    rng = StableRNG(42)
     opf_sampler  = SimpleOPFSampler(data1, sampler_config)
     data2 = rand(rng, opf_sampler)
 
