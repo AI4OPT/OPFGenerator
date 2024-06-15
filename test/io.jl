@@ -159,6 +159,13 @@ function test_export_ptdf()
     h = HDF5.h5read(f5, "/")
     @test haskey(h, "PTDF")
     @test h["PTDF"] == opf.model.ext[:PTDF]
+
+    f51 = tempname()
+    OPFGenerator.export_ptdf(data, f51)
+
+    h1 = HDF5.h5read(f51, "/")
+    @test haskey(h1, "PTDF")
+    @test h1["PTDF"] == h["PTDF"]
 end
 
 @testset "I/O" begin
