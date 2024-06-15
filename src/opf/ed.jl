@@ -449,8 +449,16 @@ function export_ptdf(opf::OPFModel{EconomicDispatch}, filepath)
     model = opf.model
 
     PTDF = model.ext[:PTDF]
-    E = size(PTDF, 1)
-    N = size(PTDF, 2)
+
+    h5open(filepath, "w") do file
+        write(file, "PTDF", PTDF)
+    end
+    return nothing
+end
+
+function export_ptdf(data::Dict{String,Any}, filepath)
+    PM.calc_thermal_limits!(data)
+    PTDF = PM.calc_basic_ptdf_matrix(data)
 
     h5open(filepath, "w") do file
         write(file, "PTDF", PTDF)
