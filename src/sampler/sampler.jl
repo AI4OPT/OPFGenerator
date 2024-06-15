@@ -20,11 +20,8 @@ function SimpleOPFSampler(data::Dict, config::Dict)
     load_sampler = LoadScaler(data, config["load"])
 
     # Instantiate reserve sampler
-    if haskey(config, "reserve")
-        reserve_sampler = ReserveScaler(data, config["reserve"])
-    else
-        reserve_sampler = nothing
-    end 
+    get!(config, "reserve", Dict())
+    reserve_sampler = ReserveScaler(data, config["reserve"])
 
     return SimpleOPFSampler(data, load_sampler, reserve_sampler)
 end
@@ -46,10 +43,8 @@ function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
     pd, qd = rand(rng, s.load_sampler)
     _set_loads!(data, pd, qd)
 
-    if !isnothing(s.reserve_sampler)
-        MRR, rmin, rmax = rand(rng, s.reserve_sampler)
-        _set_reserve!(data, MRR, rmin, rmax)
-    end
+    MRR, rmin, rmax = rand(rng, s.reserve_sampler)
+    _set_reserve!(data, MRR, rmin, rmax)
 
     return data
 end

@@ -36,6 +36,15 @@ function Random.rand(rng::AbstractRNG, rs::E2ELRReserveScaler)
     return MRR, rmin, rmax
 end
 
+
+struct NullReserveScaler <: AbstractReserveSampler
+    n_gen::Int
+end
+
+function Random.rand(rng::AbstractRNG, rs::NullReserveScaler)
+    return 0.0, zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen)
+end
+
 function ReserveScaler(data::Dict, options::Dict)
     get(data, "basic_network", false) || error(
         """Invalid data: network data must be in basic format.
@@ -44,16 +53,23 @@ function ReserveScaler(data::Dict, options::Dict)
 
     reserve_type = get(options, "type", "")
     if reserve_type == "E2ELR"
+        @assert haskey(options, "l") "Missing lower bound `l` in config for E2ELR reserve sampler"
+        @assert haskey(options, "u") "Missing upper bound `u` in config for E2ELR reserve sampler"
+        @assert haskey(options, "factor") "Missing scaling factor `factor` in config for E2ELR reserve sampler"
+
         l = options["l"]
         u = options["u"]
-        factor = get(options, "factor", 5.0)
+        factor = options["factor"]
         mrr_dist = Uniform(l, u)
 
         pg_min = [gen["pmin"] for (id, gen) in data["gen"]]
         pg_max = [gen["pmax"] for (id, gen) in data["gen"]]
 
         return E2ELRReserveScaler(mrr_dist, factor, pg_min, pg_max)
+    elseif reserve_type == ""
+        n_gen = length(data["gen"])
+        return NullReserveScaler(n_gen)
     else
-        error("Invalid noise type: $(reserve_type).\nOnly \"E2ELR\" is supported.")
+        error("Invalid noise type: $(reserve_type).\nOnly \"E2ELR\", or no reserves, is supported.")
     end
 end
