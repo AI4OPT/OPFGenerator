@@ -50,17 +50,15 @@ end
 function _test_ieee14_LogNormal_s42(data)
     data0 = make_basic_network(pglib("pglib_opf_case14_ieee"))
 
-    # Check that the sampled data dictionary only has different loads
+    # Check that the sampled data dictionary only has different loads/reserves
     # Buses, generators, etc... should not have changed
     for (k, v) in data0
-        k == "load" && continue
-        @test data[k] == v
-    end
-    # Only active/reactive power loads should have been modified
-    for (i, load) in data0["load"]
-        for (k, v) in load
-            (k == "pd" || k == "qd") && continue
-            @test load[k] == data["load"][i][k]
+        if k == "gen"
+            @test all(data[k][i][kk] == v[i][kk] for (i, gen) in v for (kk, vv) in gen if kk ∉ ["rmin", "rmax"])
+        elseif k == "load"
+            @test all(data[k][i][kk] == v[i][kk] for (i, load) in v for (kk, vv) in load if kk ∉ ["pd", "qd"])
+        else
+            @test data[k] == v
         end
     end
 
@@ -102,6 +100,12 @@ function _test_ieee14_LogNormal_s42(data)
     for (i, (p, q)) in enumerate(zip(_pd, _qd))
         @test data["load"]["$i"]["pd"] ≈ p
         @test data["load"]["$i"]["qd"] ≈ q
+    end
+
+    # all reserves should be zero
+    for i in 1:length(data["gen"])
+        @test data["gen"]["$i"]["rmin"] == 0.0
+        @test data["gen"]["$i"]["rmax"] == 0.0
     end
 
     return nothing
