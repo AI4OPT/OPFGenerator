@@ -16,7 +16,7 @@ The parameter `α` is a scaling factor that determines the total reserve require
 
 """
 struct E2ELRReserveScaler <: AbstractReserveSampler
-    mrr_dist::Uniform
+    mrr_dist::Uniform{Float64}
     factor::Float64
     pg_min::Vector{Float64}
     pg_max::Vector{Float64}
