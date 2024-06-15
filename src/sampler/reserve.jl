@@ -35,39 +35,6 @@ function Random.rand(rng::AbstractRNG, rs::E2ELRReserveScaler)
     return MRR, rmin, rmax
 end
 
-# """
-#     UCjlReserveScaler
-
-# Samples reserve requirements following the procedure below:
-
-# 1. Compute minimum reserve requirement `MRR` by scaling the reference power demand
-#     with the minimum reserve fraction.
-
-# 2. Compute the upper bound of reserve requirements for each generator by scaling
-#     the active generation upper bound with the maximum reserve fraction.
-
-# NOTE: This reserve scaler itself does not use any random variables to compute
-#     reserve requirements. However, it depends on the active load and generation
-#     upper bound, which themselves may vary for each sample.
-
-# """
-# struct UCjlReserveScaler <: AbstractReserveSampler
-#     min_frac::Float64
-#     max_frac::Float64
-#     pd_ref::Vector{Float64}
-#     pg_max::Vector{Float64}
-# end
-
-# function Random.rand(rng::AbstractRNG, rs::UCjlReserveScaler)
-#     # generate MRR
-#     MRR = rs.min_frac * sum(rs.pd_ref)
-
-#     rmax = rs.max_frac .* rs.pg_max
-#     rmin = zeros(Float64, length(rmax))
-
-#     return MRR, rmin, rmax
-# end
-
 function ReserveScaler(data::Dict, options::Dict)
     get(data, "basic_network", false) || error(
         """Invalid data: network data must be in basic format.
@@ -85,18 +52,6 @@ function ReserveScaler(data::Dict, options::Dict)
         pg_max = [gen["pmax"] for (id, gen) in data["gen"]]
 
         return E2ELRReserveScaler(mrr_dist, factor, pg_min, pg_max)
-
-    # elseif reserve_type == "UCjl"
-    #     min_frac = get(options, "min_frac", 0.1)
-    #     max_frac = get(options, "max_frac", 0.1)
-
-    #     pd_ref = [data["load"]["$i"]["pd"] for i in 1:length(data["load"])]
-    #     pg_max = [gen["pmax"] for (id, gen) in data["gen"]]
-
-    #     @warn "When using the UCjl reserve scaler, the minimum reserve requirement (MRR)
-    #          depends on the total active load, which typically varies per sample. Proceed with caution."
-
-    #     return UCjlReserveScaler(min_frac, max_frac, pd_ref, pg_max)
     else
         error("Invalid noise type: $(reserve_type).\nOnly \"E2ELR\" is supported.")
     end
