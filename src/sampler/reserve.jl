@@ -11,7 +11,7 @@ Samples reserve requirements following the procedure below:
 2. Compute the upper bound of reserve requirements for each generator as `rmax = α * (pmax - pmin)`.
 3. Fix the lower bound of reserve requirement per generator to zero.
 
-The parameter `α` is a scaling factor that determines each generator's maximum reserve_cost
+The parameter `α` is a scaling factor that determines each generator's maximum reserve
     capacity. It is the `factor` parameter times the ratio of the largest generator's capacity
     to the sum of all generators' dispatchable capacity.
 
