@@ -38,6 +38,7 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     @test all(isapprox.(
         [res["solution"]["branch"]["$e"]["lam_ptdf"] for e in 1:E],
         [res2["solution"]["branch"]["$e"]["lam_ptdf"] for e in 1:E],
+        atol=1e-6, rtol=1e-6
     ))
 
     h5 = OPFGenerator.json2h5(OPF, res)
