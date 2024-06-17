@@ -130,14 +130,9 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     costs = [ref[:gen][g]["cost"] for g in 1:G]
     l, u = extrema(costs[1] for (i, gen) in ref[:gen])
     (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
-    
-    reserve_costs = [get(ref[:gen][g], "reserve_cost", zeros(T, 3)) for g in 1:G]
-    l, u = extrema(reserve_costs[1] for g in 1:G)
-    (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic reserve cost terms; those terms are being ignored"
 
     JuMP.@objective(model, Min,
         sum(costs[g][2] * pg[g] + costs[g][3] for g in 1:G) +
-        sum(reserve_costs[g][2] * r[g] + reserve_costs[g][3] for g in 1:G) +
         power_balance_penalty * δpb_surplus +
         power_balance_penalty * δpb_shortage +
         reserve_shortage_penalty * δr_shortage +

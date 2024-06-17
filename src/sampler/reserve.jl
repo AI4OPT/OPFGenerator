@@ -34,8 +34,7 @@ function Random.rand(rng::AbstractRNG, rs::E2ELRReserveScaler)
     α = rs.factor * pmax / sum(pg_ranges)
     rmax = α .* pg_ranges
     rmin = zeros(Float64, length(rmax))
-    reserve_cost = zeros(Float64, length(rmax), 3)
-    return MRR, rmin, rmax, reserve_cost
+    return MRR, rmin, rmax
 end
 
 
@@ -44,7 +43,7 @@ struct NullReserveScaler <: AbstractReserveSampler
 end
 
 function Random.rand(rng::AbstractRNG, rs::NullReserveScaler)
-    return 0.0, zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen, 3)
+    return 0.0, zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen)
 end
 
 function ReserveScaler(data::Dict, options::Dict)

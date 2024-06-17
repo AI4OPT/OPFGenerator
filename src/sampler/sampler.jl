@@ -43,8 +43,8 @@ function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
     pd, qd = rand(rng, s.load_sampler)
     _set_loads!(data, pd, qd)
 
-    MRR, rmin, rmax, reserve_cost = rand(rng, s.reserve_sampler)
-    _set_reserve!(data, MRR, rmin, rmax, reserve_cost)
+    MRR, rmin, rmax = rand(rng, s.reserve_sampler)
+    _set_reserve!(data, MRR, rmin, rmax)
 
     return data
 end
@@ -63,7 +63,7 @@ function _set_loads!(data, pd, qd)
     return nothing
 end
 
-function _set_reserve!(data, MRR, rmin, rmax, reserve_cost)
+function _set_reserve!(data, MRR, rmin, rmax)
     G = length(data["gen"])
     length(rmin) == G || throw(DimensionMismatch())
     length(rmax) == G || throw(DimensionMismatch())
@@ -72,7 +72,6 @@ function _set_reserve!(data, MRR, rmin, rmax, reserve_cost)
         gdat = data["gen"]["$i"]
         gdat["rmin"] = rmin[i]
         gdat["rmax"] = rmax[i]
-        gdat["reserve_cost"] = reserve_cost[i, :]
     end
 
     data["minimum_reserve"] = MRR
