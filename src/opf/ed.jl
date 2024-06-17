@@ -154,6 +154,21 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
 
     JuMP.set_lower_bound.(opf.model[:r], rmin)
     JuMP.set_upper_bound.(opf.model[:r], rmax)
+
+    if opf.model.ext[:solve_metadata][:iterative_ptdf]
+        opf.model.ext[:tracked_branches] .= false
+        opf.model.ext[:ptdf_iterations] = 0
+        
+        E = length(ref[:branch])
+        opf.model.ext[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
+
+        opf.model.ext[:termination_info] = Dict{Symbol,Any}(
+            :termination_status => nothing,
+            :primal_status => nothing,
+            :dual_status => nothing,
+            :solve_time => nothing,
+        )
+    end
     
     return nothing
 end
