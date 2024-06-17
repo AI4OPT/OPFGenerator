@@ -2,18 +2,25 @@ using SparseArrays
 
 mutable struct EconomicDispatch <: PM.AbstractPowerModel end
 
+const POWER_BALANCE_PENALTY = 350000.0
+const RESERVE_SHORTAGE_PENALTY = 110000.0
+const THERMAL_PENALTY = 150000.0
+const MAX_PTDF_ITERATIONS = 128
+const MAX_PTDF_PER_ITERATION = 5
+const ITERATIVE_PTDF_TOL = 1e-6
+
 function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     T=Float64,
     soft_power_balance::Bool=false,
     soft_reserve_requirement::Bool=false,
     soft_thermal_limit::Bool=false,
-    power_balance_penalty=350000.0,
-    reserve_shortage_penalty=110000.0,
-    thermal_penalty=150000.0,
+    power_balance_penalty=POWER_BALANCE_PENALTY,
+    reserve_shortage_penalty=RESERVE_SHORTAGE_PENALTY,
+    thermal_penalty=THERMAL_PENALTY,
     iterative_ptdf::Bool=true,
-    iterative_ptdf_tol=1e-6,
-    max_ptdf_iterations=10,
-    max_ptdf_per_iteration=5,
+    iterative_ptdf_tol=ITERATIVE_PTDF_TOL,
+    max_ptdf_iterations=MAX_PTDF_ITERATIONS,
+    max_ptdf_per_iteration=MAX_PTDF_PER_ITERATION,
 )
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
