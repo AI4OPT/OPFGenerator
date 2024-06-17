@@ -161,13 +161,15 @@ function test_update()
         
         opf2 = OPFGenerator.build_opf(OPF, data2, solver)
         
-        @test _test_update(OPF, opf1, opf2)
+        _test_update(OPF, opf1, opf2)
 
         OPFGenerator.solve!(opf1)
         res1 = OPFGenerator.extract_result(opf1)
 
         OPFGenerator.solve!(opf2)
         res2 = OPFGenerator.extract_result(opf2)
+
+        _test_update(OPF, opf1, opf2)
 
         @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
         @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
@@ -179,23 +181,25 @@ end
 
 
 function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
-    return all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
+    @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
 function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
-    return all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active])) &&
-            all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
+    @test all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active]))
+    @test all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
 
 function _test_update(::Type{OPFGenerator.EconomicDispatch}, opf1, opf2)
-    return (
-        normalized_rhs(opf1.model[:power_balance]) == normalized_rhs(opf2.model[:power_balance])
-    ) && (
-        normalized_rhs(opf1.model[:reserve_requirement]) == normalized_rhs(opf2.model[:reserve_requirement])
-    ) && (
-        all(upper_bound.(opf1.model[:r]) .== upper_bound.(opf2.model[:r]))
-    ) && (
-        all(lower_bound.(opf1.model[:r]) .== lower_bound.(opf2.model[:r]))
+    @test normalized_rhs(opf1.model[:power_balance]) == normalized_rhs(opf2.model[:power_balance])
+    @test normalized_rhs(opf1.model[:reserve_requirement]) == normalized_rhs(opf2.model[:reserve_requirement])
+    @test all(upper_bound.(opf1.model[:r]) .== upper_bound.(opf2.model[:r]))
+    @test all(lower_bound.(opf1.model[:r]) .== lower_bound.(opf2.model[:r]))
+    @test all(opf1.model.ext[:tracked_branches] .== opf2.model.ext[:tracked_branches])
+    @test all(
+        [
+            normalized_rhs(opf1.model[:ptdf_flow][i]) == normalized_rhs(opf2.model[:ptdf_flow][i])
+            for i in findall(opf1.model.ext[:tracked_branches])
+        ]
     )
 end
 
