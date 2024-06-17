@@ -119,18 +119,17 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
 
     # Objective
 
-    c = [ref[:gen][g]["cost"][2] for g in 1:G]
-    q = [get!(ref[:gen][g], "reserve_cost", zeros(T, 3))[2] for g in 1:G]
-    
-    l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
+    costs = [ref[:gen][g]["cost"] for g in 1:G]
+    l, u = extrema(costs[1] for (i, gen) in ref[:gen])
     (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
     
-    l, u = extrema(gen["reserve_cost"][1] for (i, gen) in ref[:gen])
+    reserve_costs = [get(ref[:gen][g], "reserve_cost", zeros(T, 3)) for g in 1:G]
+    l, u = extrema(reserve_costs[1] for g in 1:G)
     (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic reserve cost terms; those terms are being ignored"
 
     JuMP.@objective(model, Min,
-        sum(c[g]*pg[g] + ref[:gen][g]["cost"][3] for g in 1:G) +
-        sum(q[g]*r[g] + ref[:gen][g]["reserve_cost"][3] for g in 1:G) +
+        sum(costs[g][2] * pg[g] + costs[g][3] for g in 1:G) +
+        sum(reserve_costs[g][2] * r[g] + reserve_costs[g][3] for g in 1:G) +
         power_balance_penalty * δpb_surplus +
         power_balance_penalty * δpb_shortage +
         reserve_shortage_penalty * δr_shortage +

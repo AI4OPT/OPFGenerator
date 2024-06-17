@@ -10,6 +10,7 @@ Samples reserve requirements following the procedure below:
 1. Sample a minimum reserve requirement `MRR` from a uniform distribution `U(lb, ub)` (`mrr_dist`).
 2. Compute the upper bound of reserve requirements for each generator as `rmax = α * (pmax - pmin)`.
 3. Fix the lower bound of reserve requirement per generator to zero.
+4. Fix the reserve cost of each generator to zero.
 
 The parameter `α` is a scaling factor that determines each generator's maximum reserve
     capacity. It is the `factor` parameter times the ratio of the largest generator's capacity
@@ -33,7 +34,8 @@ function Random.rand(rng::AbstractRNG, rs::E2ELRReserveScaler)
     α = rs.factor * pmax / sum(pg_ranges)
     rmax = α .* pg_ranges
     rmin = zeros(Float64, length(rmax))
-    return MRR, rmin, rmax
+    reserve_cost = zeros(Float64, length(rmax), 3)
+    return MRR, rmin, rmax, reserve_cost
 end
 
 
@@ -42,7 +44,7 @@ struct NullReserveScaler <: AbstractReserveSampler
 end
 
 function Random.rand(rng::AbstractRNG, rs::NullReserveScaler)
-    return 0.0, zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen)
+    return 0.0, zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen, 3)
 end
 
 function ReserveScaler(data::Dict, options::Dict)
