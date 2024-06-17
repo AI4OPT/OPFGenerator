@@ -221,14 +221,10 @@ function solve!(opf::OPFModel{EconomicDispatch})
     T = typeof(model).parameters[1]
     tol = model.ext[:solve_metadata][:iterative_ptdf_tol]
 
-    N = length(data["bus"])
-    G = length(data["gen"])
     E = length(data["branch"])
-    L = length(data["load"])
     rate_a = [data["branch"]["$e"]["rate_a"] for e in 1:E]
     
     Ag, Al, pd = _ptdf_terms_from_data(data, T=T)
-    p_expr = Ag * model[:pg] - Al * pd
 
     solved = false
     niter = 0
@@ -260,7 +256,8 @@ function solve!(opf::OPFModel{EconomicDispatch})
             if n_violated <= model.ext[:solve_metadata][:max_ptdf_per_iteration]
                 model[:ptdf_flow][e] = JuMP.@constraint(
                     model,
-                    model[:pf][e] == dot(model.ext[:PTDF][e, :], p_expr)
+                    dot(model.ext[:PTDF][e, :], (Ag * model[:pg])) - model[:pf][e]
+                    == dot(model.ext[:PTDF][e, :], (Al * pd))
                 )
                 model.ext[:tracked_branches][e] = true
             end
