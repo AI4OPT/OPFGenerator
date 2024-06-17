@@ -231,11 +231,6 @@ function solve!(opf::OPFModel{EconomicDispatch})
     Ag, Al, pd = _ptdf_terms_from_data(data)
     p_expr = Ag * model[:pg] - Al * pd
 
-    if !model.ext[:solve_metadata][:iterative_ptdf]
-        optimize!(opf.model, _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
-        return
-    end
-
     solved = false
     niter = 0
     solve_time = 0.0
