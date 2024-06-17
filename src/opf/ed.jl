@@ -112,9 +112,18 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     )
 
     model.ext[:PTDF] = PM.calc_basic_ptdf_matrix(data)
-    model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
-    model.ext[:tracked_branches] = zeros(Bool, E)
-    model.ext[:ptdf_iterations] = 0
+    if iterative_ptdf
+        model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
+        model.ext[:tracked_branches] = zeros(Bool, E)
+        model.ext[:ptdf_iterations] = 0
+    else
+        Ag, Al, pd = _ptdf_terms_from_data(data)
+
+        p_expr = Ag * model[:pg] - Al * pd
+        JuMP.@constraint(model, ptdf_flow, model[:pf] .== model.ext[:PTDF] * p_expr)
+        model.ext[:tracked_branches] = ones(Bool, E)
+        model.ext[:ptdf_iterations] = -1
+    end
 
     # Objective
 
@@ -165,7 +174,7 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
         opf.model.ext[:ptdf_iterations] = 0
         
         E = length(ref[:branch])
-        opf.model.ext[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
+        opf.model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
 
         opf.model.ext[:termination_info] = Dict{Symbol,Any}(
             :termination_status => nothing,
@@ -173,21 +182,24 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
             :dual_status => nothing,
             :solve_time => nothing,
         )
+    else
+        Ag, Al, pd = _ptdf_terms_from_data(data)
+
+        p_expr = Ag * opf.model[:pg] - Al * pd
+        JuMP.delete(opf.model, opf.model[:ptdf_flow])
+        JuMP.unregister(opf.model, :ptdf_flow)
+        JuMP.@constraint(opf.model, ptdf_flow, opf.model[:pf] .== opf.model.ext[:PTDF] * p_expr)
     end
     
     return nothing
 end
 
-function solve!(opf::OPFModel{EconomicDispatch})
-    data = opf.data
-    model = opf.model
-    T = typeof(model).parameters[1]
-    tol = model.ext[:solve_metadata][:iterative_ptdf_tol]
-
+function _ptdf_terms_from_data(data; T=Float64)
     N = length(data["bus"])
     G = length(data["gen"])
-    E = length(data["branch"])
     L = length(data["load"])
+    E = length(data["branch"])
+
     Al = sparse(
         [data["load"]["$l"]["load_bus"] for l in 1:L],
         [l for l in 1:L],
@@ -205,13 +217,26 @@ function solve!(opf::OPFModel{EconomicDispatch})
     )
 
     pd = [data["load"]["$l"]["pd"] for l in 1:L]
-    rate_a = [data["branch"]["$e"]["rate_a"] for e in 1:E]
 
+    return Ag, Al, pd
+end
+
+function solve!(opf::OPFModel{EconomicDispatch})
+    data = opf.data
+    model = opf.model
+    T = typeof(model).parameters[1]
+    tol = model.ext[:solve_metadata][:iterative_ptdf_tol]
+
+    N = length(data["bus"])
+    G = length(data["gen"])
+    E = length(data["branch"])
+    L = length(data["load"])
+    rate_a = [data["branch"]["$e"]["rate_a"] for e in 1:E]
+    
+    Ag, Al, pd = _ptdf_terms_from_data(data)
     p_expr = Ag * model[:pg] - Al * pd
 
     if !model.ext[:solve_metadata][:iterative_ptdf]
-        # add entire PTDF
-        @constraint(model, model[:pf] .== model.ext[:PTDF] * p_expr)
         optimize!(opf.model, _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
         return
     end
