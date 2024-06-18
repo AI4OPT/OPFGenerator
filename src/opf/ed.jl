@@ -114,18 +114,19 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     )
 
     model.ext[:PTDF] = PM.calc_basic_ptdf_matrix(data)
-    if iterative_ptdf
-        model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
-        model.ext[:tracked_branches] = zeros(Bool, E)
-        model.ext[:ptdf_iterations] = 0
-    else
+
+    model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
+    model.ext[:tracked_branches] = zeros(Bool, E)
+    model.ext[:ptdf_iterations] = 0
+    
+    if !iterative_ptdf
+        (E > 1024) && @warn "EconomicDispatch: Iterative PTDF is disabled; adding all $E constraints at once. Consider using the iterative PTDF option for faster solves on large cases."
+    
         Ag, Al, pd = _ptdf_terms_from_data(data; T=T)
 
-        JuMP.@constraint(model, ptdf_flow, model.ext[:PTDF] * (Ag * model[:pg]) - model[:pf] .== model.ext[:PTDF] * (Al * pd))
+        JuMP.@constraint(model, ptdf_flow, (model.ext[:PTDF] * Ag) * model[:pg] - model[:pf] .== (model.ext[:PTDF] * Al) * pd)
         model.ext[:tracked_branches] = ones(Bool, E)
         model.ext[:ptdf_iterations] = -1
-
-        (E > 1024) && @warn "EconomicDispatch: Iterative PTDF is disabled; adding all $E constraints at once. Consider using the iterative PTDF option for faster convergence on large cases."
     end
 
     # Objective
