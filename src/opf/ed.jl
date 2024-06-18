@@ -190,7 +190,7 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
     else
         Ag, Al, pd = _ptdf_terms_from_data(data; T=T)
 
-        JuMP.set_normalized_rhs.(opf.model[:ptdf_flow], PTDF * Al * pd)
+        JuMP.set_normalized_rhs.(opf.model[:ptdf_flow], opf.model.ext[:PTDF] * Al * pd)
     end
     
     return nothing
