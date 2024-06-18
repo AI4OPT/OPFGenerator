@@ -49,6 +49,8 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     pfmax = [data["branch"]["$e"]["rate_a"] for e in 1:E]
 
     minimum_reserve = get(data, "minimum_reserve", 0.0)
+    # if minimum reserve is zero, rmin = rmax = 0 to fix the reserve variables to zero.
+    # otherwise, rmin and rmax must be present in the data (not standard in PGLib)
     rmin = (minimum_reserve > 0.0) ? [ref[:gen][g]["rmin"] for g in 1:G] : zeros(T, G)
     rmax = (minimum_reserve > 0.0) ? [ref[:gen][g]["rmax"] for g in 1:G] : zeros(T, G)
 
