@@ -50,17 +50,15 @@ end
 function _test_ieee14_LogNormal_s42(data)
     data0 = make_basic_network(pglib("pglib_opf_case14_ieee"))
 
-    # Check that the sampled data dictionary only has different loads
+    # Check that the sampled data dictionary only has different loads/reserves
     # Buses, generators, etc... should not have changed
     for (k, v) in data0
-        k == "load" && continue
-        @test data[k] == v
-    end
-    # Only active/reactive power loads should have been modified
-    for (i, load) in data0["load"]
-        for (k, v) in load
-            (k == "pd" || k == "qd") && continue
-            @test load[k] == data["load"][i][k]
+        if k == "gen"
+            @test all(data[k][i][kk] == v[i][kk] for (i, gen) in v for (kk, vv) in gen if kk ∉ ["rmin", "rmax"])
+        elseif k == "load"
+            @test all(data[k][i][kk] == v[i][kk] for (i, load) in v for (kk, vv) in load if kk ∉ ["pd", "qd"])
+        else
+            @test data[k] == v
         end
     end
 
@@ -104,6 +102,12 @@ function _test_ieee14_LogNormal_s42(data)
         @test data["load"]["$i"]["qd"] ≈ q
     end
 
+    # all reserves should be zero
+    for i in 1:length(data["gen"])
+        @test data["gen"]["$i"]["rmin"] == 0.0
+        @test data["gen"]["$i"]["rmax"] == 0.0
+    end
+
     return nothing
 end
 
@@ -132,9 +136,15 @@ function test_update()
     sampler_config = Dict(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
-            "l" => 0.8,
-            "u" => 1.2,
+            "l" => 0.6,
+            "u" => 0.8,
             "sigma" => 0.05,        
+        ),
+        "reserve" => Dict( # tiny reserve requirement
+            "type" => "E2ELR",
+            "l" => 0.0,
+            "u" => 0.1,
+            "factor" => 5.0,
         )
     )
 
@@ -151,13 +161,15 @@ function test_update()
         
         opf2 = OPFGenerator.build_opf(OPF, data2, solver)
         
-        @test _test_update(OPF, opf1, opf2)
+        _test_update(OPF, opf1, opf2)
 
         OPFGenerator.solve!(opf1)
         res1 = OPFGenerator.extract_result(opf1)
 
         OPFGenerator.solve!(opf2)
         res2 = OPFGenerator.extract_result(opf2)
+
+        _test_update(OPF, opf1, opf2)
 
         @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
         @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
@@ -169,14 +181,27 @@ end
 
 
 function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
-    return all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
+    @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
 function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
-    return all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active])) &&
-            all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
+    @test all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active]))
+    @test all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
 
+function _test_update(::Type{OPFGenerator.EconomicDispatch}, opf1, opf2)
+    @test normalized_rhs(opf1.model[:power_balance]) == normalized_rhs(opf2.model[:power_balance])
+    @test normalized_rhs(opf1.model[:reserve_requirement]) == normalized_rhs(opf2.model[:reserve_requirement])
+    @test all(upper_bound.(opf1.model[:r]) .== upper_bound.(opf2.model[:r]))
+    @test all(lower_bound.(opf1.model[:r]) .== lower_bound.(opf2.model[:r]))
+    @test all(opf1.model.ext[:tracked_branches] .== opf2.model.ext[:tracked_branches])
+    @test all(
+        [
+            normalized_rhs(opf1.model[:ptdf_flow][i]) == normalized_rhs(opf2.model[:ptdf_flow][i])
+            for i in findall(opf1.model.ext[:tracked_branches])
+        ]
+    )
+end
 
 function test_sampler_script()
     sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
@@ -190,6 +215,12 @@ function test_sampler_script()
                 "l" => 0.6,
                 "u" => 0.8,
                 "sigma" => 0.05,
+            ),
+            "reserve" => Dict( # tiny reserve requirement
+                "type" => "E2ELR",
+                "l" => 0.0,
+                "u" => 0.1,
+                "factor" => 5.0,
             )
         ),
         "OPF" => Dict(
@@ -206,6 +237,21 @@ function test_sampler_script()
                     "attributes" => Dict(
                         "tol" => 1e-6,
                     )
+                )
+            ),
+            "ED" => Dict(
+                "type" => "EconomicDispatch",
+                "solver" => Dict(
+                    "name" => "Clarabel",
+                )
+            ),
+            "ED_noniterative" => Dict(
+                "type" => "EconomicDispatch",
+                "kwargs" => Dict(
+                    "iterative_ptdf" => false,
+                ),
+                "solver" => Dict(
+                    "name" => "Clarabel",
                 )
             ),
             "SOCWRConic" => Dict(
