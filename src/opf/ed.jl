@@ -311,6 +311,9 @@ function solve!(opf::OPFModel{EconomicDispatch})
     model.ext[:termination_info][:ptdf_iterations] = niter
     model.ext[:termination_info][:termination_status] = st
 
+    pg_ = value.(model[:pg])
+    p_ = Ag * pg_ - Al * pd
+    pf_ = model.ext[:PTDF] * p_
     model.ext[:ptdf_pf] = pf_
 
     return
