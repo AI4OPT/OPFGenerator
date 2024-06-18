@@ -175,8 +175,7 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
         
         E = length(ref[:branch])
         
-        tracked = findall(opf.model.ext[:tracked_branches])
-        JuMP.delete.(opf.model, opf.model[:ptdf_flow][tracked])
+        JuMP.delete.(opf.model, opf.model[:ptdf_flow][opf.model.ext[:tracked_branches]])
         
         JuMP.unregister.(opf.model, :ptdf_flow)
         opf.model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
