@@ -311,6 +311,8 @@ function solve!(opf::OPFModel{EconomicDispatch})
     model.ext[:termination_info][:ptdf_iterations] = niter
     model.ext[:termination_info][:termination_status] = st
 
+    model.ext[:ptdf_pf] = pf_
+
     return
 end
 
@@ -377,7 +379,8 @@ function extract_result(opf::OPFModel{EconomicDispatch})
             )
         else
             sol["branch"]["$e"] = Dict(
-                "pf" => value(model[:pf][e]),
+                # "pf" => value(model[:pf][e]),
+                "pf" => model.ext[:ptdf_pf][e],
                 "df" => value(model[:δf][e]),
                 "mu_pf" => dual(model[:pf_lower_bound][e]) - dual(model[:pf_upper_bound][e]),
                 "mu_df" => dual(LowerBoundRef(model[:δf][e])) - (has_upper_bound(model[:δf][e]) ? dual(UpperBoundRef(model[:δf][e])) : 0.0),
