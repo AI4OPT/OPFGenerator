@@ -231,8 +231,11 @@ function solve!(opf::OPFModel{EconomicDispatch})
 
     E = length(data["branch"])
     rate_a = [data["branch"]["$e"]["rate_a"] for e in 1:E]
-    
+
     Ag, Al, pd = _ptdf_terms_from_data(data, T=T)
+    br_pd = Al * pd
+    br_pg = Ag * model[:pg]
+    ptdfb = model.ext[:PTDF] * br_pd
 
     solved = false
     niter = 0
@@ -251,7 +254,7 @@ function solve!(opf::OPFModel{EconomicDispatch})
         st ∈ (MOI.OPTIMAL, MOI.LOCALLY_SOLVED) || break
 
         pg_ = value.(model[:pg])
-        p_ = Ag * pg_ - Al * pd
+        p_ = Ag * pg_ - br_pd
         pf_ = model.ext[:PTDF] * p_
 
         n_violated = 0
@@ -264,8 +267,8 @@ function solve!(opf::OPFModel{EconomicDispatch})
             if n_violated <= model.ext[:solve_metadata][:max_ptdf_per_iteration]
                 model[:ptdf_flow][e] = JuMP.@constraint(
                     model,
-                    dot(model.ext[:PTDF][e, :], (Ag * model[:pg])) - model[:pf][e]
-                    == dot(model.ext[:PTDF][e, :], (Al * pd))
+                    dot(model.ext[:PTDF][e, :], br_pg) - model[:pf][e]
+                    == ptdfb[e]
                 )
                 model.ext[:tracked_branches][e] = true
             end
@@ -312,7 +315,7 @@ function solve!(opf::OPFModel{EconomicDispatch})
     model.ext[:termination_info][:termination_status] = st
 
     pg_ = value.(model[:pg])
-    p_ = Ag * pg_ - Al * pd
+    p_ = Ag * pg_ - br_pd
     pf_ = model.ext[:PTDF] * p_
     model.ext[:ptdf_pf] = pf_
 
