@@ -395,7 +395,6 @@ function extract_result(opf::OPFModel{EconomicDispatch})
                 "mu_pf_ub" => dual(model[:pf_upper_bound][e]),
 
                 "mu_df_lb" => dual(LowerBoundRef(model[:δf][e])),
-                "mu_df_ub" => (has_upper_bound(model[:δf][e]) ? dual(UpperBoundRef(model[:δf][e])) : 0.0),
 
                 "lam_ptdf" => isdefined(model[:ptdf_flow], e) ? dual(model[:ptdf_flow][e]) : 0.0,
             )
@@ -408,13 +407,8 @@ function extract_result(opf::OPFModel{EconomicDispatch})
         "dr_shortage" => value(model[:δr_shortage]),
 
         "mu_dpb_surplus_lb" => dual(LowerBoundRef(model[:δpb_surplus])),
-        "mu_dpb_surplus_ub" => (has_upper_bound(model[:δpb_surplus]) ? dual(UpperBoundRef(model[:δpb_surplus])) : 0.0),
-
         "mu_dpb_shortage_lb" => dual(LowerBoundRef(model[:δpb_shortage])),
-        "mu_dpb_shortage_ub" => (has_upper_bound(model[:δpb_shortage]) ? dual(UpperBoundRef(model[:δpb_shortage])) : 0.0),
-
         "mu_dr_shortage_lb" => dual(LowerBoundRef(model[:δr_shortage])),
-        "mu_dr_shortage_ub" => (has_upper_bound(model[:δr_shortage]) ? dual(UpperBoundRef(model[:δr_shortage])) : 0.0),
 
         "mu_power_balance" => dual(model[:power_balance]),
         "mu_reserve_requirement" => dual(model[:reserve_requirement]),
