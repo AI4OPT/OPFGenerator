@@ -124,7 +124,7 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     
         Ag, Al, pd = _ptdf_terms_from_data(data; T=T)
 
-        model[:ptdf_flow] .= JuMP.@constraint(model, (model.ext[:PTDF] * Ag) * model[:pg] - model[:pf] .== (model.ext[:PTDF] * Al) * pd)
+        model[:ptdf_flow] .= JuMP.@constraint(model, (model.ext[:PTDF] * Ag) * model[:pg] - model[:pf] .== model.ext[:PTDF] * (Al * pd))
         model.ext[:tracked_branches] .= true
         model.ext[:ptdf_iterations] = -1
     end
