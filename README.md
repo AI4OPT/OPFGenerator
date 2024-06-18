@@ -387,3 +387,8 @@ save_json("my_pretty_jsonfile.json", d, indent=2)  # prettier formatting
 save_json("my_new_jsonfile.json.gz", d)
 save_json("my_new_jsonfile.json.bz2", d)
 ```
+
+## Acknowledgements
+
+This material is based upon work supported by the National Science Foundation under Grant No. 2112533 NSF AI Institute for Advances in Optimization ([AI4OPT](https://www.ai4opt.org/)). 
+Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
