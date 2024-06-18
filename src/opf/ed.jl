@@ -170,7 +170,6 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
     JuMP.set_upper_bound.(opf.model[:r], rmax)
 
     if opf.model.ext[:solve_metadata][:iterative_ptdf]
-        opf.model.ext[:tracked_branches] .= false
         opf.model.ext[:ptdf_iterations] = 0
         
         E = length(ref[:branch])
@@ -186,6 +185,7 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
             :dual_status => nothing,
             :solve_time => nothing,
         )
+        opf.model.ext[:tracked_branches] .= false
     else
         Ag, Al, pd = _ptdf_terms_from_data(data; T=T)
 
