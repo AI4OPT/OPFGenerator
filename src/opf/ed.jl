@@ -396,7 +396,7 @@ function extract_result(opf::OPFModel{EconomicDispatch})
 
                 "mu_df_lb" => dual(LowerBoundRef(model[:δf][e])),
 
-                "lam_ptdf" => isdefined(model[:ptdf_flow], e) ? dual(model[:ptdf_flow][e]) : 0.0,
+                "lam_ptdf" => isassigned(model[:ptdf_flow], e) ? dual(model[:ptdf_flow][e]) : 0.0,
             )
         end
     end
