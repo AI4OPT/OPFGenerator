@@ -18,6 +18,39 @@ function test_glocal()
     return nothing
 end
 
+function test_ScaledLogNormal()
+    d = ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3))
+
+    @test length(d) == 3
+
+    @test isa(d, OPFGenerator.Glocal)
+    @test d.d_α == Uniform(0.8, 1.2)
+    @test isa(d.d_η, Distributions.MvLogNormal)
+
+    # Sanity checks
+    @test_throws ErrorException ScaledLogNormal(0.8, 0.7, ones(3))   # l > u
+    @test_throws ErrorException ScaledLogNormal(0.8, 1.2, -ones(3))  # σ < 0
+
+    return nothing
+end
+
+function test_ScaledUniform()
+    d = ScaledUniform(0.8, 1.2, 0.05 .* ones(5))
+
+    @test length(d) == 5
+
+    @test isa(d, OPFGenerator.Glocal)
+    @test d.d_α == Uniform(0.8, 1.2)
+    @test isa(d.d_η, Distributions.Product)
+
+    # Sanity checks
+    @test_throws ErrorException ScaledUniform(0.8, 0.7, ones(3))   # l > u
+    @test_throws ErrorException ScaledUniform(0.8, 1.2, -ones(3))  # σ < 0
+
+    return nothing
+end
+
+
 function test_LoadScaler_sanity_checks()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
 
@@ -55,38 +88,6 @@ function test_LoadScaler_sanity_checks()
         options["sigma"] = σ
         @test_throws ErrorException LoadScaler(data, options)
     end
-
-    return nothing
-end
-
-function test_ScaledLogNormal()
-    d = ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3))
-
-    @test length(d) == 3
-
-    @test isa(d, OPFGenerator.Glocal)
-    @test d.d_α == Uniform(0.8, 1.2)
-    @test isa(d.d_η, Distributions.MvLogNormal)
-
-    # Sanity checks
-    @test_throws ErrorException ScaledLogNormal(0.8, 0.7, ones(3))   # l > u
-    @test_throws ErrorException ScaledLogNormal(0.8, 1.2, -ones(3))  # σ < 0
-
-    return nothing
-end
-
-function test_ScaledUniform()
-    d = ScaledUniform(0.8, 1.2, 0.05 .* ones(5))
-
-    @test length(d) == 5
-
-    @test isa(d, OPFGenerator.Glocal)
-    @test d.d_α == Uniform(0.8, 1.2)
-    @test isa(d.d_η, Distributions.Product)
-
-    # Sanity checks
-    @test_throws ErrorException ScaledUniform(0.8, 0.7, ones(3))   # l > u
-    @test_throws ErrorException ScaledUniform(0.8, 1.2, -ones(3))  # σ < 0
 
     return nothing
 end
