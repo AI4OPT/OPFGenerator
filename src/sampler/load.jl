@@ -46,10 +46,10 @@ function LoadScaler(data::Dict, options::Dict)
     # Grab noise parameters, and perform sanity checks
     l = get(options, "l", NaN)
     u = get(options, "u", NaN)
-    if !isa(l, Real) || !isfinite(l)
-        error("Missing or invalid input data: \"l"\"")
+    if !(isa(l, Real) && isfinite(l))
+        error("Missing or invalid input data: \"l\"")
     end
-    if !isa(u, Real) || !isfinite(u)
+    if !(isa(u, Real) && isfinite(u))
         error("Missing or invalid input data: \"u\"")
     end
     if !(l <= u)
@@ -57,7 +57,7 @@ function LoadScaler(data::Dict, options::Dict)
     end
 
     σs = zeros(Float64, L)
-    σ = get(options, "sigma", missing)
+    σ = get(options, "sigma", NaN)
     if isa(σ, AbstractVector{<:Real})
         length(σ) == L || error("Invalid sigma length")
         σs .= σ
