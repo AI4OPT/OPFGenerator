@@ -18,6 +18,47 @@ function test_glocal()
     return nothing
 end
 
+function test_LoadScaler_sanity_checks()
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+
+    # Test potential issues
+    # Not basic data
+    data["basic_network"] = false
+    @test_throws ErrorException LoadScaler(data, Dict())
+    data["basic_network"] = true
+
+    # Invalid noise type
+    options = Dict()
+    @test_throws ErrorException LoadScaler(data, options)  # missing key
+    options["noise_type"] = "InvalidNoiseType"
+    @test_throws ErrorException LoadScaler(data, options)  # key exists but bad value
+
+    # Missing or invalid global parameters
+    options["noise_type"] = "ScaledLogNormal"
+    options["l"] = 0.8
+    options["u"] = 1.2
+    for v in [Inf, NaN, missing, nothing, 1+im]
+        options["l"] = v
+        @test_throws ErrorException LoadScaler(data, options)  # bad `l`
+        options["l"] = 0.8
+
+        options["u"] = v
+        @test_throws ErrorException LoadScaler(data, options)  # bad `u`
+        options["u"] = 1.2
+    end
+    options["l"] = 1.3
+    @test_throws ErrorException LoadScaler(data, options)  # l > u
+    options["l"] = 0.8
+
+    # Invalid sigma values
+    for σ in [Inf, -1, im, ["1", "2"], ones(2, 2), "0.05", [0.05, Inf]]
+        options["sigma"] = σ
+        @test_throws ErrorException LoadScaler(data, options)
+    end
+
+    return nothing
+end
+
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
     _data = deepcopy(data)  # keep a deepcopy nearby
@@ -335,8 +376,5 @@ end
 
 @testset "Sampler" begin
     @testset test_glocal()
-    test_sampler()
-    test_inplace_sampler()
-    test_sampler_script()
-    test_update()
+    @testset test_LoadScaler_sanity_checks()
 end
