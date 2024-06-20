@@ -50,6 +50,37 @@ function test_ScaledUniform()
     return nothing
 end
 
+function test_LoadScaler()
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    pd = [data["load"]["$k"]["pd"] for k in 1:length(data["load"])]
+    qd = [data["load"]["$k"]["qd"] for k in 1:length(data["load"])]
+
+    # ScaledLogNormal
+    options = Dict(
+        "noise_type" => "ScaledLogNormal",
+        "l" => 0.8,
+        "u" => 1.2,
+        "sigma" => 0.05,
+    )
+    ls = LoadScaler(data, options)
+    @test isa(ls.d, ScaledLogNormal)
+    @test ls.pd == pd
+    @test ls.qd == qd
+
+    # ScaledUniform
+    options = Dict(
+        "noise_type" => "ScaledUniform",
+        "l" => 0.8,
+        "u" => 1.2,
+        "sigma" => 0.05,
+    )
+    ls = LoadScaler(data, options)
+    @test isa(ls.d, ScaledUniform)
+    @test ls.pd == pd
+    @test ls.qd == qd
+
+    return nothing
+end
 
 function test_LoadScaler_sanity_checks()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
@@ -411,5 +442,6 @@ end
     @testset test_glocal()
     @testset test_ScaledLogNormal()
     @testset test_ScaledUniform()
+    @testset test_LoadScaler()
     @testset test_LoadScaler_sanity_checks()
 end

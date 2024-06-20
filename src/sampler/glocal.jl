@@ -48,16 +48,9 @@ function Distributions._rand!(rng::AbstractRNG, d::Glocal, x::AbstractMatrix)
 end
 
 """
-    ScaledLogNormal
-
-A [`Glocal`](@ref) distribution `ϵ = α×η` where `α` is uniform and `η` is LogNormal.
-"""
-const ScaledLogNormal = Glocal{Uniform{Float64},MvLogNormal}
-
-"""
     ScaledLogNormal(l, u, σs)
 
-Generate a `ScaledLogNormal` distribution where `α~U[l,u]` and `ηᵢ ~ LogNormal(-σᵢ²/2, σᵢ)`.
+Generate a [`Glocal`](@ref) distribution `ϵ = α×η` where `α~U[l,u]` and `ηᵢ ~ LogNormal(-σᵢ²/2, σᵢ)`.
 """
 function ScaledLogNormal(l::Float64, u::Float64, σs::Vector{Float64})
     l <= u || error("Invalid bounds: l > u")
@@ -74,16 +67,9 @@ function ScaledLogNormal(l::Float64, u::Float64, σs::Vector{Float64})
 end
 
 """
-    ScaledUniform
-
-A [`Glocal`](@ref) distribution `ϵ = α×η` where `α` is uniform and `ηᵢ` is uniform.
-"""
-const ScaledUniform = Glocal{Uniform{Float64},Product{Continuous,Uniform{Float64},Vector{Uniform{Float64}}}}
-
-"""
     ScaledUniform(l, u, σs)
 
-Generate a `ScaledUniform` distribution where `α ~ U[l,u]` and `ηᵢ ~ U[1-σᵢ, 1+σᵢ]`.
+Generate a [`Glocal`](@ref) distribution `ϵ = α×η` where `α ~ U[l,u]` and `ηᵢ ~ U[1-σᵢ, 1+σᵢ]`.
 """
 function ScaledUniform(l::Float64, u::Float64, σs::Vector{Float64})
     l <= u || error("Invalid bounds: l > u")
