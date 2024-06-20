@@ -61,6 +61,7 @@ Generate a `ScaledLogNormal` distribution where `α~U[l,u]` and `ηᵢ ~ LogNorm
 """
 function ScaledLogNormal(l::Float64, u::Float64, σs::Vector{Float64})
     l <= u || error("Invalid bounds: l > u")
+    all(σs .>= 0) || error("Invalid input: σs must be non-negative")
 
     # Uniform distribution
     d_α = Uniform(l, u)
@@ -86,6 +87,7 @@ Generate a `ScaledUniform` distribution where `α ~ U[l,u]` and `ηᵢ ~ U[1-σ�
 """
 function ScaledUniform(l::Float64, u::Float64, σs::Vector{Float64})
     l <= u || error("Invalid bounds: l > u")
+    all(σs .>= 0) || error("Invalid input: σs must be non-negative")
 
     # Uniform distribution
     d_α = Uniform(l, u)

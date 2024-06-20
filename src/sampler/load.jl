@@ -37,22 +37,42 @@ function LoadScaler(data::Dict, options::Dict)
     # Noise distribution
     # TODO: modularize this
     noise_type = get(options, "noise_type", "")
-    noise_type == "ScaledLogNormal" || error(
-        "Invalid noise type: $(noise_type).\nOnly \"ScaledLogNormal\" is supported."
-    )
-    l = options["l"]
-    u = options["u"]
-    σ = options["sigma"]
+    if noise_type ∉ ["ScaledLogNormal", "ScaledUniform"]
+        error("""Invalid noise type for load: $(noise_type). Supported values are:
+        * \"ScaledLogNormal\"
+        * \"ScaledUniform\"""")
+    end
+    
+    # Grab noise parameters, and perform sanity checks
+    l = get(options, "l", NaN)
+    u = get(options, "u", NaN)
+    if !isreal(l) || !isfinite(l)
+        error("Missing or invalid input data: l.")
+    end
+    if !isreal(l) || !isfinite(u)
+        error("Missing or invalid input data: u")
+    end
+    if !(l <= u)
+        error("Invalid global scaling parameters: [$l, $u]")
+    end
+
     σs = zeros(Float64, L)
-    if isa(σ, Vector)
+    σ = get(options, "sigma", missing)
+    if isa(σ, AbstractVector{<:Real})
         length(σ) == L || error("Invalid sigma length")
         σs .= σ
-    elseif isa(σ, Real)
+    elseif isa(σ, Real) && isfinite(σ)
         σs .= σ
     else
-        error("Invalid input data: sigma has type $(typeof(σ)) (must be a number or a float)")
+        error("Invalid input data: sigma. Must be a finite real number or a real-valued vector.")
     end
-    d = ScaledLogNormal(l, u, σs)
-    
+
+    # Noise distribution
+    d = if noise_type == "ScaledLogNormal"
+        ScaledLogNormal(l, u, σs)
+    elseif noise_type == "ScaledUniform"
+        ScaledUniform(l, u, σs)
+    end
+
     return LoadScaler(d, pd, qd)
 end
