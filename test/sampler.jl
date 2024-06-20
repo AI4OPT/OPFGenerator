@@ -446,4 +446,8 @@ end
     @testset test_ScaledUniform()
     @testset test_LoadScaler()
     @testset test_LoadScaler_sanity_checks()
+    @testset test_sampler()
+    @testset test_inplace_sampler()
+    @testset test_sampler_script()
+    @testset test_update()
 end
