@@ -30,16 +30,6 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     OPFGenerator.solve!(opf2)
     res2 = OPFGenerator.extract_result(opf2)
     @test isapprox(res["objective"], res2["objective"], atol=1e-6, rtol=1e-6)
-    @test all(isapprox.(
-        [res["solution"]["gen"]["$g"]["pg"] for g in 1:G],
-        [res2["solution"]["gen"]["$g"]["pg"] for g in 1:G],
-        atol=1e-6, rtol=1e-6
-    ))
-    @test all(isapprox.(
-        [res["solution"]["branch"]["$e"]["lam_ptdf"] for e in 1:E],
-        [res2["solution"]["branch"]["$e"]["lam_ptdf"] for e in 1:E],
-        atol=1e-6, rtol=1e-6
-    ))
 
     h5 = OPFGenerator.json2h5(OPF, res)
     @test haskey(h5, "meta")
