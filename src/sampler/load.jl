@@ -46,11 +46,11 @@ function LoadScaler(data::Dict, options::Dict)
     # Grab noise parameters, and perform sanity checks
     l = get(options, "l", NaN)
     u = get(options, "u", NaN)
-    if !isreal(l) || !isfinite(l)
-        error("Missing or invalid input data: l.")
+    if !isa(l, Real) || !isfinite(l)
+        error("Missing or invalid input data: \"l"\"")
     end
-    if !isreal(l) || !isfinite(u)
-        error("Missing or invalid input data: u")
+    if !isa(u, Real) || !isfinite(u)
+        error("Missing or invalid input data: \"u\"")
     end
     if !(l <= u)
         error("Invalid global scaling parameters: [$l, $u]")
