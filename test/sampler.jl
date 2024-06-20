@@ -63,21 +63,23 @@ function test_LoadScaler()
         "sigma" => 0.05,
     )
     ls = LoadScaler(data, options)
-    @test isa(ls.d, ScaledLogNormal)
-    @test ls.pd == pd
-    @test ls.qd == qd
+    @test ls.d.d_α == Uniform(0.8, 1.2)
+    @test isa(ls.d.d_η, MvLogNormal)
+    @test ls.pd_ref == pd
+    @test ls.qd_ref == qd
 
     # ScaledUniform
     options = Dict(
         "noise_type" => "ScaledUniform",
-        "l" => 0.8,
-        "u" => 1.2,
+        "l" => 0.7,
+        "u" => 1.5,
         "sigma" => 0.05,
     )
     ls = LoadScaler(data, options)
-    @test isa(ls.d, ScaledUniform)
-    @test ls.pd == pd
-    @test ls.qd == qd
+    @test ls.d.d_α == Uniform(0.7, 1.5)
+    @test isa(ls.d.d_η, Distributions.Product)
+    @test ls.pd_ref == pd
+    @test ls.qd_ref == qd
 
     return nothing
 end
