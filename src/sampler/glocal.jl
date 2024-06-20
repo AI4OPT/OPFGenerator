@@ -71,3 +71,27 @@ function ScaledLogNormal(l::Float64, u::Float64, σs::Vector{Float64})
 
     return Glocal(d_α, d_η)
 end
+
+"""
+    ScaledUniform
+
+A [`Glocal`](@ref) distribution `ϵ = α×η` where `α` is uniform and `ηᵢ` is uniform.
+"""
+const ScaledUniform = Glocal{Uniform{Float64},Product{Continuous,Uniform{Float64},Vector{Uniform{Float64}}}}
+
+"""
+    ScaledUniform(l, u, σs)
+
+Generate a `ScaledUniform` distribution where `α ~ U[l,u]` and `ηᵢ ~ U[1-σᵢ, 1+σᵢ]`.
+"""
+function ScaledUniform(l::Float64, u::Float64, σs::Vector{Float64})
+    l <= u || error("Invalid bounds: l > u")
+
+    # Uniform distribution
+    d_α = Uniform(l, u)
+    
+    # Load-level uniform distributions
+    d_η = Distributions.product_distribution([Uniform(1 - σ, 1 + σ) for σ in σs])
+
+    return Glocal(d_α, d_η)
+end
