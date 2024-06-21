@@ -13,7 +13,8 @@ using JuMP
 import Random: rand, rand!
 
 export load_json, save_json, save_h5
-export SimpleOPFSampler, LoadScaler, ScaledLogNormal
+export SimpleOPFSampler, LoadScaler
+export ScaledLogNormal, ScaledUniform
 
 include("utils/json.jl")
 include("utils/hdf5.jl")

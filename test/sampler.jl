@@ -18,6 +18,113 @@ function test_glocal()
     return nothing
 end
 
+function test_ScaledLogNormal()
+    d = ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3))
+
+    @test length(d) == 3
+
+    @test isa(d, OPFGenerator.Glocal)
+    @test d.d_α == Uniform(0.8, 1.2)
+    @test isa(d.d_η, Distributions.MvLogNormal)
+
+    # Sanity checks
+    @test_throws ErrorException ScaledLogNormal(0.8, 0.7, ones(3))   # l > u
+    @test_throws ErrorException ScaledLogNormal(0.8, 1.2, -ones(3))  # σ < 0
+
+    return nothing
+end
+
+function test_ScaledUniform()
+    d = ScaledUniform(0.8, 1.2, 0.05 .* ones(5))
+
+    @test length(d) == 5
+
+    @test isa(d, OPFGenerator.Glocal)
+    @test d.d_α == Uniform(0.8, 1.2)
+    @test isa(d.d_η, Distributions.Product)
+
+    # Sanity checks
+    @test_throws ErrorException ScaledUniform(0.8, 0.7, ones(3))   # l > u
+    @test_throws ErrorException ScaledUniform(0.8, 1.2, -ones(3))  # σ < 0
+
+    return nothing
+end
+
+function test_LoadScaler()
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    pd = [data["load"]["$k"]["pd"] for k in 1:length(data["load"])]
+    qd = [data["load"]["$k"]["qd"] for k in 1:length(data["load"])]
+
+    # ScaledLogNormal
+    options = Dict(
+        "noise_type" => "ScaledLogNormal",
+        "l" => 0.8,
+        "u" => 1.2,
+        "sigma" => 0.05,
+    )
+    ls = LoadScaler(data, options)
+    @test ls.d.d_α == Uniform(0.8, 1.2)
+    @test isa(ls.d.d_η, MvLogNormal)
+    @test ls.pd_ref == pd
+    @test ls.qd_ref == qd
+
+    # ScaledUniform
+    options = Dict(
+        "noise_type" => "ScaledUniform",
+        "l" => 0.7,
+        "u" => 1.5,
+        "sigma" => 0.05,
+    )
+    ls = LoadScaler(data, options)
+    @test ls.d.d_α == Uniform(0.7, 1.5)
+    @test isa(ls.d.d_η, Distributions.Product)
+    @test ls.pd_ref == pd
+    @test ls.qd_ref == qd
+
+    return nothing
+end
+
+function test_LoadScaler_sanity_checks()
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+
+    # Test potential issues
+    # Not basic data
+    data["basic_network"] = false
+    @test_throws ErrorException LoadScaler(data, Dict())
+    data["basic_network"] = true
+
+    # Invalid noise type
+    options = Dict()
+    @test_throws ErrorException LoadScaler(data, options)  # missing key
+    options["noise_type"] = "InvalidNoiseType"
+    @test_throws ErrorException LoadScaler(data, options)  # key exists but bad value
+
+    # Missing or invalid global parameters
+    options["noise_type"] = "ScaledLogNormal"
+    options["l"] = 0.8
+    options["u"] = 1.2
+    for v in [Inf, NaN, missing, nothing, 1+im]
+        options["l"] = v
+        @test_throws ErrorException LoadScaler(data, options)  # bad `l`
+        options["l"] = 0.8
+
+        options["u"] = v
+        @test_throws ErrorException LoadScaler(data, options)  # bad `u`
+        options["u"] = 1.2
+    end
+    options["l"] = 1.3
+    @test_throws ErrorException LoadScaler(data, options)  # l > u
+    options["l"] = 0.8
+
+    # Invalid sigma values
+    for σ in [Inf, -1, im, ["1", "2"], ones(2, 2), "0.05", [0.05, Inf]]
+        options["sigma"] = σ
+        @test_throws ErrorException LoadScaler(data, options)
+    end
+
+    return nothing
+end
+
 function test_sampler()
     data = make_basic_network(pglib("pglib_opf_case14_ieee"))
     _data = deepcopy(data)  # keep a deepcopy nearby
@@ -335,8 +442,12 @@ end
 
 @testset "Sampler" begin
     @testset test_glocal()
-    test_sampler()
-    test_inplace_sampler()
-    test_sampler_script()
-    test_update()
+    @testset test_ScaledLogNormal()
+    @testset test_ScaledUniform()
+    @testset test_LoadScaler()
+    @testset test_LoadScaler_sanity_checks()
+    @testset test_sampler()
+    @testset test_inplace_sampler()
+    @testset test_sampler_script()
+    @testset test_update()
 end
