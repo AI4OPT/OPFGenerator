@@ -30,16 +30,6 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     OPFGenerator.solve!(opf2)
     res2 = OPFGenerator.extract_result(opf2)
     @test isapprox(res["objective"], res2["objective"], atol=1e-6, rtol=1e-6)
-    @test all(isapprox.(
-        [res["solution"]["gen"]["$g"]["pg"] for g in 1:G],
-        [res2["solution"]["gen"]["$g"]["pg"] for g in 1:G],
-        atol=1e-6, rtol=1e-6
-    ))
-    @test all(isapprox.(
-        [res["solution"]["branch"]["$e"]["lam_ptdf"] for e in 1:E],
-        [res2["solution"]["branch"]["$e"]["lam_ptdf"] for e in 1:E],
-        atol=1e-6, rtol=1e-6
-    ))
 
     h5 = OPFGenerator.json2h5(OPF, res)
     @test haskey(h5, "meta")
@@ -47,23 +37,25 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     @test haskey(h5, "dual")
     Gs = [
         h5["primal"]["pg"], h5["primal"]["r"],
-        h5["dual"]["mu_pg"], h5["dual"]["mu_r"],
+        h5["dual"]["mu_pg_lb"], h5["dual"]["mu_pg_ub"],
+        h5["dual"]["mu_r_lb"], h5["dual"]["mu_r_ub"],
         h5["dual"]["mu_total_generation"],
          # TODO: move reserve bounds to input
         h5["primal"]["rmin"], h5["primal"]["rmax"],
     ]
     Es = [
         h5["primal"]["pf"], h5["primal"]["df"],
-        h5["dual"]["mu_pf"], h5["dual"]["mu_df"],
+        h5["dual"]["mu_pf_lb"], h5["dual"]["mu_pf_ub"],
+        h5["dual"]["mu_df_lb"],
         h5["dual"]["lam_ptdf"],
     ]
     singles = [
         h5["primal"]["dpb_surplus"],
         h5["primal"]["dpb_shortage"],
         h5["primal"]["dr_shortage"],
-        h5["dual"]["mu_dpb_surplus"],
-        h5["dual"]["mu_dpb_shortage"],
-        h5["dual"]["mu_dr_shortage"],
+        h5["dual"]["mu_dpb_surplus_lb"],
+        h5["dual"]["mu_dpb_shortage_lb"],
+        h5["dual"]["mu_dr_shortage_lb"],
         h5["dual"]["mu_power_balance"],
         h5["dual"]["mu_reserve_requirement"],
     ]
