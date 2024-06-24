@@ -32,7 +32,7 @@ function Random.rand(rng::AbstractRNG, rs::E2ELRReserveScaler)
     # generate reserve requirements
     pg_ranges = max.(0.0, rs.pg_max .- rs.pg_min)
     α = rs.factor * pmax / sum(pg_ranges)
-    rmax = α .* pg_ranges
+    rmax = max.(0, min.(rs.pg_max, α .* pg_ranges))
     rmin = zeros(Float64, length(rmax))
     return MRR, rmin, rmax
 end
@@ -62,9 +62,10 @@ function ReserveScaler(data::Dict, options::Dict)
         u = options["u"]
         factor = options["factor"]
         mrr_dist = Uniform(l, u)
-
-        pg_min = [gen["pmin"] for (id, gen) in data["gen"]]
-        pg_max = [gen["pmax"] for (id, gen) in data["gen"]]
+        
+        G = length(data["gen"])
+        pg_min = [data["gen"]["$g"]["pmin"] for g in 1:G]
+        pg_max = [data["gen"]["$g"]["pmax"] for g in 1:G]
 
         return E2ELRReserveScaler(mrr_dist, factor, pg_min, pg_max)
     elseif reserve_type == ""
