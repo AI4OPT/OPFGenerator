@@ -12,7 +12,7 @@ using JuMP
 
 import Random: rand, rand!
 
-export load_json, save_json, save_h5
+export load_json, save_json, load_h5, save_h5
 export SimpleOPFSampler, LoadScaler
 export ScaledLogNormal, ScaledUniform
 

@@ -2,12 +2,17 @@ using Documenter
 using OPFGenerator
 
 makedocs(
+    modules=[OPFGenerator],
     sitename = "OPFGenerator",
     format = Documenter.HTML(;
         mathengine = Documenter.MathJax(),
     ),
     pages = [
         "Home" => "index.md",
+        "Manual" => [
+            "I/O utilities" => "io.md",
+        ],
+        "Reference" => "lib/public.md",
     ],
 )
 
