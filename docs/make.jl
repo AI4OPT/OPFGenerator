@@ -19,4 +19,7 @@ makedocs(
 # Documenter can also automatically deploy documentation to gh-pages.
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
-deploydocs(repo="github.com/AI4OPT/OPFGenerator.git")
+deploydocs(
+    repo="github.com/AI4OPT/OPFGenerator.git",
+    push_preview=true,
+)
