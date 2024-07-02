@@ -8,6 +8,7 @@ end
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
 include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
+include("sdpwrm.jl")
 
 # Contains a list of all supported OPF models
 const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
@@ -15,6 +16,7 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
     PowerModels.DCPPowerModel,
     PowerModels.SOCWRPowerModel,
     PowerModels.SOCWRConicPowerModel,
+    PowerModels.SDPWRMPowerModel
 ]
 
 # A name --> type dictionary
@@ -24,6 +26,7 @@ const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
     "DCPPowerModel" => PowerModels.DCPPowerModel,
     "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
+    "SDPWRMPowerModel" => PowerModels.SDPWRMPowerModel
 )
 
 function solve!(opf::OPFModel{<:AbstractPowerModel})
