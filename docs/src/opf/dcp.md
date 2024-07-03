@@ -65,7 +65,7 @@ The primal problem reads
 
 | Symbol | Data | Size | Associated constraint 
 |:-------|:-----|:-----|:------------|
-| ``\lambda^{\text{kcl}}`` | `lam_kirchoff` | ``N`` | Nodal power balance ``\eqref{eq:DCP:kirchhoff}``
+| ``\lambda^{\text{kcl}}`` | `lam_kirchhoff` | ``N`` | Nodal power balance ``\eqref{eq:DCP:kirchhoff}``
 | ``\lambda^{\text{ohm}}`` | `lam_ohm` | ``E`` | Ohm's law ``\eqref{eq:DCP:ohm}``
 | ``\mu^{\Delta \boldsymbol{\theta}}`` | `mu_va_diff` | ``E`` | Angle difference limit ``\eqref{eq:DCP:va_diff}``
 | ``\mu^{pf}`` | `mu_sm` | ``E`` | Thermal limit ``\eqref{eq:DCP:thermal}``
