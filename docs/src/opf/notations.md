@@ -17,4 +17,4 @@ Sets:
 
 Network data:
 * ``g^{s}_{s} + \mathbf{j} \, b^{s}_{s}``: complex admittance of shunt ``s \in \mathcal{S}``
-* ``\g_{e} + \mathbf{j} \, b_{e}``: complex admittance of branch ``e \in \mathcal{E}``
+* ``g_{e} + \mathbf{j} \, b_{e}``: complex admittance of branch ``e \in \mathcal{E}``
