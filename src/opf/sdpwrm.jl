@@ -33,7 +33,7 @@ function build_opf(::Type{PM.SDPWRMPowerModel}, data::Dict{String,Any}, optimize
     ]
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = OPF
+    model.ext[:opf_model] = PM.SDPWRMPowerModel
 
     #
     #   I. Variables
@@ -170,10 +170,10 @@ function build_opf(::Type{PM.SDPWRMPowerModel}, data::Dict{String,Any}, optimize
         for (i,gen) in ref[:gen]
     ))
 
-    return OPFModel{OPF}(data, model)
+    return OPFModel{PM.SDPWRMPowerModel}(data, model)
 end
 
-function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: PM.SDPWRMPowerModel}
+function update!(opf::OPFModel{PM.SDPWRMPowerModel}, data::Dict{String,Any})
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
@@ -197,7 +197,7 @@ end
 Extract SOC-OPF solution from optimization model.
 The model must have been solved before.
 """
-function extract_result(opf::OPFModel{OPF}) where {OPF <: PM.SDPWRMPowerModel}
+function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
     data  = opf.data
     model = opf.model
 
@@ -302,7 +302,7 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: PM.SDPWRMPowerModel}
     return res
 end
 
-function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function json2h5(::Type{PM.SDPWRMPowerModel}, res)
     sol = res["solution"]
     N = length(sol["bus"])
     E = length(sol["branch"])
