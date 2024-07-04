@@ -10,6 +10,12 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Manual" => [
+            "Problem formulations" => [
+                "Notations" => "opf/notations.md",
+                "AC-OPF"    => "opf/acp.md",
+                "SOC-OPF"   => "opf/socwr.md",
+                "DC-OPF"    => "opf/dcp.md",
+            ],
             "I/O utilities" => "io.md",
         ],
         "Reference" => "lib/public.md",
