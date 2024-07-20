@@ -25,6 +25,7 @@ const OPT_SOLVERS = Dict(
     PM.ACPPowerModel               => IPOPT_SOLVER,
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
+    PM.SDPWRMPowerModel            => CLRBL_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
 )
 
