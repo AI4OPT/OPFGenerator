@@ -26,11 +26,6 @@ function build_opf(::Type{PM.SDPWRMPowerModel}, data::Dict{String,Any}, optimize
         [ref[:shunt][s] for s in ref[:bus_shunts][i]]
         for i in 1:N
     ]
-    # Branch --> bus-pair correspondence
-    br2bp = [
-        (ref[:branch][e]["f_bus"], ref[:branch][e]["t_bus"])
-        for e in 1:E
-    ]
 
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = PM.SDPWRMPowerModel
@@ -227,6 +222,7 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
     sol["bus"] = Dict{String,Any}()
     sol["branch"] = Dict{String,Any}()
     sol["gen"] = Dict{String,Any}()
+    sol["buspairs"] = Dict{String,Any}()
 
     for bus in 1:N
         sol["bus"]["$bus"] = Dict(
@@ -249,8 +245,6 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
                 "pt" => 0.0,
                 "qf" => 0.0,
                 "qt" => 0.0,
-                "wr" => 0.0,
-                "wi" => 0.0,
                 # dual vars
                 "mu_va_diff_ub" => 0.0,
                 "mu_va_diff_lb" => 0.0,
@@ -270,8 +264,6 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                "wr" => value(model[:WR][br_f_bus, br_t_bus]),
-                "wi" => value(model[:WI][br_f_bus, br_t_bus]),
                 # dual vars
                 "mu_va_diff_ub" => dual(model[:voltage_difference_limit_ub][b]),
                 "mu_va_diff_lb" => dual(model[:voltage_difference_limit_lb][b]),
@@ -297,6 +289,14 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
         )
     end
 
+    for (p, _) in ref[:buspairs]
+        sol["buspairs"]["$p"] = Dict(
+            "wr" => value(model[:WR][p...]),
+            "wi" => value(model[:WI][p...]),
+        )
+    end
+
+    # TODO: save S sparsely
     sol["S"] = dual(model[:S])
     
     return res
@@ -307,6 +307,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
     N = length(sol["bus"])
     E = length(sol["branch"])
     G = length(sol["gen"])
+    P = length(sol["buspairs"])
 
     res_h5 = Dict{String,Any}(
         "meta" => Dict{String,Any}(
@@ -327,8 +328,8 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         "qf" => zeros(Float64, E),
         "pt" => zeros(Float64, E),
         "qt" => zeros(Float64, E),
-        "wr" => zeros(Float64, E),
-        "wi" => zeros(Float64, E),
+        "wr" => zeros(Float64, P),
+        "wi" => zeros(Float64, P),
     )
     res_h5["dual"] = dres_h5 = Dict{String,Any}(
         "mu_wm_lb"               => zeros(Float64, N),
@@ -377,7 +378,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
     for e in 1:E
         brsol = sol["branch"]["$e"]
 
-        for pvar in ["pf", "qf", "pt", "qt", "wr", "wi"]
+        for pvar in ["pf", "qf", "pt", "qt"]
             pres_h5[pvar][e] = brsol[pvar]
         end
         for dvar in [
@@ -394,6 +395,13 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         # conic duals (unrolled)
         dres_h5["nu_sm_to"][e, :] .= brsol["nu_sm_to"]
         dres_h5["nu_sm_fr"][e, :] .= brsol["nu_sm_fr"]
+    end
+    for p in 1:P
+        bpsol = sol["buspairs"]["$p"]
+
+        for pvar in ["wr", "wi"]
+            pres_h5[pvar][p] = bpsol[pvar]
+        end
     end
 
     dres_h5["S"] .= sol["S"]
