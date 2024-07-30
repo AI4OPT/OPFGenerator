@@ -154,7 +154,7 @@ function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
     return all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
-function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
+function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel, PM.SDPWRMPowerModel}}
     return all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active])) &&
             all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
