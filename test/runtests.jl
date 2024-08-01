@@ -6,6 +6,7 @@ using StableRNGs
 
 using Clarabel
 using Ipopt
+using Mosek, MosekTools
 using JuMP
 
 using PowerModels
@@ -20,12 +21,13 @@ const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose
 const CLRBL128_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer{Float128},
     "verbose" => true,
 )
+const MOSEK_SOLVER = JuMP.optimizer_with_attributes(Mosek.Optimizer)
 
 const OPT_SOLVERS = Dict(
     PM.ACPPowerModel               => IPOPT_SOLVER,
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
-    PM.SDPWRMPowerModel            => CLRBL_SOLVER,
+    PM.SDPWRMPowerModel            => MOSEK_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
 )
 
