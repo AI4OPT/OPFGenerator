@@ -25,6 +25,7 @@ end
 include("acp.jl")
 include("dcp.jl")
 include("socwr.jl")
+include("sdpwrm.jl")
 
 # other tests
 include("quad_obj.jl")
