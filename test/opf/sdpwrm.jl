@@ -33,7 +33,8 @@ function test_opf_pm(::Type{PM.SDPWRMPowerModel}, data::Dict)
     var2val_pm = Dict(
         :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
         :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
-        :wm => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N]  # the diagonal elements of sol_pm["WR"]. Note that the rows and columns of sol_pm["WR"] are ordered in the order of ref[:bus].
+        # The diagonal elements of sol_pm["WR"]. Note that the rows and columns of sol_pm["WR"] are ordered in the order of ref[:bus].
+        :wm => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N]
     )
     model = opf.model
     for varname in [:pg, :qg]
@@ -139,49 +140,44 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ]
 
     # Check dual constraint corresponding to `wr` variables
-    AR = (
-        sum(
-            (-gs[i] * λp[i] + bs[i] * λq[i]) * _get_sym(i, i, 1, N)
-            for i in 1:N;
-            init=0
-        )
-        + sum(
-            λpf[e] * (
-                (g[e]+g_fr[e]) / ttm[e] * _get_sym(branch["f_bus"], branch["f_bus"], 1, N)
-                + (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e] * _get_sym(branch["f_bus"], branch["t_bus"], 1/2, N)
-            )
-            + λpt[e] * (
-                (g[e]+g_to[e]) * _get_sym(branch["t_bus"], branch["t_bus"], 1, N)
-                + (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e] * _get_sym(branch["f_bus"], branch["t_bus"], 1/2, N)
-            )
-            + λqf[e] * (
-                -(b[e]+b_fr[e]) / ttm[e] * _get_sym(branch["f_bus"], branch["f_bus"], 1, N)
-                - (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e] * _get_sym(branch["f_bus"], branch["t_bus"], 1/2, N)
-            )
-            + λqt[e] * (
-                -(b[e]+b_to[e]) * _get_sym(branch["t_bus"], branch["t_bus"], 1, N)
-                - (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e] * _get_sym(branch["f_bus"], branch["t_bus"], 1/2, N)
-            )
-            + (-tan(δθmin[e]) * μθ_lb[e] + tan(δθmax[e]) * μθ_ub[e]) * _get_sym(branch["f_bus"], branch["t_bus"], 1/2, N)
-            + μ_w[i] * _get_sym(branch["f_bus"], branch["f_bus"], 1, N)
-            for (e, branch) in ref[:branch];
-            init=0
-        )
-    )
+    AR_ff_values = [
+        λpf[e] * (g[e]+g_fr[e]) / ttm[e]
+        - λqf[e] * (b[e]+b_fr[e]) / ttm[e]
+        + μ_w[branch["f_bus"]]
+        for (e, branch) in ref[:branch]
+    ]
+    AR_tt_values = [
+        λpt[e] * (g[e]+g_to[e])
+        - λqt[e] * (b[e]+b_to[e])
+        for (e, _) in ref[:branch]
+    ]
+    AR_ft_values = [
+        λpf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
+        + λpt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
+        - λqf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
+        - λqt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
+        + (-tan(δθmin[e]) * μθ_lb[e] + tan(δθmax[e]) * μθ_ub[e])
+        for (e, _) in ref[:branch]
+    ]
+    i_array = [branch["f_bus"] for (e, _) in ref[:branch]]
+    j_array = [branch["t_bus"] for (e, _) in ref[:branch]]
+    AR = Diagonal([(-gs[i] * λp[i] + bs[i] * λq[i]) for i in 1:N]) + Symmetric(sparse(
+        vcat(i_array, j_array, i_array), vcat(i_array, j_array, j_array), vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values), N, N
+    ))
     @test norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf) <= atol
 
     # Check dual constraint corresponding to `wi` variables
-    AI = sum(
-        _get_skew_sym(branch["f_bus"], branch["t_bus"], 1/2, N) * (
-            λpf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
-            - λpt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
-            + λqf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
-            - λqt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
-            + μθ_lb[e]
-            - μθ_ub[e]
-        )
-        for (e, branch) in ref[:branch];
-        init=0
+    AI_values = [
+        λpf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
+        - λpt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
+        + λqf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
+        - λqt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
+        + μθ_lb[e]
+        - μθ_ub[e]
+        for (e, _) in ref[:branch]
+    ]
+    AI = sparse(
+        vcat(i_array, j_array), vcat(j_array, i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
     )
     @test norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf) <= atol
     return nothing
