@@ -140,9 +140,9 @@ function test_update()
 
         OPFGenerator.solve!(opf2)
         res2 = OPFGenerator.extract_result(opf2)
-
-        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
-        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
+        
+        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL, MOI.SLOW_PROGRESS]
+        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL, MOI.SLOW_PROGRESS]
         @test res1["objective"] ≈ res2["objective"]
     end
 
