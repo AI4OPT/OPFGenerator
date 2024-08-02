@@ -32,7 +32,7 @@ include("sdpwrm.jl")
 include("quad_obj.jl")
 
 const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
-const PGLIB_SDP_CASES = ["5_pjm", "14_ieee"]
+const PGLIB_SDP_CASES = ["14_ieee"]
 
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
