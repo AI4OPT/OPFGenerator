@@ -141,23 +141,26 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ]
 
     # Check dual constraint corresponding to `wr` variables
-    AR_ff_values = [
-        λpf[e] * (g[e]+g_fr[e]) / ttm[e]
-        - λqf[e] * (b[e]+b_fr[e]) / ttm[e]
-        + μ_w[branch["f_bus"]]
+    AR_ff_values = [(
+            λpf[e] * (g[e]+g_fr[e]) / ttm[e]
+            - λqf[e] * (b[e]+b_fr[e]) / ttm[e]
+            + μ_w[branch["f_bus"]]
+        )
         for (e, branch) in ref[:branch]
     ]
-    AR_tt_values = [
-        λpt[e] * (g[e]+g_to[e])
-        - λqt[e] * (b[e]+b_to[e])
+    AR_tt_values = [(
+            λpt[e] * (g[e]+g_to[e])
+            - λqt[e] * (b[e]+b_to[e])
+        )
         for (e, _) in ref[:branch]
     ]
-    AR_ft_values = [
-        λpf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
-        + λpt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
-        - λqf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
-        - λqt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
-        + (-tan(δθmin[e]) * μθ_lb[e] + tan(δθmax[e]) * μθ_ub[e])
+    AR_ft_values = [(
+            λpf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
+            + λpt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
+            - λqf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
+            - λqt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
+            + (-tan(δθmin[e]) * μθ_lb[e] + tan(δθmax[e]) * μθ_ub[e])
+        )
         for (e, _) in ref[:branch]
     ]
     i_array = [branch["f_bus"] for (e, _) in ref[:branch]]
@@ -168,13 +171,14 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     @test norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf) <= atol
 
     # Check dual constraint corresponding to `wi` variables
-    AI_values = [
-        λpf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
-        - λpt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
-        + λqf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
-        - λqt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
-        + μθ_lb[e]
-        - μθ_ub[e]
+    AI_values = [(
+            λpf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
+            - λpt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
+            + λqf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
+            - λqt[e] * (-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]
+            + μθ_lb[e]
+            - μθ_ub[e]
+        )
         for (e, _) in ref[:branch]
     ]
     AI = sparse(
