@@ -35,9 +35,11 @@ const OPT_SOLVERS = Dict(
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
     PM.SDPWRMPowerModel            => MOSEK_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
+    OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
 )
 
 include("io.jl")
+include("bridges.jl")
 include("sampler.jl")
 include("opf/opf.jl")
 include("postprocess.jl")

@@ -4,6 +4,7 @@ using JSON
 
 """
     load_json(filename::AbstractString)
+    
 Load JSON data from file `filename`.
 """
 function load_json(filename::AbstractString)::Dict{String,Any}

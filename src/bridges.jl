@@ -31,6 +31,7 @@ function bridges(data::Dict)
 
         # Ensure all edges are of the form i --> j with i ≤ j
         _i, _j = extrema((i, j))
+        (1 <= _i < _j <= N) || error("Invalid branch #$e=($i, $j)")
         # Check if there's a dupplicate
         u = get!(D, (_i, _j), Int[])
         push!(u, e)

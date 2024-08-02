@@ -368,22 +368,7 @@ def parse_hdf5(path: str, preserve_shape: bool=False):
         return dat
 ```
 
-## Loading and saving JSON files
+## Acknowledgements
 
-Use the `load_json` and `save_json` functions to load/save data to/from JSON files.
-Uncompressed (`.json`) and compressed (`.json.gz` and `.json.bz2`) are supported automatically.
-
-```julia
-using OPFGenerator
-
-# Load a dictionary from a JSON file
-d = load_json("my_json_file.json")
-d = load_json("my_json_file.json.gz")
-d = load_json("my_json_file.json.bz2")
-
-# Save a dictionary to JSON file
-save_json("my_new_jsonfile.json", d)
-save_json("my_pretty_jsonfile.json", d, indent=2)  # prettier formatting
-save_json("my_new_jsonfile.json.gz", d)
-save_json("my_new_jsonfile.json.bz2", d)
-```
+This material is based upon work supported by the National Science Foundation under Grant No. 2112533 NSF AI Institute for Advances in Optimization ([AI4OPT](https://www.ai4opt.org/)). 
+Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.

@@ -13,6 +13,30 @@ const HDF5_SUPPORTED_NUMBER_TYPES = Union{
     Complex{Float32}, Complex{Float64},
 }
 
+"""
+    load_h5
+"""
+load_h5 = HDF5.h5read
+
+"""
+    save_h5(filename, D)
+
+Saves dictionary `D` to HDF5 file `filename`.
+
+All keys in `D` must be of `String` type, and it must be HDF5-compatible.
+Additional restrictions are enforced on the values of `D`, see below.
+
+!!! warning
+    Only the following types are supported:
+    * `String`
+    * (un)signed integers up to 64-bit precision
+    * `Float32` and `Float64`
+    * `Complex` versions of the above numeric types
+    * Dense `Array`s of the the above scalar types
+
+    Numerical data of an unsupported type will be converted to `Float64` when possible.
+    An error will be thrown if the conversion is not possible.
+"""
 function save_h5(filename::AbstractString, D)
     h5open(filename, "w") do file
         _save_h5(file, D)

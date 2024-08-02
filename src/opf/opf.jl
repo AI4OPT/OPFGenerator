@@ -7,6 +7,7 @@ end
 
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
+include("ed.jl")       # EconomicDispatch
 include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
 include("sdpwrm.jl")
 
@@ -14,6 +15,7 @@ include("sdpwrm.jl")
 const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
     PowerModels.ACPPowerModel,
     PowerModels.DCPPowerModel,
+    EconomicDispatch,
     PowerModels.SOCWRPowerModel,
     PowerModels.SOCWRConicPowerModel,
     PowerModels.SDPWRMPowerModel
@@ -24,6 +26,7 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
 const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
     "ACPPowerModel" => PowerModels.ACPPowerModel,
     "DCPPowerModel" => PowerModels.DCPPowerModel,
+    "EconomicDispatch" => EconomicDispatch,
     "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
     "SDPWRMPowerModel" => PowerModels.SDPWRMPowerModel
