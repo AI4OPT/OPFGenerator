@@ -21,7 +21,13 @@ const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose
 const CLRBL128_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer{Float128},
     "verbose" => true,
 )
-const MOSEK_SOLVER = JuMP.optimizer_with_attributes(Mosek.Optimizer)
+const MOSEK_SOLVER = JuMP.optimizer_with_attributes(
+    Mosek.Optimizer,
+    "MSK_DPAR_INTPNT_CO_TOL_PFEAS" => 1e-6,
+    "MSK_DPAR_INTPNT_CO_TOL_DFEAS" => 1e-6,
+    "MSK_DPAR_INTPNT_CO_TOL_MU_RED" => 1e-6,
+    "MSK_DPAR_INTPNT_CO_TOL_REL_GAP" => 1e-6
+)
 
 const OPT_SOLVERS = Dict(
     PM.ACPPowerModel               => IPOPT_SOLVER,
