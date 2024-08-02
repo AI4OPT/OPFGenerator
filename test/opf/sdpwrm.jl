@@ -59,11 +59,11 @@ end
 
 Test dual feasibility of SDPWRM problem.
 
-This test is executed on the 118 bus system.
+This test is executed on the 14 bus system.
 """
 function _test_sdpwrm_DualFeasibility()
     T = Float128
-    data = make_basic_network(pglib("pglib_opf_case118_ieee"))
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
     solver = JuMP.optimizer_with_attributes(Clarabel.Optimizer{T},
         "verbose" => true,
         "equilibrate_enable" => false,
@@ -189,7 +189,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
 end
 
 function _test_sdpwrm_DualSolFormat()
-    data = make_basic_network(pglib("pglib_opf_case118_ieee"))
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
     N = length(data["bus"])
     E = length(data["branch"])
 
