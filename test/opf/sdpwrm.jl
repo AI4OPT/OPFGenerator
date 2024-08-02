@@ -41,9 +41,9 @@ function test_opf_pm(::Type{PM.SDPWRMPowerModel}, data::Dict)
     for varname in [:pg, :qg]
         x = model[varname]
         v = var2val_pm[varname]
-        @constraint(model, v .- 1e-3 .<= x .<= v .+ 1e-3)  # more tolerance for SDP
+        fix.(x, v; force=true)
     end
-    @constraint(model, var2val_pm[:wm] .- 1e-3 .<= diag(model[:WR]) .<= var2val_pm[:wm] .+ 1e-3)
+    fix.(diag(model[:WR]), var2val_pm[:wm]; force=true)
 
     optimize!(model)
     @test termination_status(model) ∈ [OPTIMAL, SLOW_PROGRESS, ALMOST_OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
