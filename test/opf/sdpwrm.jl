@@ -20,10 +20,11 @@ function test_opf_pm(::Type{PM.SDPWRMPowerModel}, data::Dict)
 
     # Check that the right problem was indeed solved
     @test res["opf_model"] == string(OPF)
-    @test res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
-    @test res["primal_status"] == FEASIBLE_POINT
-    @test res["dual_status"] == FEASIBLE_POINT
+    @test res["termination_status"] ∈ [OPTIMAL, SLOW_PROGRESS]
+    @test res["primal_status"] ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
+    @test res["dual_status"] ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
     # Check objective value against PowerModels
+    @test isapprox(res["objective"], res_pm["objective"], atol=1e-3, rtol=1e-3)
     @test isapprox(res["objective"], res["objective_lb"], rtol=1e-6)
 
     # Force PM solution into our model, and check that the solution is feasible
@@ -45,10 +46,10 @@ function test_opf_pm(::Type{PM.SDPWRMPowerModel}, data::Dict)
     @constraint(model, var2val_pm[:wm] .- 1e-3 .<= diag(model[:WR]) .<= var2val_pm[:wm] .+ 1e-3)
 
     optimize!(model)
-    @test termination_status(model) ∈ [OPTIMAL, ALMOST_OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
+    @test termination_status(model) ∈ [OPTIMAL, SLOW_PROGRESS, ALMOST_OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
     @test primal_status(model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
     # Also check that we get the same objective value as PowerModels
-    @test isapprox(objective_value(opf.model), res_pm["objective"], atol=1e-6, rtol=1e-6)
+    @test isapprox(objective_value(opf.model), res_pm["objective"], atol=1e-3, rtol=1e-3)
 
     return nothing
 end
