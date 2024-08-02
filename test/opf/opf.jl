@@ -51,4 +51,8 @@ const PGLIB_SDP_CASES = ["5_pjm", "14_ieee"]
     @testset _test_socwr_DualSolFormat()
 
     @testset _test_socwr_DualFeasibility()
+
+    @testset _test_sdpwrm_DualSolFormat()
+
+    @testset _test_sdpwrm_DualFeasibility()
 end
