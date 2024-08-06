@@ -187,9 +187,9 @@ function update!(opf::OPFModel{PM.SDPWRMPowerModel}, data::Dict{String,Any})
 end
 
 """
-    _extract_solution(model, data)
+    _extract_result(model, data)
 
-Extract SOC-OPF solution from optimization model.
+Extract SDP-OPF solution from optimization model.
 The model must have been solved before.
 """
 function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
