@@ -163,8 +163,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         )
         for (e, _) in ref[:branch]
     ]
-    i_array = [branch["f_bus"] for (e, _) in ref[:branch]]
-    j_array = [branch["t_bus"] for (e, _) in ref[:branch]]
+    i_array = [e["f_bus"] for (_, e) in ref[:branch]]
+    j_array = [e["t_bus"] for (_, e) in ref[:branch]]
     AR = Diagonal([(-gs[i] * λp[i] + bs[i] * λq[i]) for i in 1:N]) + Symmetric(sparse(
         vcat(i_array, j_array, i_array), vcat(i_array, j_array, j_array), vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values), N, N
     ))
