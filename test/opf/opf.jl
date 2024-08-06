@@ -26,15 +26,22 @@ include("acp.jl")
 include("dcp.jl")
 include("socwr.jl")
 include("ed.jl")
+include("sdpwrm.jl")
 
 # other tests
 include("quad_obj.jl")
 
 const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
+const PGLIB_SDP_CASES = ["14_ieee"]
 
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
-        @testset "$(casename)" for casename in PGLIB_CASES
+        if OPF == PowerModels.SDPWRMPowerModel
+            cases = PGLIB_SDP_CASES
+        else
+            cases = PGLIB_CASES
+        end
+        @testset "$(casename)" for casename in cases
             test_opf_pm(OPF, "pglib_opf_case$(casename)")
         end
 
@@ -45,4 +52,8 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
     @testset _test_socwr_DualSolFormat()
 
     @testset _test_socwr_DualFeasibility()
+
+    @testset _test_sdpwrm_DualSolFormat()
+
+    @testset _test_sdpwrm_DualFeasibility()
 end

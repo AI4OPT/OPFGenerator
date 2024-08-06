@@ -6,6 +6,7 @@ using StableRNGs
 
 using Clarabel
 using Ipopt
+using SCS
 using JuMP
 
 using PowerModels
@@ -20,11 +21,17 @@ const CLRBL_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer, "verbose
 const CLRBL128_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer{Float128},
     "verbose" => true,
 )
+const SCS_SOLVER = JuMP.optimizer_with_attributes(
+    SCS.Optimizer,
+    "eps_abs" => 1e-6,
+    "eps_rel" => 1e-6
+)
 
 const OPT_SOLVERS = Dict(
     PM.ACPPowerModel               => IPOPT_SOLVER,
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
+    PM.SDPWRMPowerModel            => SCS_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
     OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
 )
