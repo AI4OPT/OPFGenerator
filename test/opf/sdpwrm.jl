@@ -165,7 +165,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     i_array = [e["f_bus"] for (_, e) in ref[:branch]]
     j_array = [e["t_bus"] for (_, e) in ref[:branch]]
     AR = Diagonal([(-gs[i] * λp[i] + bs[i] * λq[i] + μ_w[i]) for i in 1:N]) + Symmetric(sparse(
-        vcat(i_array, j_array, i_array), vcat(i_array, j_array, j_array), vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values), N, N
+        vcat(i_array, j_array, i_array, j_array), vcat(i_array, j_array, j_array, i_array), vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values, 1/2 * AR_ft_values), N, N
     ))
     @test norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf) <= atol
 
