@@ -136,7 +136,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
 
     μ_w = [
-        res["solution"]["bus"]["$i"]["mu_w_lb"] + res["solution"]["bus"]["$i"]["mu_w_ub"]
+        res["solution"]["bus"]["$i"]["mu_wm_lb"] + res["solution"]["bus"]["$i"]["mu_wm_ub"]
         for i in 1:N
     ]
 
