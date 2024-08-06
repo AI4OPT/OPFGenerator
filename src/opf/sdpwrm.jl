@@ -307,7 +307,6 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
     N = length(sol["bus"])
     E = length(sol["branch"])
     G = length(sol["gen"])
-    P = length(sol["buspairs"])
 
     res_h5 = Dict{String,Any}(
         "meta" => Dict{String,Any}(
@@ -396,7 +395,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         dres_h5["nu_sm_to"][e, :] .= brsol["nu_sm_to"]
         dres_h5["nu_sm_fr"][e, :] .= brsol["nu_sm_fr"]
     end
-    for p in 1:P
+    for p in keys(sol["buspairs"])
         bpsol = sol["buspairs"]["$p"]
 
         for pvar in ["wr", "wi"]
