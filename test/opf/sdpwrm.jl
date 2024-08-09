@@ -97,6 +97,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
     E = length(ref[:branch])
+    br_i_array = [e["f_bus"] for (_, e) in ref[:branch]]
+    br_j_array = [e["t_bus"] for (_, e) in ref[:branch]]
     bus_loads = [
         [ref[:load][l] for l in ref[:bus_loads][i]]
         for i in 1:N
@@ -162,10 +164,11 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         )
         for (e, _) in ref[:branch]
     ]
-    i_array = [e["f_bus"] for (_, e) in ref[:branch]]
-    j_array = [e["t_bus"] for (_, e) in ref[:branch]]
     AR = Diagonal([(-gs[i] * λp[i] + bs[i] * λq[i] + μ_w[i]) for i in 1:N]) + Symmetric(sparse(
-        vcat(i_array, j_array, i_array, j_array), vcat(i_array, j_array, j_array, i_array), vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values, 1/2 * AR_ft_values), N, N
+        vcat(br_i_array, br_j_array, br_i_array, br_j_array),
+        vcat(br_i_array, br_j_array, br_j_array, br_i_array),
+        vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values, 1/2 * AR_ft_values),
+        N, N
     ))
     @test norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf) <= atol
 
@@ -181,7 +184,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         for (e, _) in ref[:branch]
     ]
     AI = sparse(
-        vcat(i_array, j_array), vcat(j_array, i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
+        vcat(br_i_array, br_j_array), vcat(br_j_array, br_i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
     )
     @test norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf) <= atol
     return nothing
