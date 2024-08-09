@@ -87,8 +87,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
     E = length(ref[:branch])
-    br_i_array = [e["f_bus"] for (_, e) in ref[:branch]]
-    br_j_array = [e["t_bus"] for (_, e) in ref[:branch]]
+    br_i_array = [ref[:branch][e]["f_bus"] for e in 1:E]
+    br_j_array = [ref[:branch][e]["t_bus"] for e in 1:E]
     bus_loads = [
         [ref[:load][l] for l in ref[:bus_loads][i]]
         for i in 1:N
@@ -131,8 +131,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ]
     
     sm = [res["solution"]["bus"]["$i"]["sm"] for i in 1:N]
-    sr = [res["solution"]["branch"]["$e"]["sr"] for (e, _) in ref[:branch]]
-    si = [res["solution"]["branch"]["$e"]["si"] for (e, _) in ref[:branch]]
+    sr = [res["solution"]["branch"]["$e"]["sr"] for e in 1:E]
+    si = [res["solution"]["branch"]["$e"]["si"] for e in 1:E]
     S = Symmetric(sparse(
         vcat([1:N;], [N+1 : 2*N;], br_i_array, br_i_array .+ N, br_i_array, br_j_array),
         vcat([1:N;], [N+1 : 2*N;], br_j_array, br_j_array .+ N, br_j_array .+ N, br_i_array .+ N),
@@ -146,13 +146,13 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
             λpf[e] * (g[e]+g_fr[e]) / ttm[e]
             + λqf[e] * (-(b[e]+b_fr[e]) / ttm[e])
         )
-        for (e, branch) in ref[:branch]
+        for e in 1:E
     ]
     AR_tt_values = [(
             λpt[e] * (g[e]+g_to[e])
             + λqt[e] * (-(b[e]+b_to[e]))
         )
-        for (e, _) in ref[:branch]
+        for e in 1:E
     ]
     AR_ft_values = [(
             λpf[e] * (-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]
@@ -161,7 +161,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
             - λqt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
             + (-tan(δθmin[e]) * μθ_lb[e] + tan(δθmax[e]) * μθ_ub[e])
         )
-        for (e, _) in ref[:branch]
+        for e in 1:E
     ]
     AR = Diagonal([(-gs[i] * λp[i] + bs[i] * λq[i] + μ_w[i]) for i in 1:N]) + Symmetric(sparse(
         vcat(br_i_array, br_j_array, br_i_array, br_j_array),
@@ -180,7 +180,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
             + μθ_lb[e]
             - μθ_ub[e]
         )
-        for (e, _) in ref[:branch]
+        for e in 1:E
     ]
     AI = sparse(
         vcat(br_i_array, br_j_array), vcat(br_j_array, br_i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
