@@ -231,6 +231,7 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
             "lam_kirchhoff_reactive" => dual(model[:kirchhoff_reactive][bus]),
             "mu_wm_lb" => dual(LowerBoundRef(model[:WR][bus, bus])),
             "mu_wm_ub" => dual(UpperBoundRef(model[:WR][bus, bus])),
+            "sm" => value(dual(model[:S])[bus, bus])  # upper left block diagonal
         )
     end
 
@@ -254,6 +255,9 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
                 # conic duals (vector-shaped)
                 "nu_sm_to" => [0.0, 0.0, 0.0],
                 "nu_sm_fr" => [0.0, 0.0, 0.0],
+                # sprase SDP duals
+                "sr" => 0.0,
+                "si" => 0.0
             )
         else
             sol["branch"]["$b"] = brsol = Dict{String,Any}(
@@ -275,6 +279,9 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
                 "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b]),
                 "nu_sm_to" => dual(model[:thermal_limit_to][b]),
                 "nu_sm_fr" => dual(model[:thermal_limit_fr][b]),
+                # Defined for buspairs, but stored for branches for convenience.
+                "sr" => value(dual(model[:S])[ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"]]),
+                "si" => value(dual(model[:S])[ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"] + N]),
             )
         end
     end
@@ -291,9 +298,6 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
         )
     end
 
-    # TODO: save S sparsely
-    sol["S"] = dual(model[:S])
-    
     return res
 end
 
@@ -344,7 +348,10 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         # conic duals (unrolled)
         "nu_sm_to"               => zeros(Float64, E, 3),
         "nu_sm_fr"               => zeros(Float64, E, 3),
-        "S"                      => zeros(Float64, 2*N, 2*N)
+        # sparse SDP duals
+        "sm"                     => zeros(Float64, N),
+        "sr"                     => zeros(Float64, E),
+        "si"                     => zeros(Float64, E),
     )
 
     # extract from ACOPF solution
@@ -357,6 +364,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         dres_h5["mu_wm_ub"][i] = bsol["mu_wm_ub"]
         dres_h5["lam_kirchhoff_active"][i] = bsol["lam_kirchhoff_active"]
         dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_kirchhoff_reactive"]
+        dres_h5["sm"][i] = bsol["sm"]
     end
     for g in 1:G
         gsol = sol["gen"]["$g"]
@@ -382,6 +390,8 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
             "lam_ohm_active_to",
             "lam_ohm_reactive_fr",
             "lam_ohm_reactive_to",
+            "sr",
+            "si"
         ]
             dres_h5[dvar][e] = brsol[dvar]
         end
@@ -390,8 +400,6 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         dres_h5["nu_sm_to"][e, :] .= brsol["nu_sm_to"]
         dres_h5["nu_sm_fr"][e, :] .= brsol["nu_sm_fr"]
     end
-
-    dres_h5["S"] .= sol["S"]
 
     return res_h5
 end

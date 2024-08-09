@@ -114,15 +114,13 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     δθmin = [ref[:branch][e]["angmin"] for e in 1:E]
     δθmax = [ref[:branch][e]["angmax"] for e in 1:E]
 
-    # Check dual feasibility for select buses and constraints
+    # Extract dual solution
     λp  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_active"] for i in 1:N]
     λq  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_reactive"] for i in 1:N]
     λpf = [res["solution"]["branch"]["$e"]["lam_ohm_active_fr"] for e in 1:E]
     λqf = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_fr"] for e in 1:E]
     λpt = [res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
     λqt = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_to"] for e in 1:E]
-
-    S = res["solution"]["S"]
 
     μθ_lb = [res["solution"]["branch"]["$e"]["mu_va_diff_lb"] for e in 1:E]
     μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
@@ -131,6 +129,17 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         res["solution"]["bus"]["$i"]["mu_wm_lb"] + res["solution"]["bus"]["$i"]["mu_wm_ub"]
         for i in 1:N
     ]
+    
+    sm = [res["solution"]["bus"]["$i"]["sm"] for i in 1:N]
+    sr = [res["solution"]["branch"]["$e"]["sr"] for (e, _) in ref[:branch]]
+    si = [res["solution"]["branch"]["$e"]["si"] for (e, _) in ref[:branch]]
+    S = Symmetric(sparse(
+        vcat([1:N;], [N+1 : 2*N;], br_i_array, br_i_array .+ N, br_i_array, br_j_array),
+        vcat([1:N;], [N+1 : 2*N;], br_j_array, br_j_array .+ N, br_j_array .+ N, br_i_array .+ N),
+        vcat(sm, sm, sr, sr, si, -si),
+        2*N, 2*N,
+        (x, y) -> x  # ignore duplicate values at the same position
+    ))
 
     # Check dual constraint corresponding to `wr` variables
     AR_ff_values = [(
