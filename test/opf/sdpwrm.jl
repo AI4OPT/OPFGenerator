@@ -83,16 +83,6 @@ function _test_sdpwrm_DualFeasibility()
     return nothing
 end
 
-function _get_sym(i, j, v, N)
-    # return an N * N sparse symmetric matrix where the (i, j) entry is v
-    return Symmetric(sparse([i], [j], v, N, N))
-end
-
-function _get_skew_sym(i, j, v, N)
-    # return an N * N sparse skew-symmetric matrix where the (i, j) entry is v
-    return sparse([i, j], [j, i], [v, -v], N, N)
-end
-
 function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
