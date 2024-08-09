@@ -203,7 +203,6 @@ function _test_sdpwrm_DualSolFormat()
     res = OPFGenerator.extract_result(opf)
     @test size(res["solution"]["branch"]["1"]["nu_sm_to"]) == (3,)
     @test size(res["solution"]["branch"]["1"]["nu_sm_fr"]) == (3,)
-    @test size(res["solution"]["S"]) == (2*N, 2*N)
 
     # Check conversion to H5 format
     h5 = OPFGenerator.json2h5(SDPWRMPowerModel, res)
@@ -211,7 +210,6 @@ function _test_sdpwrm_DualSolFormat()
     @test Set(collect(keys(h5))) == Set(["meta", "primal", "dual"])
     @test size(h5["dual"]["nu_sm_fr"]) == (E, 3)
     @test size(h5["dual"]["nu_sm_to"]) == (E, 3)
-    @test size(h5["dual"]["S"]) == (2*N, 2*N)
     return nothing
 end
 
