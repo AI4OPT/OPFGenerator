@@ -63,7 +63,8 @@ This test is executed on the 14 bus system.
 """
 function _test_sdpwrm_DualFeasibility()
     T = Float128
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    # data = make_basic_network(pglib("24_ieee_rts"))
+    data = make_basic_network(pglib("30_ieee"))
     solver = JuMP.optimizer_with_attributes(Clarabel.Optimizer{T},
         "verbose" => true,
         "equilibrate_enable" => false,
@@ -134,11 +135,13 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     sr = [res["solution"]["branch"]["$e"]["sr"] for e in 1:E]
     si = [res["solution"]["branch"]["$e"]["si"] for e in 1:E]
     S = Symmetric(sparse(
-        vcat([1:N;], [N+1 : 2*N;], br_i_array, br_i_array .+ N, br_i_array, br_j_array),
-        vcat([1:N;], [N+1 : 2*N;], br_j_array, br_j_array .+ N, br_j_array .+ N, br_i_array .+ N),
-        vcat(sm, sm, sr, sr, si, -si),
+        vcat([1:N;], [N+1 : 2*N;], br_i_array, br_j_array, br_i_array .+ N, br_j_array .+ N, br_i_array, br_j_array),
+        vcat([1:N;], [N+1 : 2*N;], br_j_array, br_i_array, br_j_array .+ N, br_i_array .+ N, br_j_array .+ N, br_i_array .+ N),
+        # repeat sr since there may be branches where f_bus > t_bus (entry is below the diagonal)
+        vcat(sm, sm, sr, sr, sr, sr, si, -si),
         2*N, 2*N,
-        (x, y) -> x  # ignore duplicate values at the same position
+        # ignore duplicate values at the same position
+        (x, y) -> x
     ))
 
     # Check dual constraint corresponding to `wr` variables
@@ -170,6 +173,10 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         N, N
     ))
     @test norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf) <= atol
+    display(Matrix(Float32.(AR)))
+    display(Matrix(Float32.(S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)])))
+    display(Matrix(Float32.(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)])))
+    println(norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf))
 
     # Check dual constraint corresponding to `wi` variables
     AI_values = [(
@@ -186,6 +193,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         vcat(br_i_array, br_j_array), vcat(br_j_array, br_i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
     )
     @test norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf) <= atol
+    println(norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf))
     return nothing
 end
 
