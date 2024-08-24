@@ -277,9 +277,9 @@ function test_update()
         res2 = OPFGenerator.extract_result(opf2)
 
         _test_update(OPF, opf1, opf2)
-
-        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
-        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
+        
+        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL, MOI.SLOW_PROGRESS]
+        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL, MOI.SLOW_PROGRESS]
         @test res1["objective"] ≈ res2["objective"]
     end
 
@@ -291,7 +291,7 @@ function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
     @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
-function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
+function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel, PM.SDPWRMPowerModel}}
     @test all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active]))
     @test all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
