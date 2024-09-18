@@ -36,8 +36,12 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{PM.SOCWRPowerM
     #   so the PowerModels primal solution should be feasible
     sol_pm = res_pm["solution"]
     var2val_pm = Dict(
-        :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
-        :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
+        :pg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "pg", 0) for g in 1:G
+        ],
+        :qg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "qg", 0) for g in 1:G
+        ],
         :w  => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N],
     )
     model = opf.model
@@ -86,41 +90,36 @@ function _test_socwr_DualFeasibility()
 end
 
 function _test_socwr_DualFeasibility(data, res; atol=1e-6)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-    N = length(ref[:bus])
-    E = length(ref[:branch])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
+    N = length(data["bus"])
+    E = length(data["branch"])
+
     # Bus-level data
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
-    gs = [sum(shunt["gs"] for shunt in bus_shunts[i]; init=0.0) for i in 1:N]
-    bs = [sum(shunt["bs"] for shunt in bus_shunts[i]; init=0.0) for i in 1:N]
+    bus_loads = OPFGenerator.make_bus_loads(data)
+    bus_shunts = OPFGenerator.make_bus_shunts(data)
+
+    gs = [sum(data["shunt"]["$s"]["gs"] for s in bus_shunts[i]; init=0.0) for i in 1:N]
+    bs = [sum(data["shunt"]["$s"]["bs"] for s in bus_shunts[i]; init=0.0) for i in 1:N]
 
     # Extract branch-level data
-    g = [PM.calc_branch_y(ref[:branch][e])[1] for e in 1:E]
-    b = [PM.calc_branch_y(ref[:branch][e])[2] for e in 1:E]
-    tr = [PM.calc_branch_t(ref[:branch][e])[1] for e in 1:E]
-    ti = [PM.calc_branch_t(ref[:branch][e])[2] for e in 1:E]
+    g = [PM.calc_branch_y(data["branch"]["$e"])[1] for e in 1:E]
+    b = [PM.calc_branch_y(data["branch"]["$e"])[2] for e in 1:E]
+    tr = [PM.calc_branch_t(data["branch"]["$e"])[1] for e in 1:E]
+    ti = [PM.calc_branch_t(data["branch"]["$e"])[2] for e in 1:E]
     ttm  = abs2.(tr) + abs2.(ti)
-    g_fr = [ref[:branch][e]["g_fr"] for e in 1:E]
-    g_to = [ref[:branch][e]["g_to"] for e in 1:E]
-    b_fr = [ref[:branch][e]["b_fr"] for e in 1:E]
-    b_to = [ref[:branch][e]["b_to"] for e in 1:E]
-    δθmin = [ref[:branch][e]["angmin"] for e in 1:E]
-    δθmax = [ref[:branch][e]["angmax"] for e in 1:E]
+    g_fr = [data["branch"]["$e"]["g_fr"] for e in 1:E]
+    g_to = [data["branch"]["$e"]["g_to"] for e in 1:E]
+    b_fr = [data["branch"]["$e"]["b_fr"] for e in 1:E]
+    b_to = [data["branch"]["$e"]["b_to"] for e in 1:E]
+    δθmin = [data["branch"]["$e"]["angmin"] for e in 1:E]
+    δθmax = [data["branch"]["$e"]["angmax"] for e in 1:E]
     # Identifying entering / exiting branches
     br_in  = [Tuple{Int,Int,Int}[] for _ in 1:N]  # entering branches
     br_out = [Tuple{Int,Int,Int}[] for _ in 1:N]  # existing branches
-    for (e, br) in ref[:branch]
+    for (e, br) in data["branch"]
         i = br["f_bus"]
         j = br["t_bus"]
-        push!(br_out[i], (e, i, j))
-        push!(br_in[j], (e, i, j))
+        push!(br_out[i], (br["index"], i, j))
+        push!(br_in[j], (br["index"], i, j))
     end
 
     # Check dual feasibility for select buses and constraints

@@ -2,7 +2,22 @@ using OPFGenerator: OPFModel
 
 function test_opf_pm(OPF::Type{<:PM.AbstractPowerModel}, casename::String)
     data = make_basic_network(pglib(casename))
-    return test_opf_pm(OPF, data)
+    @testset "Full data" begin test_opf_pm(OPF, data) end
+
+    if casename ∈ ["pglib_opf_case14_ieee", "pglib_opf_case30_ieee"]
+        # skip n-1 tests for small cases due to infeasibility
+        return
+    else
+        non_bridges = [e for (e, b) in OPFGenerator.bridges(data) if !b]
+        drop_branch = argmin(branch -> data["branch"][branch]["rate_a"], non_bridges)
+        drop_gen = argmin(gen -> gen["pmax"], values(data["gen"]))
+
+        data_drop = deepcopy(data)
+        data_drop["branch"][drop_branch]["br_status"] = 0
+        data_drop["gen"]["$(drop_gen["index"])"]["gen_status"] = 0
+
+        @testset "Outage" begin test_opf_pm(OPF, data_drop) end
+    end
 end
 
 """
@@ -46,3 +61,5 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
     @testset _test_socwr_DualFeasibility()
 end
+
+include("utils.jl")

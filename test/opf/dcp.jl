@@ -30,9 +30,13 @@ function test_opf_pm(::Type{PM.DCPPowerModel}, data::Dict)
     #    (would require extracting a variable => value Dict)
     sol_pm = res_pm["solution"]
     var2val_pm = Dict(
-        :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
+        :pg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "pg", 0) for g in 1:G
+        ],
         :va => Float64[sol_pm["bus"]["$i"]["va"] for i in 1:N],
-        :pf => Float64[sol_pm["branch"]["$e"]["pf"] for e in 1:E],
+        :pf => Float64[
+            get(get(sol_pm["branch"], "$e", Dict()), "pf", 0) for e in 1:E
+        ],
     )
     model = opf.model
     # reorder pf according to branch order in our model

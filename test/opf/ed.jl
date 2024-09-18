@@ -68,7 +68,9 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     #    (would require extracting a variable => value Dict)
     sol_pm = res_pm["solution"]
     var2val_pm = Dict(
-        :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
+        :pg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "pg", 0) for g in 1:G
+        ],
         # NOTE: PowerModels does not use `pf` variables, so we only check `pg`
     )
 

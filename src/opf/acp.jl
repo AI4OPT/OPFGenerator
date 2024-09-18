@@ -12,41 +12,47 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
 
     # Check that slack bus is unique
-    length(ref[:ref_buses]) == 1 || error("Data has $(length(ref[:ref_buses])) slack buses (expected 1).")
-    i0 = first(keys(ref[:ref_buses]))
-    
+    ref_buses = make_ref_buses(data)
+    length(ref_buses) == 1 || error("Data has $(length(ref_buses)) slack buses (expected 1).")
+    i0 = first(ref_buses)
+
     # Grab some data
-    N = length(ref[:bus])
-    G = length(ref[:gen])
+    N = length(data["bus"])
+    G = length(data["gen"])
     E = length(data["branch"])
-    L = length(ref[:load])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
+
+    bus_loads = make_bus_loads(data)
+    bus_shunts = make_bus_shunts(data)
+    bus_gens = make_bus_gens(data)
+
+    arcs_from = make_arcs_from(data)
+    arcs = make_arcs(arcs_from)
+    bus_arcs = make_bus_arcs(data, arcs_from)
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = PM.ACPPowerModel  # for internal checks
+    model.ext[:opf_model] = PM.ACPPowerModel
 
     #
     #   I. Variables
     #
     # nodal voltage
     JuMP.@variable(model, va[1:N])
-    JuMP.@variable(model, ref[:bus][i]["vmin"] <= vm[i in 1:N] <= ref[:bus][i]["vmax"], start=1.0)
+    JuMP.@variable(model, data["bus"]["$i"]["vmin"] <= vm[i in 1:N] <= data["bus"]["$i"]["vmax"], start=1.0)
     # Active and reactive dispatch
-    JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
-    JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
+    JuMP.@variable(model, data["gen"]["$g"]["pmin"] <= pg[g in 1:G] <= data["gen"]["$g"]["pmax"])
+    JuMP.@variable(model, data["gen"]["$g"]["qmin"] <= qg[g in 1:G] <= data["gen"]["$g"]["qmax"])
     # Bi-directional branch flows
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= qf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
+    JuMP.@variable(model, -data["branch"]["$l"]["rate_a"] <= pf[(l,i,j) in arcs] <= data["branch"]["$l"]["rate_a"])
+    JuMP.@variable(model, -data["branch"]["$l"]["rate_a"] <= qf[(l,i,j) in arcs] <= data["branch"]["$l"]["rate_a"])
+
+    # fix disabled generators
+    zero_variables([data["gen"]["$g"]["gen_status"] for g in 1:G], pg)
+    zero_variables([data["gen"]["$g"]["gen_status"] for g in 1:G], qg)
+    # fix disabled branches
+    zero_variables([data["branch"]["$(a[1])"]["br_status"] for a in arcs], pf)
+    zero_variables([data["branch"]["$(a[1])"]["br_status"] for a in arcs], qf)
 
     # 
     #   II. Constraints
@@ -57,19 +63,19 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     # Nodal power balance
     JuMP.@constraint(model,
         kirchhoff_active[i in 1:N],
-        sum(pg[g] for g in ref[:bus_gens][i]) 
-        - sum(pf[a] for a in ref[:bus_arcs][i])
-        - sum(shunt["gs"] for shunt in bus_shunts[i])*vm[i]^2
+        sum(pg[g] for g in bus_gens[i] if data["gen"]["$g"]["gen_status"] == 1)
+        - sum(pf[a] for a in bus_arcs[i] if data["branch"]["$(a[1])"]["br_status"] == 1)
+        - sum(data["shunt"]["$s"]["gs"] for s in bus_shunts[i])*vm[i]^2
         == 
-        sum(load["pd"] for load in bus_loads[i])
+        sum(data["load"]["$l"]["pd"] for l in bus_loads[i])
     )
     JuMP.@constraint(model,
         kirchhoff_reactive[i in 1:N],
-        sum(qg[g] for g in ref[:bus_gens][i]) 
-        - sum(qf[a] for a in ref[:bus_arcs][i])
-        + sum(shunt["bs"] for shunt in bus_shunts[i])*vm[i]^2
+        sum(qg[g] for g in bus_gens[i] if data["gen"]["$g"]["gen_status"] == 1)
+        - sum(qf[a] for a in bus_arcs[i] if data["branch"]["$(a[1])"]["br_status"] == 1)
+        + sum(data["shunt"]["$s"]["bs"] for s in bus_shunts[i])*vm[i]^2
         ==
-        sum(load["qd"] for load in bus_loads[i])
+        sum(data["load"]["$l"]["qd"] for l in bus_loads[i])
     )
 
     # Branch power flow physics and limit constraints
@@ -81,8 +87,8 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     model[:ohm_active_to] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_fr] = Vector{JuMP.ConstraintRef}(undef, E)
     model[:ohm_reactive_to] = Vector{JuMP.ConstraintRef}(undef, E)
-    for (i,branch) in ref[:branch]
-        data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
+    for i in make_active_branches(data)
+        branch = data["branch"]["$i"]
 
         f_idx = (i, branch["f_bus"], branch["t_bus"])
         t_idx = (i, branch["t_bus"], branch["f_bus"])
@@ -152,38 +158,33 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     #
     #   III. Objective
     #
-    # check that we don't have quadratic objective coeffs
-    l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
+    l, u = extrema(gen["cost"][1] for gen in values(data["gen"]) if gen["gen_status"] == 1)
     (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
     JuMP.@objective(model, Min, sum(
-        gen["cost"][2]*pg[i] + gen["cost"][3]
-        for (i,gen) in ref[:gen]
+        data["gen"]["$g"]["cost"][2]*pg[g] + data["gen"]["$g"]["cost"][3]
+        for g in 1:G if data["gen"]["$g"]["gen_status"] == 1
     ))
 
     return OPFModel{PM.ACPPowerModel}(data, model)
 end
 
 function update!(opf::OPFModel{PM.ACPPowerModel}, data::Dict{String,Any})
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
     opf.data = data
 
-    N = length(ref[:bus])
+    bus_loads = make_bus_loads(data)
+    N = length(data["bus"])
 
-    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    qd = [sum(ref[:load][l]["qd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    
+    pd = [sum(data["load"]["$l"]["pd"] for l in bus_loads[i]; init=0.0) for i in 1:N]
+    qd = [sum(data["load"]["$l"]["qd"] for l in bus_loads[i]; init=0.0) for i in 1:N]
+
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
     JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
 
     return nothing
 end
 
-
 """
-    _extract_acopf_solution(model, data)
+    extract_result(opf::OPFModel{PM.ACPPowerModel})
 
 Extract ACOPF solution from optimization model.
 The model must have been solved before.
@@ -193,9 +194,8 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
     model = opf.model
 
     # Pre-process data
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-    N = length(ref[:bus])
-    G = length(ref[:gen])
+    N = length(data["bus"])
+    G = length(data["gen"])
     E = length(data["branch"])
 
     # Build the solution dictionary
@@ -249,11 +249,13 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
                 "lam_ohm_reactive_to" => 0.0,
             )
         else
+            lij = (b, data["branch"]["$b"]["f_bus"], data["branch"]["$b"]["t_bus"])
+            lji = (b, data["branch"]["$b"]["t_bus"], data["branch"]["$b"]["f_bus"])
             sol["branch"]["$b"] = Dict(
-                "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
-                "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
-                "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
+                "pf" => value(model[:pf][lij]),
+                "pt" => value(model[:pf][lji]),
+                "qf" => value(model[:qf][lij]),
+                "qt" => value(model[:qf][lji]),
                 # dual vars
                 "mu_sm_to" => dual(model[:thermal_limit_to][b]),
                 "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
@@ -267,15 +269,28 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
     end 
     
     for g in 1:G
-        sol["gen"]["$g"] = Dict(
-            "pg" => value(model[:pg][g]),
-            "qg" => value(model[:qg][g]),
-            # dual vars
-            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
-            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
-            "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
-            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
-        )
+        if data["gen"]["$g"]["gen_status"] == 0
+            # generator is under outage --> we set everything to zero
+            sol["gen"]["$g"] = Dict(
+                "pg" => 0.0,
+                "qg" => 0.0,
+                # dual vars
+                "mu_pg_lb" => 0.0,
+                "mu_pg_ub" => 0.0,
+                "mu_qg_lb" => 0.0,
+                "mu_qg_ub" => 0.0,
+            )
+        else
+            sol["gen"]["$g"] = Dict(
+                "pg" => value(model[:pg][g]),
+                "qg" => value(model[:qg][g]),
+                # dual vars
+                "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
+                "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
+                "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
+                "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g])),
+            )
+        end
     end 
 
     sol["global"] = Dict(

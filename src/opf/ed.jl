@@ -25,11 +25,10 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     # Cleanup and pre-process data
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
 
     # Check that slack bus is unique
-    length(ref[:ref_buses]) == 1 || error("Data has $(length(ref[:ref_buses])) slack buses (expected 1).")
-    i0 = first(keys(ref[:ref_buses]))
+    ref_buses = make_ref_buses(data)
+    length(ref_buses) == 1 || error("Data has $(length(ref_buses)) slack buses (expected 1).")
 
     power_balance_penalty >= 0.0 || error("EconomicDispatch option power_balance_penalty must be non-negative")
     reserve_shortage_penalty >= 0.0 || error("EconomicDispatch option reserve_shortage_penalty must be non-negative")
@@ -38,21 +37,18 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     max_ptdf_per_iteration > 0 || error("EconomicDispatch option max_ptdf_per_iteration must be a positive integer")
 
     # Grab some data
-    N = length(ref[:bus])
-    G = length(ref[:gen])
-    E = length(ref[:branch])
-    L = length(ref[:load])
+    G = length(data["gen"])
+    E = length(data["branch"])
+    L = length(data["load"])
 
-    pmin = [ref[:gen][g]["pmin"] for g in 1:G]
-    pmax = [ref[:gen][g]["pmax"] for g in 1:G]
-    PD = sum(ref[:load][l]["pd"] for l in 1:L)
+    PD = sum(data["load"]["$l"]["pd"] for l in 1:L)
     pfmax = [data["branch"]["$e"]["rate_a"] for e in 1:E]
 
     minimum_reserve = get(data, "minimum_reserve", 0.0)
     # if minimum reserve is zero, rmin = rmax = 0 to fix the reserve variables to zero.
     # otherwise, rmin and rmax must be present in the data (not standard in PGLib)
-    rmin = (minimum_reserve > 0.0) ? [ref[:gen][g]["rmin"] for g in 1:G] : zeros(T, G)
-    rmax = (minimum_reserve > 0.0) ? [ref[:gen][g]["rmax"] for g in 1:G] : zeros(T, G)
+    rmin = (minimum_reserve > 0.0) ? [data["gen"]["$g"]["rmin"] for g in 1:G] : zeros(T, G)
+    rmax = (minimum_reserve > 0.0) ? [data["gen"]["$g"]["rmax"] for g in 1:G] : zeros(T, G)
 
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = EconomicDispatch  # for internal checks
@@ -65,7 +61,7 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
 
     # Variables
 
-    JuMP.@variable(model, pmin[g] <= pg[g in 1:G] <= pmax[g])
+    JuMP.@variable(model, data["gen"]["$g"]["pmin"] <= pg[g in 1:G] <= data["gen"]["$g"]["pmax"])
     JuMP.@variable(model, rmin[g] <= r[g in 1:G] <= rmax[g])
     JuMP.@variable(model, pf[e in 1:E])
 
@@ -73,6 +69,10 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     JuMP.@variable(model, δpb_shortage >= 0)
     JuMP.@variable(model, δr_shortage >= 0)
     JuMP.@variable(model, δf[1:E] >= 0)
+
+    zero_variables([data["gen"]["$g"]["gen_status"] for g in 1:G], pg)
+    zero_variables([data["gen"]["$g"]["gen_status"] for g in 1:G], r)
+    zero_variables([data["branch"]["$e"]["br_status"] for e in 1:E], pf)
 
     JuMP.@constraint(model,
         pf_lower_bound[e in 1:E],
@@ -96,24 +96,29 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
         JuMP.set_upper_bound.(δf, 0)
     end
 
-    # Constraints
+    #
+    #   II. Constraints
+    #
+    active_generators = make_active_generators(data)
 
     JuMP.@constraint(model,
-        total_generation[g in 1:G],
-        pg[g] + r[g] <= pmax[g]
+        total_generation[g in active_generators],
+        pg[g] + r[g] <= data["gen"]["$g"]["pmax"]
     )
 
     JuMP.@constraint(model,
         power_balance,
-        sum(pg) + δpb_surplus - δpb_shortage == PD
+        sum(pg[g] for g in active_generators)
+        + δpb_surplus - δpb_shortage == PD
     )
 
     JuMP.@constraint(model,
         reserve_requirement,
         sum(r) + δr_shortage >= minimum_reserve
     )
-
-    model.ext[:PTDF] = PM.calc_basic_ptdf_matrix(data)
+    
+    S = _ptdf_mask_matrix(data)
+    model.ext[:PTDF] = S * PM.calc_basic_ptdf_matrix(data)
 
     model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
     model.ext[:tracked_branches] = zeros(Bool, E)
@@ -129,14 +134,16 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
         model.ext[:ptdf_iterations] = -1
     end
 
-    # Objective
-
-    costs = [ref[:gen][g]["cost"] for g in 1:G]
-    l, u = extrema(costs[1] for (i, gen) in ref[:gen])
+    #
+    #   III. Objective
+    #
+    l, u = extrema(gen["cost"][1] for gen in values(data["gen"]) if gen["gen_status"] == 1)
     (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
 
-    JuMP.@objective(model, Min,
-        sum(costs[g][2] * pg[g] + costs[g][3] for g in 1:G) +
+    JuMP.@objective(model, Min, sum(
+            data["gen"]["$g"]["cost"][2]*pg[g] + data["gen"]["$g"]["cost"][3]
+            for g in 1:G if data["gen"]["$g"]["gen_status"] == 1
+        ) +
         power_balance_penalty * δpb_surplus +
         power_balance_penalty * δpb_shortage +
         reserve_shortage_penalty * δr_shortage +
@@ -147,24 +154,20 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
 end
 
 function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
     opf.data = data
     T = typeof(opf.model).parameters[1]
 
-    L = length(ref[:load])
-    PD = sum(ref[:load][l]["pd"] for l in 1:L)
+    L = length(data["load"])
+    PD = sum(data["load"]["$l"]["pd"] for l in 1:L)
 
     JuMP.set_normalized_rhs(opf.model[:power_balance], PD)
 
     MRR = get(data, "minimum_reserve", 0.0)
     JuMP.set_normalized_rhs(opf.model[:reserve_requirement], MRR)
 
-    G = length(ref[:gen])
-    rmin = (MRR > 0.0) ? [ref[:gen][g]["rmin"] for g in 1:G] : zeros(T, G)
-    rmax = (MRR > 0.0) ? [ref[:gen][g]["rmax"] for g in 1:G] : zeros(T, G)
+    G = length(data["gen"])
+    rmin = (MRR > 0.0) ? [data["gen"]["$g"]["rmin"] for g in 1:G] : zeros(T, G)
+    rmax = (MRR > 0.0) ? [data["gen"]["$g"]["rmax"] for g in 1:G] : zeros(T, G)
 
     JuMP.set_lower_bound.(opf.model[:r], rmin)
     JuMP.set_upper_bound.(opf.model[:r], rmax)
@@ -172,7 +175,7 @@ function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
     if opf.model.ext[:solve_metadata][:iterative_ptdf]
         opf.model.ext[:ptdf_iterations] = 0
         
-        E = length(ref[:branch])
+        E = length(data["branch"])
         
         JuMP.delete.(opf.model, opf.model[:ptdf_flow][opf.model.ext[:tracked_branches]])
         
@@ -212,7 +215,7 @@ function _ptdf_terms_from_data(data::Dict{String,Any}; T=Float64)
     Ag = sparse(
         [data["gen"]["$g"]["gen_bus"] for g in 1:G],
         [g for g in 1:G],
-        ones(T, G),
+        [data["gen"]["$g"]["gen_status"] for g in 1:G],
         N,
         G,
     )
@@ -220,6 +223,30 @@ function _ptdf_terms_from_data(data::Dict{String,Any}; T=Float64)
     pd = [data["load"]["$l"]["pd"] for l in 1:L]
 
     return Ag, Al, pd
+end
+
+function _ptdf_mask_matrix(data::Dict{String, Any})
+    E = length(data["branch"])
+    I = Int[]
+    J = Int[]
+    V = Int[]
+    counter = 1
+
+    for e in 1:E
+        if data["branch"]["$e"]["br_status"] == 0
+            continue
+        end
+
+        push!(I, e)
+        push!(J, counter)
+        push!(V, 1)
+
+        counter += 1
+    end
+
+    S = sparse(I, J, V, E, counter - 1)
+
+    return S
 end
 
 function solve!(opf::OPFModel{EconomicDispatch})
@@ -325,30 +352,28 @@ function extract_result(opf::OPFModel{EconomicDispatch})
     data = opf.data
     model = opf.model
 
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-    N = length(ref[:bus])
-    G = length(ref[:gen])
+    N = length(data["bus"])
+    G = length(data["gen"])
     E = length(data["branch"])
 
     res = Dict{String,Any}()
     res["opf_model"] = string(model.ext[:opf_model])
     res["objective"] = JuMP.objective_value(model)
-    res["objective_lb"] = -Inf
+    res["objective_lb"] = try JuMP.dual_objective_value(model) catch; NaN end
     res["optimizer"] = JuMP.solver_name(model)
 
-    res["solve_metadata"] = model.ext[:solve_metadata]
     if model.ext[:solve_metadata][:iterative_ptdf]
         tinfo = model.ext[:termination_info]
+        res["solve_time"] = tinfo[:solve_time]
         res["termination_status"] = tinfo[:termination_status]
         res["primal_status"] = tinfo[:primal_status]
         res["dual_status"] = tinfo[:dual_status]
-        res["solve_time"] = tinfo[:solve_time]
         res["ptdf_iterations"] = tinfo[:ptdf_iterations]
     else
+        res["solve_time"] = JuMP.solve_time(model)
         res["termination_status"] = JuMP.termination_status(model)
         res["primal_status"] = JuMP.primal_status(model)
         res["dual_status"] = JuMP.dual_status(model)
-        res["solve_time"] = JuMP.solve_time(model)
     end
     res["minimum_reserve"] = get(data, "minimum_reserve", 0.0)
 
@@ -357,32 +382,20 @@ function extract_result(opf::OPFModel{EconomicDispatch})
     sol["per_unit"] = get(data, "per_unit", false)
     sol["baseMVA"]  = get(data, "baseMVA", 100.0)
 
-    sol["gen"] = Dict{String,Any}()
-    for g in 1:G
-        sol["gen"]["$g"] = Dict(
-            "pg" => value(model[:pg][g]),
-            "r" => value(model[:r][g]),
-            "rmin" => get(data["gen"]["$g"], "rmin", 0.0),
-            "rmax" => get(data["gen"]["$g"], "rmax", 0.0),
-
-            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
-            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
-
-            "mu_r_lb" => dual(LowerBoundRef(model[:r][g])),
-            "mu_r_ub" => dual(UpperBoundRef(model[:r][g])),
-
-            "mu_total_generation" => dual(model[:total_generation][g]),
-        )
-    end
 
     sol["branch"] = Dict{String,Any}()
+    sol["gen"] = Dict{String,Any}()
     for e in 1:E
         if data["branch"]["$e"]["br_status"] == 0
             sol["branch"]["$e"] = Dict(
                 "pf" => 0,
                 "df" => 0,
-                "mu_pf" => 0,
-                "mu_df" => 0,
+                # dual vars
+                "mu_pf_lb" => 0,
+                "mu_pf_ub" => 0,
+
+                "mu_df_lb" => 0,
+
                 "lam_ptdf" => 0,
             )
         else
@@ -390,7 +403,7 @@ function extract_result(opf::OPFModel{EconomicDispatch})
                 # "pf" => value(model[:pf][e]),
                 "pf" => model.ext[:ptdf_pf][e],
                 "df" => value(model[:δf][e]),
-
+                # dual vars
                 "mu_pf_lb" => dual(model[:pf_lower_bound][e]),
                 "mu_pf_ub" => dual(model[:pf_upper_bound][e]),
 
@@ -401,7 +414,45 @@ function extract_result(opf::OPFModel{EconomicDispatch})
         end
     end
 
-    sol["singleton"] = Dict{String,Any}(
+    for g in 1:G
+        if data["gen"]["$g"]["gen_status"] == 0
+            sol["gen"]["$g"] = Dict(
+                "pg" => 0,
+                "r" => 0,
+                # dual vars
+                "mu_pg_lb" => 0,
+                "mu_pg_ub" => 0,
+
+                "mu_r_lb" => 0,
+                "mu_r_ub" => 0,
+
+                "mu_total_generation" => 0,
+                
+                # extra data
+                "rmin" => get(data["gen"]["$g"], "rmin", 0.0),
+                "rmax" => get(data["gen"]["$g"], "rmax", 0.0),
+            )
+        else
+            sol["gen"]["$g"] = Dict(
+                "pg" => value(model[:pg][g]),
+                "r" => value(model[:r][g]),
+                # dual vars
+                "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
+                "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
+
+                "mu_r_lb" => dual(LowerBoundRef(model[:r][g])),
+                "mu_r_ub" => dual(UpperBoundRef(model[:r][g])),
+
+                "mu_total_generation" => dual(model[:total_generation][g]),
+
+                # extra data
+                "rmin" => get(data["gen"]["$g"], "rmin", 0.0),
+                "rmax" => get(data["gen"]["$g"], "rmax", 0.0),
+            )
+        end
+    end
+
+    sol["global"] = Dict{String,Any}(
         "dpb_surplus" => value(model[:δpb_surplus]),
         "dpb_shortage" => value(model[:δpb_shortage]),
         "dr_shortage" => value(model[:δr_shortage]),
@@ -429,6 +480,8 @@ function json2h5(::Type{EconomicDispatch}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
         ),
     )
 
@@ -491,23 +544,23 @@ function json2h5(::Type{EconomicDispatch}, res)
         dres_h5["lam_ptdf"][e] = brsol["lam_ptdf"]
     end
 
-    pres_h5["dpb_surplus"] = sol["singleton"]["dpb_surplus"]
-    pres_h5["dpb_shortage"] = sol["singleton"]["dpb_shortage"]
-    pres_h5["dr_shortage"] = sol["singleton"]["dr_shortage"]
-    pres_h5["minimum_reserve"] = res["minimum_reserve"]
+    pres_h5["dpb_surplus"] = sol["global"]["dpb_surplus"]
+    pres_h5["dpb_shortage"] = sol["global"]["dpb_shortage"]
+    pres_h5["dr_shortage"] = sol["global"]["dr_shortage"]
 
-    dres_h5["mu_dpb_surplus_lb"] = sol["singleton"]["mu_dpb_surplus_lb"]
-    dres_h5["mu_dpb_shortage_lb"] = sol["singleton"]["mu_dpb_shortage_lb"]
-    dres_h5["mu_dr_shortage_lb"] = sol["singleton"]["mu_dr_shortage_lb"]
-    dres_h5["mu_power_balance"] = sol["singleton"]["mu_power_balance"]
-    dres_h5["mu_reserve_requirement"] = sol["singleton"]["mu_reserve_requirement"]
+    dres_h5["mu_dpb_surplus_lb"] = sol["global"]["mu_dpb_surplus_lb"]
+    dres_h5["mu_dpb_shortage_lb"] = sol["global"]["mu_dpb_shortage_lb"]
+    dres_h5["mu_dr_shortage_lb"] = sol["global"]["mu_dr_shortage_lb"]
+    dres_h5["mu_power_balance"] = sol["global"]["mu_power_balance"]
+    dres_h5["mu_reserve_requirement"] = sol["global"]["mu_reserve_requirement"]
+
+    pres_h5["minimum_reserve"] = res["minimum_reserve"]
 
     return res_h5
 
 end
 
 function export_ptdf(opf::OPFModel{EconomicDispatch}, filepath)
-    data = opf.data
     model = opf.model
 
     PTDF = model.ext[:PTDF]
