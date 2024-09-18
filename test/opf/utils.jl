@@ -63,8 +63,8 @@ function test_active_branches(data, ref)
 
     data_ = deepcopy(data)
     data_["branch"]["1"]["br_status"] = 0
-    n1_active_branches = OPFGenerator.make_active_branches(data)
-    n1_ref = PM.build_ref(data)[:it][:pm][:nw][0]
+    n1_active_branches = OPFGenerator.make_active_branches(data_)
+    n1_ref = PM.build_ref(data_)[:it][:pm][:nw][0]
     @test n1_active_branches == sort(collect(keys(n1_ref[:branch])))
 end
 
@@ -74,8 +74,8 @@ function test_active_generators(data, ref)
 
     data_ = deepcopy(data)
     data_["gen"]["1"]["gen_status"] = 0
-    n1_active_generators = OPFGenerator.make_active_generators(data)
-    n1_ref = PM.build_ref(data)[:it][:pm][:nw][0]
+    n1_active_generators = OPFGenerator.make_active_generators(data_)
+    n1_ref = PM.build_ref(data_)[:it][:pm][:nw][0]
     @test n1_active_generators == sort(collect(keys(n1_ref[:gen])))
 end
 
