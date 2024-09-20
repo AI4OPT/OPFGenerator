@@ -278,7 +278,7 @@ include("utils.jl")
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
 include("ed.jl")       # EconomicDispatch
-include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
+include("socwr.jl")    # SOCOPF & SOCOPFQuad
 
 # Contains a list of all supported OPF models
 const SUPPORTED_OPF_MODELS = Type{<:Formulation}[
@@ -286,7 +286,7 @@ const SUPPORTED_OPF_MODELS = Type{<:Formulation}[
     DCOPF,
     EconomicDispatch,
     SOCOPFQuad,
-    PowerModels.SOCWRConicPowerModel,
+    SOCOPF,
 ]
 
 # A name --> type dictionary
@@ -295,8 +295,8 @@ const OPF2TYPE = Dict{String,Type{<:Formulation}}(
     "ACOPF" => ACOPF,
     "DCOPF" => DCOPF,
     "EconomicDispatch" => EconomicDispatch,
-    "SOCWRPowerModel" => SOCOPFQuad,
-    "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
+    "SOCOPFQuad" => SOCOPFQuad,
+    "SOCOPF" => SOCOPF,
 )
 
 function solve!(opf::OPFModel{<:Formulation})

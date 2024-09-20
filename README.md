@@ -304,7 +304,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |   |-- meta
 |   |-- primal
 |   |-- dual
-|-- SOCWRConicPowerModel
+|-- SOCOPF
     |-- meta
     |-- primal
     |-- dual
