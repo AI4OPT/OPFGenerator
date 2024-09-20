@@ -1,7 +1,9 @@
 using MathOptSymbolicAD
 using SparseArrays
 
-mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
+abstract type Formulation end
+
+mutable struct OPFModel{OPF <: Formulation}
     data::Dict{String,Any}
     model::JuMP.GenericModel
 end
@@ -279,7 +281,7 @@ include("ed.jl")       # EconomicDispatch
 include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
 
 # Contains a list of all supported OPF models
-const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
+const SUPPORTED_OPF_MODELS = Type{<:Formulation}[
     PowerModels.ACPPowerModel,
     PowerModels.DCPPowerModel,
     EconomicDispatch,
@@ -289,7 +291,7 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
 
 # A name --> type dictionary
 # Used for passing the OPF type as a string (e.g. through config file)
-const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
+const OPF2TYPE = Dict{String,Type{<:Formulation}}(
     "ACPPowerModel" => PowerModels.ACPPowerModel,
     "DCPPowerModel" => PowerModels.DCPPowerModel,
     "EconomicDispatch" => EconomicDispatch,
@@ -297,6 +299,6 @@ const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
 )
 
-function solve!(opf::OPFModel{<:AbstractPowerModel})
+function solve!(opf::OPFModel{<:Formulation})
     optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
 end

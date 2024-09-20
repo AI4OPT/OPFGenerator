@@ -1,6 +1,6 @@
 using SparseArrays
 
-mutable struct EconomicDispatch <: PM.AbstractPowerModel end
+mutable struct EconomicDispatch <: Formulation end
 
 const POWER_BALANCE_PENALTY = 350000.0
 const RESERVE_SHORTAGE_PENALTY = 110000.0

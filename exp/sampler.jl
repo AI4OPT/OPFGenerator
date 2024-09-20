@@ -36,7 +36,7 @@ value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
 function build_models(data, config)
-    opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:PowerModels.AbstractPowerModel}, Float64}}()
+    opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:OPFGenerator.Formulation}, Float64}}()
     for (dataset_name, opf_config) in config["OPF"]
         OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
         solver_config = get(opf_config, "solver", Dict())

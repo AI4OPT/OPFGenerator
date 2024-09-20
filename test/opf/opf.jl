@@ -12,7 +12,7 @@ end
 
 Build & solve opf using OPFGenerator, and compare against PowerModels implementation.
 """
-function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: PM.AbstractPowerModel}
+function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: Formulation}
     error("""`test_opf_pm($(OPF), data)` not implemented.
     You must implement a function with the following signature:
         function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: $(OPF)}
