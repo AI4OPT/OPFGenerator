@@ -56,6 +56,7 @@ end
 
 
 @testset "OPFData" begin
+    test_voltage_phasor_bounds_scalar()
     @testset "$casename" for casename in PGLIB_CASES
         network = make_basic_network(pglib(casename))
         data = OPFData(network)

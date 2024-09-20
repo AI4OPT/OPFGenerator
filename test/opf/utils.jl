@@ -123,12 +123,57 @@ function test_voltage_phasor_bounds(data::OPFGenerator.OPFData, network::Dict{St
         wi_max_ref[e] = bp_wi_max[bp]
     end
 
-    wr_min, wr_max, wi_min, wi_max = OPFGenerator.voltage_phasor_bounds(data)
+    wr_min, wr_max, wi_min, wi_max = OPFGenerator.compute_voltage_phasor_bounds(data)
 
     @test wr_min == wr_min_ref
     @test wr_max == wr_max_ref
     @test wi_min == wi_min_ref
     @test wi_max == wi_max_ref
+
+    return nothing
+end
+
+function test_voltage_phasor_bounds_scalar()
+    vfmin = 0.9
+    vfmax = 1.1
+    vtmin = 0.9
+    vtmax = 1.1
+    
+    # Symmetric bounds
+    @testset "symmetric bounds" begin
+        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/3, pi/3)
+        @test wrmin ≈ 0.81 * cos(pi/3)
+        @test wrmax ≈ 1.21 * 1.0
+        @test wimin ≈ -1.21 * sin(pi/3)
+        @test wimax ≈ +1.21 * sin(pi/3)
+    end
+
+    # Non-symmetric bounds, but still different signs
+    @testset "asynmetric bounds" begin
+        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/6, pi/3)
+        @test wrmin ≈ 0.81 * cos(pi/3)
+        @test wrmax ≈ 1.21
+        @test wimin ≈ -1.21 * sin(pi/6)
+        @test wimax ≈ +1.21 * sin(pi/3)
+    end
+
+    # Positive angles
+    @testset "positive angles" begin
+        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, pi/6, pi/3)
+        @test wrmin ≈ 0.81 * cos(pi/3)
+        @test wrmax ≈ 1.21 * cos(pi/6)
+        @test wimin ≈ 0.81 * sin(pi/6)
+        @test wimax ≈ 1.21 * sin(pi/3)
+    end
+
+    # Negative angles
+    @testset "negative angles" begin
+        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/3, -pi/4)
+        @test wrmin ≈ 0.81 * cos(pi/3)
+        @test wrmax ≈ 1.21 * cos(pi/4)
+        @test wimin ≈ -1.21 * sin(pi/3)
+        @test wimax ≈ -0.81 * sin(pi/4)
+    end
 
     return nothing
 end
