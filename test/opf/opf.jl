@@ -5,10 +5,6 @@ include("utils.jl")
 function test_opf_pm(OPF::Type{<:PM.AbstractPowerModel}, casename::String)
     network = make_basic_network(pglib(casename))
     test_opf_pm(OPF, network)
-
-    data = OPFData(network)
-    test_opfdata(data, network)
-    test_buspair_voltage_bounds(data, network)
 end
 
 """
@@ -42,6 +38,10 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         @testset "$(casename)" for casename in PGLIB_CASES
             test_opf_pm(OPF, "pglib_opf_case$(casename)")
+
+            data = OPFData(network)
+            test_opfdata(data, network)
+            test_buspair_voltage_bounds(data, network)
         end
 
         @testset "QuadObj" begin test_quad_obj_warn(OPF) end
