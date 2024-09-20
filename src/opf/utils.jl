@@ -32,9 +32,9 @@ end
 Compute lower/upper bounds on wr/wi variables.
 """
 function compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, dvamin, dvamax)
-    abs(dvamin) <= Base.Math.pi/2 || throw(ArgumentError("dvamin must be in [-π/2, π/2]"))
-    abs(dvamax) <= Base.Math.pi/2 || throw(ArgumentError("dvamax must be in [-π/2, π/2]"))
-    
+    abs(dvamin) <= Base.Math.pi/2 || throw(DomainError("dvamin must be in [-π/2, π/2]"))
+    abs(dvamax) <= Base.Math.pi/2 || throw(DomainError("dvamax must be in [-π/2, π/2]"))
+
     sinmin, cosmin = sincos(dvamin)
     sinmax, cosmax = sincos(dvamax)
 
