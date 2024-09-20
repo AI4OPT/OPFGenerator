@@ -1,7 +1,15 @@
+using MathOptSymbolicAD
+using SparseArrays
+
 struct OPFData
+    case::String
+
     N::Int  # number of buses
     E::Int  # number of branches
     G::Int  # number of generators
+    L::Int  # number of loads
+
+    Ag::SparseMatrixCSC{Float64,Int}  # generator incidence matrix
 
     # Bus data
     vmin::Vector{Float64}
@@ -28,6 +36,8 @@ struct OPFData
     # Branch data
     bus_fr::Vector{Int}  # from bus
     bus_to::Vector{Int}  # to bus
+    g::Vector{Float64}
+    b::Vector{Float64}
     gff::Vector{Float64}
     gft::Vector{Float64}
     gtf::Vector{Float64}
@@ -56,6 +66,7 @@ function OPFData(network::Dict{String,Any})
     N = length(network["bus"])
     E = length(network["branch"])
     G = length(network["gen"])
+    L = length(network["load"])
 
     # Bus data
     vmin = [network["bus"]["$i"]["vmin"] for i in 1:N]
@@ -96,6 +107,9 @@ function OPFData(network::Dict{String,Any})
     c2 = zeros(Float64, G)
     gen_status = zeros(Bool, G)
     bus_gens = [Int[] for _ in 1:N]
+    Ag_i = zeros(Int, G)
+    Ag_j = zeros(Int, G)
+    Ag_v = zeros(Float64, G)
     for g in 1:G
         gen = network["gen"]["$g"]
 
@@ -112,13 +126,22 @@ function OPFData(network::Dict{String,Any})
         c2[g] = gen["cost"][1]
 
         gen_status[g] = gen["gen_status"] == 1
+
+        # Generator incidence matrix
+        Ag_i[g] = network["gen"]["$g"]["gen_bus"]
+        Ag_j[g] = g
+        Ag_v[g] = network["gen"]["$g"]["gen_status"]
     end
     # sort everything again
     sort!.(bus_gens)
 
+    Ag = sparse(Ag_i, Ag_j, Ag_v, N, G)
+
     # Branch data
     bus_fr = zeros(Int, E)
     bus_to = zeros(Int, E)
+    branch_g = zeros(Float64, E)
+    branch_b = zeros(Float64, E)
     gff = zeros(Float64, E)
     gft = zeros(Float64, E)
     gtf = zeros(Float64, E)
@@ -147,6 +170,9 @@ function OPFData(network::Dict{String,Any})
         y = inv(z)  # compute branch admittance
         isfinite(y) || error("Branch $e has zero impedance")
         g, b = real(y), imag(y)
+
+        branch_g[e] = g
+        branch_b[e] = b
 
         # Compute tap ratio
         τ::Float64 = get(branch, "tap", 1.0)
@@ -189,7 +215,8 @@ function OPFData(network::Dict{String,Any})
     sort!.(bus_arcs_to)
 
     return OPFData(
-        N, E, G,
+        network["name"],
+        N, E, G, L, Ag,
         vmin, vmax, gs, bs, pd, qd,
         bus_arcs_fr, bus_arcs_to, bus_gens, ref_bus,
         pgmin, pgmax,
@@ -197,6 +224,7 @@ function OPFData(network::Dict{String,Any})
         c0, c1, c2,
         gen_status,
         bus_fr, bus_to,
+        branch_g, branch_b,
         gff, gft, gtf, gtt,
         bff, bft, btf, btt,
         smax, dvamin, dvamax,
