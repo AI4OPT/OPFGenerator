@@ -65,6 +65,7 @@ Convert a PowerModels data dictionary to `OPFData` structure.
 The PowerModels data dictionary must be in basic format.
 """
 function OPFData(network::Dict{String,Any})
+    @assert network["basic_network"] "Network data is not in basic format."
     @assert network["per_unit"] == true "Network data is not per-unit scaled."
     @assert network["baseMVA"] == 100.0 "Base MVA is not 100.0."
 
