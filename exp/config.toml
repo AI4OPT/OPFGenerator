@@ -27,7 +27,7 @@ type = "DCPPowerModel"
 solver.name = "Mosek"
 
 [OPF.ACOPF]
-type = "ACPPowerModel"
+type = "ACOPF"
 solver.name = "Ipopt"
 solver.attributes.tol = 1e-6
 solver.attributes.linear_solver = "ma27"

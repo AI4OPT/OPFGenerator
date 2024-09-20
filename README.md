@@ -19,7 +19,7 @@ Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
     - [Building and solving OPF problems](#building-and-solving-opf-problems)
   - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
-    - [ACPPowerModel](#acppowermodel)
+    - [ACOPF](#ACOPF)
     - [DCPPowerModel](#dcppowermodel)
     - [SOCWRPowerModel](#socwrpowermodel)
   - [Datasets](#datasets)
@@ -127,7 +127,7 @@ using Ipopt
 using OPFGenerator
 
 data = make_basic_network(pglib("14_ieee"))
-acopf = OPFGenerator.build_opf(PowerModels.ACPPowerModel, data, Ipopt.Optimizer)
+acopf = OPFGenerator.build_opf(ACOPF, data, Ipopt.Optimizer)
 optimize!(acopf.model)
 res = OPFGenerator.extract_result(acopf)
 
@@ -155,7 +155,7 @@ As a convention, dual variables of equality constraints are named `lam_<constrai
 
 Collections of instances & solutions are stored in a compact, array-based HDF5 file (see [Datasets/Format](#format) below.)
 
-### ACPPowerModel
+### ACOPF
 
 See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.ACPPowerModel).
 
@@ -286,7 +286,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |   |-- pd
 |   |-- qd
 |   |-- br_status
-|-- ACPPowerModel
+|-- ACOPF
 |   |-- meta
 |   |   |-- termination_status
 |   |   |-- primal_status

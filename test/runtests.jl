@@ -22,15 +22,15 @@ const CLRBL128_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer{Float1
 )
 
 const OPT_SOLVERS = Dict(
-    PM.ACPPowerModel               => IPOPT_SOLVER,
+    OPFGenerator.ACOPF               => IPOPT_SOLVER,
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
     PM.DCPPowerModel               => CLRBL_SOLVER,
     OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
 )
 
-include("io.jl")
-include("bridges.jl")
-include("sampler.jl")
+# include("io.jl")
+# include("bridges.jl")
+# include("sampler.jl")
 include("opf/opf.jl")
 include("postprocess.jl")

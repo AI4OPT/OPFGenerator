@@ -1,3 +1,5 @@
+mutable struct ACOPF <: Formulation end
+
 """
     build_acopf(data, optimizer)
 
@@ -6,7 +8,7 @@ Build an AC-OPF model.
 This implementation is based on the AC-OPF formulation of Rosetta-OPF
     https://github.com/lanl-ansi/rosetta-opf/blob/38a951326df3156d79dcdc49c8010aa29905b05d/jump.jl
 """
-function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
+function build_opf(::Type{ACOPF}, data::Dict{String,Any}, optimizer;
     T=Float64,    
 )
     # Cleanup and pre-process data
@@ -33,7 +35,7 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
     ]
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = PM.ACPPowerModel  # for internal checks
+    model.ext[:opf_model] = ACOPF  # for internal checks
 
     #
     #   I. Variables
@@ -160,10 +162,10 @@ function build_opf(::Type{PM.ACPPowerModel}, data::Dict{String,Any}, optimizer;
         for (i,gen) in ref[:gen]
     ))
 
-    return OPFModel{PM.ACPPowerModel}(data, model)
+    return OPFModel{ACOPF}(data, model)
 end
 
-function update!(opf::OPFModel{PM.ACPPowerModel}, data::Dict{String,Any})
+function update!(opf::OPFModel{ACOPF}, data::Dict{String,Any})
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
@@ -188,7 +190,7 @@ end
 Extract ACOPF solution from optimization model.
 The model must have been solved before.
 """
-function extract_result(opf::OPFModel{PM.ACPPowerModel})
+function extract_result(opf::OPFModel{ACOPF})
     data  = opf.data
     model = opf.model
 
@@ -285,7 +287,7 @@ function extract_result(opf::OPFModel{PM.ACPPowerModel})
     return res
 end
 
-function json2h5(::Type{PM.ACPPowerModel}, res)
+function json2h5(::Type{ACOPF}, res)
     sol = res["solution"]
     N = length(sol["bus"])
     E = length(sol["branch"])

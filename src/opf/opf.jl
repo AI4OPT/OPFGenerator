@@ -282,7 +282,7 @@ include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
 
 # Contains a list of all supported OPF models
 const SUPPORTED_OPF_MODELS = Type{<:Formulation}[
-    PowerModels.ACPPowerModel,
+    ACOPF,
     PowerModels.DCPPowerModel,
     EconomicDispatch,
     PowerModels.SOCWRPowerModel,
@@ -292,7 +292,7 @@ const SUPPORTED_OPF_MODELS = Type{<:Formulation}[
 # A name --> type dictionary
 # Used for passing the OPF type as a string (e.g. through config file)
 const OPF2TYPE = Dict{String,Type{<:Formulation}}(
-    "ACPPowerModel" => PowerModels.ACPPowerModel,
+    "ACOPF" => ACOPF,
     "DCPPowerModel" => PowerModels.DCPPowerModel,
     "EconomicDispatch" => EconomicDispatch,
     "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,

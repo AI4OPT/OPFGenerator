@@ -291,7 +291,7 @@ function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
     @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
-function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
+function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{OPFGenerator.ACOPF, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
     @test all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active]))
     @test all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
@@ -338,7 +338,7 @@ function test_sampler_script()
                 )
             ),
             "ACOPF" => Dict(
-                "type" => "ACPPowerModel",
+                "type" => "ACOPF",
                 "solver" => Dict(
                     "name" => "Ipopt",
                     "attributes" => Dict(
