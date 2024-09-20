@@ -26,7 +26,7 @@ struct OPFData
     bus_arcs_fr::Vector{Vector{Int}}  # indices of branches exiting the bus
     bus_arcs_to::Vector{Vector{Int}}  # indices of branches entering the bus
     bus_gens::Vector{Vector{Int}}  # indices of generators at the bus
-    ref_bus::Int  # reference bus
+    ref_bus::Int  # index of slack bus
 
     # Generator data
     pgmin::Vector{Float64}
