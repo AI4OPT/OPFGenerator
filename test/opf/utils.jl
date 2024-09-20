@@ -175,5 +175,11 @@ function test_voltage_phasor_bounds_scalar()
         @test wimax ≈ -0.81 * sin(pi/4)
     end
 
+    # Invalid bounds
+    @testset "invalid bounds" begin
+        @test_throws DomainError OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi, 0.0)
+        @test_throws DomainError OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, 0.0, pi/2 + 0.01)
+    end
+
     return nothing
 end
