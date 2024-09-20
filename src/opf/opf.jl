@@ -285,7 +285,7 @@ const SUPPORTED_OPF_MODELS = Type{<:Formulation}[
     ACOPF,
     DCOPF,
     EconomicDispatch,
-    PowerModels.SOCWRPowerModel,
+    SOCOPFQuad,
     PowerModels.SOCWRConicPowerModel,
 ]
 
@@ -295,7 +295,7 @@ const OPF2TYPE = Dict{String,Type{<:Formulation}}(
     "ACOPF" => ACOPF,
     "DCOPF" => DCOPF,
     "EconomicDispatch" => EconomicDispatch,
-    "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
+    "SOCWRPowerModel" => SOCOPFQuad,
     "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
 )
 

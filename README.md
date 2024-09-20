@@ -234,7 +234,7 @@ Primal variables
 |           | `"wr"` | Real part of voltage product
 |           | `"wi"` | Imaginary part of voltage product
 
-Dual variables depend on whether a quadratic (`SOCWRPowerModel`) or conic (`SOCWRConicPowerModel`) formulation is considered.
+Dual variables depend on whether a quadratic (`SOCOPFQuad`) or conic (`SOCOPF`) formulation is considered.
 The former are identified with `(quad)`, the latter with `(cone)` in the table below.
 Only the dual variables of quadratic constraints are affected by this distinction.
 Note that conic dual are high-dimensional variables, and separate coordinates are stored separately.

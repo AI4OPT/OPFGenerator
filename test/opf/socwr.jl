@@ -1,14 +1,16 @@
 using LinearAlgebra
 
-function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{OPFGenerator.SOCOPFQuad,OPFGenerator.SOCOPF}}
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
     E = length(data["branch"])
     G = length(data["gen"])
 
+    pm_type = OPF == SOCOPF ? PM.SOCWRConicPowerModel : PM.SOCWRPowerModel
+
     # Solve OPF with PowerModels
     solver = OPT_SOLVERS[OPF]
-    res_pm = PM.solve_opf(data, OPF, solver)
+    res_pm = PM.solve_opf(data, pm_type, solver)
 
     # Build and solve OPF with OPFGenerator
     solver = OPT_SOLVERS[OPF]
