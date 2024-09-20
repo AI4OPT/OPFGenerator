@@ -37,7 +37,8 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         @testset "$(casename)" for casename in PGLIB_CASES
-            test_opf_pm(OPF, "pglib_opf_case$(casename)")
+            network = make_basic_network(pglib(casename))
+            test_opf_pm(OPF, network)
 
             data = OPFData(network)
             test_opfdata(data, network)
