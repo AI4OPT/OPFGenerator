@@ -8,6 +8,7 @@ end
 
 struct OPFData
     case::String
+    base_mva::Float64
 
     N::Int  # number of buses
     E::Int  # number of branches
@@ -17,6 +18,7 @@ struct OPFData
     Ag::SparseMatrixCSC{Float64,Int}  # generator incidence matrix
 
     # Bus data
+    vnom::Vector{Float64}
     vmin::Vector{Float64}
     vmax::Vector{Float64}
     gs::Vector{Float64}  # shunt
@@ -67,7 +69,6 @@ The PowerModels data dictionary must be in basic format.
 function OPFData(network::Dict{String,Any})
     @assert network["basic_network"] "Network data is not in basic format."
     @assert network["per_unit"] == true "Network data is not per-unit scaled."
-    @assert network["baseMVA"] == 100.0 "Base MVA is not 100.0."
 
     N = length(network["bus"])
     E = length(network["branch"])
@@ -75,6 +76,7 @@ function OPFData(network::Dict{String,Any})
     L = length(network["load"])
 
     # Bus data
+    vnom = [network["bus"]["$i"]["base_kv"] for i in 1:N]
     vmin = [network["bus"]["$i"]["vmin"] for i in 1:N]
     vmax = [network["bus"]["$i"]["vmax"] for i in 1:N]
 
@@ -221,9 +223,9 @@ function OPFData(network::Dict{String,Any})
     sort!.(bus_arcs_to)
 
     return OPFData(
-        network["name"],
+        network["name"], network["baseMVA"],
         N, E, G, L, Ag,
-        vmin, vmax, gs, bs, pd, qd,
+        vnom, vmin, vmax, gs, bs, pd, qd,
         bus_arcs_fr, bus_arcs_to, bus_gens, ref_bus,
         pgmin, pgmax,
         qgmin, qgmax,
