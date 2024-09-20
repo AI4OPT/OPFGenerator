@@ -1,66 +1,44 @@
-function buspair_voltage_bounds(data::OPFData)
+function voltage_phasor_bounds(data::OPFData)
     E = data.E
     vmin, vmax = data.vmin, data.vmax
     dvamin, dvamax = data.dvamin, data.dvamax
     bus_fr, bus_to = data.bus_fr, data.bus_to
-    
-    buspairs = Dict{Tuple{Int,Int},Dict{String,Any}}()
-    for e in 1:E
-        i = bus_fr[e]
-        j = bus_to[e]
+    return voltage_phasor_bounds(E, vmin, vmax, dvamin, dvamax, bus_fr, bus_to)
+end
 
-        if !haskey(buspairs, (i,j))
-            buspairs[(i,j)] = buspair = Dict{String,Any}()
-            buspair["angmin"] = dvamin[e]
-            buspair["angmax"] = dvamax[e]
-            buspair["edges"] = [e]
-        else
-            buspair = buspairs[(i,j)]
-            buspair["angmin"] = max(buspair["angmin"], dvamin[e])
-            buspair["angmax"] = min(buspair["angmax"], dvamax[e])
-            push!(buspair["edges"], e)
-        end
-    end
-
+function voltage_phasor_bounds(E, vmin, vmax, dvamin, dvamax, bus_fr, bus_to)
     wr_min = zeros(Float64, E)
     wr_max = zeros(Float64, E)
     wi_min = zeros(Float64, E)
     wi_max = zeros(Float64, E)
+    for e in 1:E
+        i = bus_fr[e]
+        j = bus_to[e]
+        cosmin = cos(dvamin)
+        cosmax = cos(dvamax)
+        sinmin = sin(dvamin)
+        sinmax = sin(dvamax)
 
-    for (i,j) in keys(buspairs)
-        buspair = buspairs[(i,j)]
-        cosmin = cos(buspair["angmin"])
-        cosmax = cos(buspair["angmax"])
-        sinmin = sin(buspair["angmin"])
-        sinmax = sin(buspair["angmax"])
-
-        bp_wr_min = (
-            buspair["angmin"] >= 0 ? vmin[i] * vmin[j] * cosmax :
-            buspair["angmax"] <= 0 ? vmin[i] * vmin[j] * cosmin :
+        wr_min[e] = (
+            dvamin >= 0 ? vmin[i] * vmin[j] * cosmax :
+            dvamax <= 0 ? vmin[i] * vmin[j] * cosmin :
             vmin[i] * vmin[j] * min(cosmin, cosmax)
         )
-        bp_wr_max = (
-            buspair["angmin"] >= 0 ? vmax[i] * vmax[j] * cosmin :
-            buspair["angmax"] <= 0 ? vmax[i] * vmax[j] * cosmax :
+        wr_max[e] = (
+            dvamin >= 0 ? vmax[i] * vmax[j] * cosmin :
+            dvamax <= 0 ? vmax[i] * vmax[j] * cosmax :
             vmax[i] * vmax[j] * 1.0
         )
-        bp_wi_min = (
-            buspair["angmin"] >= 0 ? vmin[i] * vmin[j] * sinmin :
-            buspair["angmax"] <= 0 ? vmax[i] * vmax[j] * sinmax :
+        wi_min[e] = (
+            dvamin >= 0 ? vmin[i] * vmin[j] * sinmin :
+            dvamax <= 0 ? vmax[i] * vmax[j] * sinmax :
             vmax[i] * vmax[j] * sinmin
         )
-        bp_wi_max = (
-            buspair["angmin"] >= 0 ? vmax[i] * vmax[j] * sinmax :
-            buspair["angmax"] <= 0 ? vmin[i] * vmin[j] * sinmax :
+        wi_max[e] = (
+            dvamin >= 0 ? vmax[i] * vmax[j] * sinmax :
+            dvamax <= 0 ? vmin[i] * vmin[j] * sinmax :
             vmax[i] * vmax[j] * sinmax
         )
-
-        for e in buspair["edges"]
-            wr_min[e] = bp_wr_min
-            wr_max[e] = bp_wr_max
-            wi_min[e] = bp_wi_min
-            wi_max[e] = bp_wi_max
-        end
     end
 
     return wr_min, wr_max, wi_min, wi_max

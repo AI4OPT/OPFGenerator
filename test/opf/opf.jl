@@ -42,7 +42,7 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
             data = OPFData(network)
             test_opfdata(data, network)
-            test_buspair_voltage_bounds(data, network)
+            test_voltage_phasor_bounds(data, network)
         end
 
         @testset "QuadObj" begin test_quad_obj_warn(OPF) end
@@ -60,6 +60,6 @@ end
         network = make_basic_network(pglib(casename))
         data = OPFData(network)
         test_opfdata(data, network)
-        test_buspair_voltage_bounds(data, network)
+        test_voltage_phasor_bounds(data, network)
     end
 end
