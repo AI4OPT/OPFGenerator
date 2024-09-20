@@ -5,6 +5,7 @@ mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
     model::JuMP.GenericModel
 end
 
+include("utils.jl")
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
 include("ed.jl")       # EconomicDispatch

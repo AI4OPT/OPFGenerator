@@ -1,8 +1,14 @@
-using OPFGenerator: OPFModel
+using OPFGenerator: OPFData
+
+include("utils.jl")
 
 function test_opf_pm(OPF::Type{<:PM.AbstractPowerModel}, casename::String)
-    data = make_basic_network(pglib(casename))
-    return test_opf_pm(OPF, data)
+    network = make_basic_network(pglib(casename))
+    test_opf_pm(OPF, network)
+
+    data = OPFData(network)
+    test_opfdata(data, network)
+    test_buspair_voltage_bounds(data, network)
 end
 
 """
