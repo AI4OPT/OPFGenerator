@@ -53,3 +53,13 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
     @testset _test_socwr_DualFeasibility()
 end
+
+
+@testset "OPFData" begin
+    @testset "$casename" for casename in PGLIB_CASES
+        network = make_basic_network(pglib(casename))
+        data = OPFData(network)
+        test_opfdata(data, network)
+        test_buspair_voltage_bounds(data, network)
+    end
+end
