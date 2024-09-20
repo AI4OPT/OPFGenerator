@@ -20,7 +20,7 @@ Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
   - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
     - [ACOPF](#ACOPF)
-    - [DCPPowerModel](#dcppowermodel)
+    - [DCOPF](#DCOPF)
     - [SOCWRPowerModel](#socwrpowermodel)
   - [Datasets](#datasets)
     - [Format](#format)
@@ -192,7 +192,7 @@ Dual variables
 |           | `"lam_ohm_reactive_to"`    | Ohm's law; reactive power (to)
 |           | `"mu_va_diff"`             | Voltage angle difference
 
-### DCPPowerModel
+### DCOPF
 
 See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.DCPPowerModel).
 
@@ -300,7 +300,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |       |-- lam_kirchhoff_active
 |       |-- lam_kirchhoff_reactive
 |       |-- ...
-|-- DCPPowerModel
+|-- DCOPF
 |   |-- meta
 |   |-- primal
 |   |-- dual

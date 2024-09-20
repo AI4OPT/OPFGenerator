@@ -23,7 +23,7 @@ factor = 5.0
 # OPF formulations to solve for each sample
 [OPF.DCOPF]
 # Formulation/solver options
-type = "DCPPowerModel"
+type = "DCOPF"
 solver.name = "Mosek"
 
 [OPF.ACOPF]

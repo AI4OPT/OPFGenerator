@@ -25,7 +25,7 @@ const OPT_SOLVERS = Dict(
     OPFGenerator.ACOPF               => IPOPT_SOLVER,
     PM.SOCWRPowerModel             => IPOPT_SOLVER,
     PM.SOCWRConicPowerModel        => CLRBL_SOLVER,
-    PM.DCPPowerModel               => CLRBL_SOLVER,
+    OPFGenerator.DCOPF               => CLRBL_SOLVER,
     OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
 )
 
