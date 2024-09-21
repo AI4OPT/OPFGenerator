@@ -22,10 +22,10 @@ const CLRBL128_SOLVER = JuMP.optimizer_with_attributes(Clarabel.Optimizer{Float1
 )
 
 const OPT_SOLVERS = Dict(
-    OPFGenerator.ACOPF               => IPOPT_SOLVER,
-    OPFGenerator.SOCOPFQuad             => IPOPT_SOLVER,
-    OPFGenerator.SOCOPF        => CLRBL_SOLVER,
-    OPFGenerator.DCOPF               => CLRBL_SOLVER,
+    OPFGenerator.ACOPF             => IPOPT_SOLVER,
+    OPFGenerator.SOCOPFQuad        => IPOPT_SOLVER,
+    OPFGenerator.SOCOPF            => CLRBL_SOLVER,
+    OPFGenerator.DCOPF             => CLRBL_SOLVER,
     OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
 )
 
