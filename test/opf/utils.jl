@@ -103,6 +103,8 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
     @test data.bus_arcs_fr == bus_arcs_fr_ref
     @test data.bus_arcs_to == bus_arcs_to_ref
 
+    @test data.A == PowerModels.calc_basic_incidence_matrix(network)
+
     return nothing
 end
 

@@ -14,7 +14,8 @@ struct OPFData
     E::Int  # number of branches
     G::Int  # number of generators
     L::Int  # number of loads
-
+    
+    A::SparseMatrixCSC{Float64,Int}  # from/to branch incidence matrix
     Ag::SparseMatrixCSC{Float64,Int}  # generator incidence matrix
 
     # Bus data
@@ -164,6 +165,9 @@ function OPFData(network::Dict{String,Any})
     branch_status = zeros(Bool, E)
     bus_arcs_fr = [Int[] for _ in 1:N]
     bus_arcs_to = [Int[] for _ in 1:N]
+    A_i = zeros(Int, 2*E)
+    A_j = zeros(Int, 2*E)
+    A_v = zeros(Float64, 2*E)
     for e in 1:E
         branch = network["branch"]["$e"]
         i::Int = branch["f_bus"]
@@ -218,13 +222,24 @@ function OPFData(network::Dict{String,Any})
         smax[e] = branch["rate_a"]
 
         branch_status[e] = branch["br_status"] == 1
+
+        # Branch incidence matrix
+        A_i[e] = e
+        A_j[e] = i
+        A_v[e] = 1
+
+        A_i[E+e] = e
+        A_j[E+e] = j
+        A_v[E+e] = -1
     end
     sort!.(bus_arcs_fr)
     sort!.(bus_arcs_to)
 
+    A = sparse(A_i, A_j, A_v, E, N)
+
     return OPFData(
         network["name"], network["baseMVA"],
-        N, E, G, L, Ag,
+        N, E, G, L, A, Ag,
         vnom, vmin, vmax, gs, bs, pd, qd,
         bus_arcs_fr, bus_arcs_to, bus_gens, ref_bus,
         pgmin, pgmax,
