@@ -255,6 +255,23 @@ function OPFData(network::Dict{String,Any})
     )
 end
 
+function to_dict(data::OPFData)
+    d = Dict{String,Any}()
+    for field in fieldnames(OPFData)
+        v = getfield(data, field)
+        if isa(v, SparseMatrixCSC)
+            I, J, V = findnz(v)
+            M, N = size(v)
+            d[string(field)] = Dict("I" => I, "J" => J, "V" => V, "M" => M, "N" => N)
+        elseif isa(v, AbstractArray)
+            d[string(field)] = copy(v)
+        else
+            d[string(field)] = v
+        end
+    end
+    return d
+end
+
 include("utils.jl")
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel

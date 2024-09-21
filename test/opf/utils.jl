@@ -105,6 +105,10 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
 
     @test data.A == PowerModels.calc_basic_incidence_matrix(network)
 
+    data_dict = OPFGenerator.to_dict(data)
+    @test keys(data_dict["A"]) == Set(["I", "J", "V", "M", "N"])
+    @test keys(data_dict["Ag"]) == Set(["I", "J", "V", "M", "N"])
+
     return nothing
 end
 
