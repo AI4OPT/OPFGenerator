@@ -80,7 +80,9 @@ function FullPTDF(data::OPFData)
     lazy = LazyPTDF(data)
     return FullPTDF(lazy)
 end
+
 function FullPTDF(lazy::LazyPTDF)
+    lazy.E > 4096 || @warn "FullPTDF: large PTDF matrix (E = $(lazy.E)). Consider using LazyPTDF instead."
     T = eltype(lazy.F)
     PTDF = zeros(T, lazy.E, lazy.N)
     for e in 1:lazy.E
