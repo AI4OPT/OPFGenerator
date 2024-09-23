@@ -66,10 +66,10 @@ function StatusSampler(data::Dict, options::Dict)
         Call `make_basic_network(data)` before calling this function"""
     )
 
-    status_type = get(options, "type", "")
-    if status_type == "Nminus1"
+    status_type = lowercase(get(options, "type", ""))
+    if status_type == "nminus1"
         return Nminus1StatusSampler(data)
-    elseif status_type ∈ ["", "full", "Full"]
+    elseif status_type == "full" || status_type == ""
         return FullStatusSampler(data)
     else
         error("Invalid status sampler type: $status_type. Only 'Nminus1' and 'Full' are supported.")
