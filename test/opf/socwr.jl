@@ -38,8 +38,12 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{OPFGenerator.S
     #   so the PowerModels primal solution should be feasible
     sol_pm = res_pm["solution"]
     var2val_pm = Dict(
-        :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
-        :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
+        :pg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "pg", 0) for g in 1:G
+        ],
+        :qg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "qg", 0) for g in 1:G
+        ],
         :w  => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N],
     )
     model = opf.model
