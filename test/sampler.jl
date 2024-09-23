@@ -191,6 +191,23 @@ function test_nminus1_sampler()
     data2 = rand(StableRNG(42), opf_sampler)
     @test data2 == data1
 
+    sampler_config["status"]["type"] = "error"
+    @test_throws ErrorException SimpleOPFSampler(data, sampler_config)
+
+    rng2 = StableRNG(10)
+    data3 = rand(rng2, opf_sampler)
+    # all generators should be enabled
+    for i in 1:length(data3["gen"])
+        @test data3["gen"]["$i"]["gen_status"] == 1
+    end
+
+    # branch 11 should be disabled
+    for i in 1:length(data3["branch"]) if i != 11
+            @test data3["branch"]["$i"]["br_status"] == 1
+        end
+    end
+    @test data3["branch"]["11"]["br_status"] == 0
+
     return nothing
 end
 
