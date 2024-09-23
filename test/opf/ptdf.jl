@@ -11,6 +11,7 @@ function test_ptdf(network, data)
 
     for PTDF in [FullPTDF, LazyPTDF]
         Φ = PTDF(data)
+        f = zeros(E)
         compute_flow!(f, p, Φ)
         @test isapprox(f, fpm; atol=1e-6)
 
