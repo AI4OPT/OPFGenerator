@@ -1,9 +1,11 @@
+struct DCOPF <: AbstractFormulation end
+
 """
     build_dcopf(data, optimizer)
 
 Build a DC-OPF model.
 """
-function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
+function build_opf(::Type{DCOPF}, data::Dict{String,Any}, optimizer;
     T=Float64,    
 )
     # Cleanup and pre-process data
@@ -30,7 +32,7 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
     ]
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = PM.DCPPowerModel  # for internal checks
+    model.ext[:opf_model] = DCOPF  # for internal checks
 
     #
     #   I. Variables
@@ -103,10 +105,10 @@ function build_opf(::Type{PM.DCPPowerModel}, data::Dict{String,Any}, optimizer;
         for (i,gen) in ref[:gen]
     ))
 
-    return OPFModel{PM.DCPPowerModel}(data, model)
+    return OPFModel{DCOPF}(data, model)
 end
 
-function update!(opf::OPFModel{PM.DCPPowerModel}, data::Dict{String,Any})
+function update!(opf::OPFModel{DCOPF}, data::Dict{String,Any})
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
@@ -129,7 +131,7 @@ end
 Extract DCOPF solution from optimization model.
 The model must have been solved before.
 """
-function extract_result(opf::OPFModel{PM.DCPPowerModel})
+function extract_result(opf::OPFModel{DCOPF})
     data  = opf.data
     model = opf.model
 
@@ -210,7 +212,7 @@ function extract_result(opf::OPFModel{PM.DCPPowerModel})
     return res
 end
 
-function json2h5(::Type{PM.DCPPowerModel}, res)
+function json2h5(::Type{DCOPF}, res)
     sol = res["solution"]
     N = length(sol["bus"])
     E = length(sol["branch"])

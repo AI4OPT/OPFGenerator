@@ -1,7 +1,9 @@
 using MathOptSymbolicAD
 using SparseArrays
 
-mutable struct OPFModel{OPF <: PM.AbstractPowerModel}
+abstract type AbstractFormulation end
+
+mutable struct OPFModel{OPF <: AbstractFormulation}
     data::Dict{String,Any}
     model::JuMP.GenericModel
 end
@@ -276,27 +278,27 @@ include("utils.jl")
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
 include("ed.jl")       # EconomicDispatch
-include("socwr.jl")    # SOCWRPowerModel & SOCWRConicPowerModel
+include("socwr.jl")    # SOCOPF & SOCOPFQuad
 
 # Contains a list of all supported OPF models
-const SUPPORTED_OPF_MODELS = Type{<:AbstractPowerModel}[
-    PowerModels.ACPPowerModel,
-    PowerModels.DCPPowerModel,
+const SUPPORTED_OPF_MODELS = Type{<:AbstractFormulation}[
+    ACOPF,
+    DCOPF,
     EconomicDispatch,
-    PowerModels.SOCWRPowerModel,
-    PowerModels.SOCWRConicPowerModel,
+    SOCOPFQuad,
+    SOCOPF,
 ]
 
 # A name --> type dictionary
 # Used for passing the OPF type as a string (e.g. through config file)
-const OPF2TYPE = Dict{String,Type{<:AbstractPowerModel}}(
-    "ACPPowerModel" => PowerModels.ACPPowerModel,
-    "DCPPowerModel" => PowerModels.DCPPowerModel,
+const OPF2TYPE = Dict{String,Type{<:AbstractFormulation}}(
+    "ACOPF" => ACOPF,
+    "DCOPF" => DCOPF,
     "EconomicDispatch" => EconomicDispatch,
-    "SOCWRPowerModel" => PowerModels.SOCWRPowerModel,
-    "SOCWRConicPowerModel" => PowerModels.SOCWRConicPowerModel,
+    "SOCOPFQuad" => SOCOPFQuad,
+    "SOCOPF" => SOCOPF,
 )
 
-function solve!(opf::OPFModel{<:AbstractPowerModel})
+function solve!(opf::OPFModel{<:AbstractFormulation})
     optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
 end

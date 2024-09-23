@@ -23,11 +23,11 @@ factor = 5.0
 # OPF formulations to solve for each sample
 [OPF.DCOPF]
 # Formulation/solver options
-type = "DCPPowerModel"
+type = "DCOPF"
 solver.name = "Mosek"
 
 [OPF.ACOPF]
-type = "ACPPowerModel"
+type = "ACOPF"
 solver.name = "Ipopt"
 solver.attributes.tol = 1e-6
 solver.attributes.linear_solver = "ma27"
@@ -37,8 +37,8 @@ type = "EconomicDispatch"
 kwargs.soft_thermal_limit = true
 solver.name = "Mosek"
 
-[OPF.SOCWRConic]
-type = "SOCWRConicPowerModel"
+[OPF.SOCOPF]
+type = "SOCOPF"
 solver.name = "Mosek"
 # Loosened tolerances improve Mosek's convergence
 solver.attributes.MSK_DPAR_INTPNT_CO_TOL_PFEAS = 1e-6
@@ -46,9 +46,9 @@ solver.attributes.MSK_DPAR_INTPNT_CO_TOL_DFEAS = 1e-6
 solver.attributes.MSK_DPAR_INTPNT_CO_TOL_MU_RED = 1e-6
 solver.attributes.MSK_DPAR_INTPNT_CO_TOL_REL_GAP = 1e-6
 
-[OPF.SOCWRConic128]
+[OPF.SOCOPF128]
 # These settings are meant to solve `SOCWRConic` problems to high precision
-type = "SOCWRConicPowerModel"
+type = "SOCOPF"
 solver.name = "Clarabel128"
 solver.attributes.max_iter = 2000
 solver.attributes.max_step_fraction = 0.995

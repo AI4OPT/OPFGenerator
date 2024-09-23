@@ -1,3 +1,6 @@
+struct SOCOPFQuad <: AbstractFormulation end
+struct SOCOPF <: AbstractFormulation end
+
 """
     build_soc_opf(data, optimizer)
 
@@ -8,7 +11,7 @@ This implementation is based on the SOC-OPF formulation of PMAnnex.jl
 """
 function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     T=Float64,
-) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     @assert !haskey(data, "multinetwork")
     @assert !haskey(data, "conductors")
 
@@ -159,20 +162,20 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
         model[:voltage_difference_limit_lb][i] = JuMP.@constraint(model, wi_br >= tan(branch["angmin"])*wr_br)
 
         # Apparent power limit, from side and to side
-        if OPF == PM.SOCWRPowerModel
+        if OPF == SOCOPFQuad
             model[:thermal_limit_fr][i] = JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
             model[:thermal_limit_to][i] = JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)
-        elseif OPF == PM.SOCWRConicPowerModel
+        elseif OPF == SOCOPF
             model[:thermal_limit_fr][i] = JuMP.@constraint(model, [branch["rate_a"], p_fr, q_fr] in JuMP.SecondOrderCone())
             model[:thermal_limit_to][i] = JuMP.@constraint(model, [branch["rate_a"], p_to, q_to] in JuMP.SecondOrderCone())
         end
 
         # Jabr inequality (one per branch)
-        if OPF == PM.SOCWRPowerModel
+        if OPF == SOCOPFQuad
             model[:jabr][i] = JuMP.@constraint(model,
                 wr[i]^2 + wi[i]^2 <= w[branch["f_bus"]]*w[branch["t_bus"]]
             )
-        elseif OPF == PM.SOCWRConicPowerModel
+        elseif OPF == SOCOPF
             model[:jabr][i] = JuMP.@constraint(model,
                 [w[branch["f_bus"]] / sqrt(2), w[branch["t_bus"]] / sqrt(2), wr[i], wi[i]] in JuMP.RotatedSecondOrderCone()
             )
@@ -192,7 +195,7 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     return OPFModel{OPF}(data, model)
 end
 
-function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     PM.standardize_cost_terms!(data, order=2)
     PM.calc_thermal_limits!(data)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
@@ -216,7 +219,7 @@ end
 Extract SOC-OPF solution from optimization model.
 The model must have been solved before.
 """
-function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     data  = opf.data
     model = opf.model
 
@@ -282,11 +285,11 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
                 "lam_ohm_reactive_fr" => 0.0,
                 "lam_ohm_reactive_to" => 0.0,
             )
-            if OPF == PM.SOCWRPowerModel
+            if OPF == SOCOPFQuad
                 brsol["mu_sm_to"] = 0.0
                 brsol["mu_sm_fr"] = 0.0
                 brsol["mu_jabr"] = 0.0
-            elseif OPF == PM.SOCWRConicPowerModel
+            elseif OPF == SOCOPF
                 # conic duals (vector-shaped)
                 brsol["nu_jabr"] = [0.0, 0.0, 0.0, 0.0]
                 brsol["nu_sm_to"] = [0.0, 0.0, 0.0]
@@ -315,11 +318,11 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
             
             # The following dual variables depend on whether we have a QCP or SOC form,
             #   so they are handled separately
-            if OPF == PM.SOCWRPowerModel
+            if OPF == SOCOPFQuad
                 brsol["mu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["mu_sm_fr"] = dual(model[:thermal_limit_fr][b])
                 brsol["mu_jabr"] = dual(model[:jabr][b])
-            elseif OPF == PM.SOCWRConicPowerModel
+            elseif OPF == SOCOPF
                 brsol["nu_jabr"] = dual(model[:jabr][b])
                 brsol["nu_sm_to"] = dual(model[:thermal_limit_to][b])
                 brsol["nu_sm_fr"] = dual(model[:thermal_limit_fr][b])
@@ -342,7 +345,7 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{PM.SOCWRPowerMod
     return res
 end
 
-function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function json2h5(::Type{OPF}, res) where{OPF <: Union{SOCOPFQuad,SOCOPF}}
     sol = res["solution"]
     N = length(sol["bus"])
     E = length(sol["branch"])
@@ -392,11 +395,11 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCW
         "lam_ohm_reactive_to"    => zeros(Float64, E),
     )
     # The following dual variables depend on whether we have a SOC or QCP form
-    if OPF == PM.SOCWRPowerModel
+    if OPF == SOCOPFQuad
         dres_h5["mu_sm_to"] = zeros(Float64, E)
         dres_h5["mu_sm_fr"] = zeros(Float64, E)
         dres_h5["mu_jabr"] = zeros(Float64, E)
-    elseif OPF == PM.SOCWRConicPowerModel
+    elseif OPF == SOCOPF
         # conic duals (unrolled)
         dres_h5["nu_jabr"] = zeros(Float64, E, 4)
         dres_h5["nu_sm_to"] = zeros(Float64, E, 3)
@@ -447,11 +450,11 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{PM.SOCWRPowerModel,PM.SOCW
         end
         
         # The following dual variables depend on whether we have a SOC or QCP form
-        if OPF == PM.SOCWRPowerModel
+        if OPF == SOCOPFQuad
             dres_h5["mu_sm_to"][e] = brsol["mu_sm_to"]
             dres_h5["mu_sm_fr"][e] = brsol["mu_sm_fr"]
             dres_h5["mu_jabr"][e] = brsol["mu_jabr"]
-        elseif OPF == PM.SOCWRConicPowerModel
+        elseif OPF == SOCOPF
             # conic duals (unrolled)
             dres_h5["nu_jabr"][e, :] .= brsol["nu_jabr"]
             dres_h5["nu_sm_to"][e, :] .= brsol["nu_sm_to"]

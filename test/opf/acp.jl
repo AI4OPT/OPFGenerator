@@ -1,5 +1,5 @@
-function test_opf_pm(::Type{PM.ACPPowerModel}, data::Dict)
-    OPF = PM.ACPPowerModel
+function test_opf_pm(::Type{OPFGenerator.ACOPF}, data::Dict)
+    OPF = OPFGenerator.ACOPF
     # Sanity checks
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
@@ -8,7 +8,7 @@ function test_opf_pm(::Type{PM.ACPPowerModel}, data::Dict)
 
     # Solve OPF with PowerModels
     solver = OPT_SOLVERS[OPF]
-    res_pm = PM.solve_opf(data, OPF, solver)
+    res_pm = PM.solve_opf(data, PM.ACPPowerModel, solver)
 
     # Build and solve OPF with OPFGenerator
     solver = OPT_SOLVERS[OPF]

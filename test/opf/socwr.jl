@@ -1,14 +1,16 @@
 using LinearAlgebra
 
-function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{PM.SOCWRPowerModel,PM.SOCWRConicPowerModel}}
+function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{OPFGenerator.SOCOPFQuad,OPFGenerator.SOCOPF}}
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
     E = length(data["branch"])
     G = length(data["gen"])
 
+    pm_type = OPF == OPFGenerator.SOCOPF ? PM.SOCWRConicPowerModel : PM.SOCWRPowerModel
+
     # Solve OPF with PowerModels
     solver = OPT_SOLVERS[OPF]
-    res_pm = PM.solve_opf(data, OPF, solver)
+    res_pm = PM.solve_opf(data, pm_type, solver)
 
     # Build and solve OPF with OPFGenerator
     solver = OPT_SOLVERS[OPF]
@@ -25,7 +27,7 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{PM.SOCWRPowerM
     #   because our SOC formulation is not equivalent
     # Check that primal/dual objectives are matching only for conic form
     #   (Ipopt is not good with dual objective value)
-    if OPF == PM.SOCWRConicPowerModel
+    if OPF == OPFGenerator.SOCOPF
         @test isapprox(res["objective"], res["objective_lb"], rtol=1e-6)
     end
 
@@ -75,7 +77,7 @@ function _test_socwr_DualFeasibility()
         "tol_infeas_rel" => 1e-14,
         "tol_ktratio"    => 1e-14,
     )
-    opf = OPFGenerator.build_opf(SOCWRConicPowerModel, data, solver; T=T)
+    opf = OPFGenerator.build_opf(OPFGenerator.SOCOPF, data, solver; T=T)
     # set_silent(opf.model)
     OPFGenerator.solve!(opf)
     res = OPFGenerator.extract_result(opf)
@@ -217,7 +219,7 @@ function _test_socwr_DualSolFormat()
     E = length(data["branch"])
 
     solver = CLRBL_SOLVER
-    opf = OPFGenerator.build_opf(SOCWRConicPowerModel, data, solver)
+    opf = OPFGenerator.build_opf(OPFGenerator.SOCOPF, data, solver)
     set_silent(opf.model)
     OPFGenerator.solve!(opf)
 
@@ -228,7 +230,7 @@ function _test_socwr_DualSolFormat()
     @test size(res["solution"]["branch"]["1"]["nu_sm_fr"]) == (3,)
 
     # Check conversion to H5 format
-    h5 = OPFGenerator.json2h5(SOCWRConicPowerModel, res)
+    h5 = OPFGenerator.json2h5(OPFGenerator.SOCOPF, res)
 
     @test Set(collect(keys(h5))) == Set(["meta", "primal", "dual"])
     @test size(h5["dual"]["nu_jabr"]) == (E, 4)
@@ -238,7 +240,7 @@ function _test_socwr_DualSolFormat()
 end
 
 function _test_socwr128(data::Dict)
-    opf = OPFGenerator.build_opf(PM.SOCWRConicPowerModel, data, CLRBL128_SOLVER; T=Float128)
+    opf = OPFGenerator.build_opf(OPFGenerator.SOCOPF, data, CLRBL128_SOLVER; T=Float128)
 
     OPFGenerator.solve!(opf)
 

@@ -1,5 +1,5 @@
-function test_opf_pm(::Type{PM.DCPPowerModel}, data::Dict)
-    OPF = PM.DCPPowerModel
+function test_opf_pm(::Type{OPFGenerator.DCOPF}, data::Dict)
+    OPF = OPFGenerator.DCOPF
 
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
@@ -8,7 +8,7 @@ function test_opf_pm(::Type{PM.DCPPowerModel}, data::Dict)
 
     # Solve OPF with PowerModels
     solver = OPT_SOLVERS[OPF]
-    res_pm = PM.solve_opf(data, OPF, solver)
+    res_pm = PM.solve_opf(data, PM.DCPPowerModel, solver)
 
     # Build and solve OPF with OPFGenerator
     solver = OPT_SOLVERS[OPF]

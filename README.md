@@ -19,8 +19,8 @@ Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
     - [Building and solving OPF problems](#building-and-solving-opf-problems)
   - [Generating datasets](#generating-datasets)
   - [Solution format](#solution-format)
-    - [ACPPowerModel](#acppowermodel)
-    - [DCPPowerModel](#dcppowermodel)
+    - [ACOPF](#ACOPF)
+    - [DCOPF](#DCOPF)
     - [SOCWRPowerModel](#socwrpowermodel)
   - [Datasets](#datasets)
     - [Format](#format)
@@ -127,7 +127,7 @@ using Ipopt
 using OPFGenerator
 
 data = make_basic_network(pglib("14_ieee"))
-acopf = OPFGenerator.build_opf(PowerModels.ACPPowerModel, data, Ipopt.Optimizer)
+acopf = OPFGenerator.build_opf(ACOPF, data, Ipopt.Optimizer)
 optimize!(acopf.model)
 res = OPFGenerator.extract_result(acopf)
 
@@ -155,7 +155,7 @@ As a convention, dual variables of equality constraints are named `lam_<constrai
 
 Collections of instances & solutions are stored in a compact, array-based HDF5 file (see [Datasets/Format](#format) below.)
 
-### ACPPowerModel
+### ACOPF
 
 See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.ACPPowerModel).
 
@@ -192,7 +192,7 @@ Dual variables
 |           | `"lam_ohm_reactive_to"`    | Ohm's law; reactive power (to)
 |           | `"mu_va_diff"`             | Voltage angle difference
 
-### DCPPowerModel
+### DCOPF
 
 See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.DCPPowerModel).
 
@@ -234,7 +234,7 @@ Primal variables
 |           | `"wr"` | Real part of voltage product
 |           | `"wi"` | Imaginary part of voltage product
 
-Dual variables depend on whether a quadratic (`SOCWRPowerModel`) or conic (`SOCWRConicPowerModel`) formulation is considered.
+Dual variables depend on whether a quadratic (`SOCOPFQuad`) or conic (`SOCOPF`) formulation is considered.
 The former are identified with `(quad)`, the latter with `(cone)` in the table below.
 Only the dual variables of quadratic constraints are affected by this distinction.
 Note that conic dual are high-dimensional variables, and separate coordinates are stored separately.
@@ -286,7 +286,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |   |-- pd
 |   |-- qd
 |   |-- br_status
-|-- ACPPowerModel
+|-- ACOPF
 |   |-- meta
 |   |   |-- termination_status
 |   |   |-- primal_status
@@ -300,11 +300,11 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |       |-- lam_kirchhoff_active
 |       |-- lam_kirchhoff_reactive
 |       |-- ...
-|-- DCPPowerModel
+|-- DCOPF
 |   |-- meta
 |   |-- primal
 |   |-- dual
-|-- SOCWRConicPowerModel
+|-- SOCOPF
     |-- meta
     |-- primal
     |-- dual

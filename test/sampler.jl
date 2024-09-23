@@ -287,11 +287,11 @@ function test_update()
 end
 
 
-function _test_update(::Type{PM.DCPPowerModel}, opf1, opf2)
+function _test_update(::Type{OPFGenerator.DCOPF}, opf1, opf2)
     @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
-function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{PM.ACPPowerModel, PM.SOCWRPowerModel, PM.SOCWRConicPowerModel}}
+function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{OPFGenerator.ACOPF, OPFGenerator.SOCOPFQuad, OPFGenerator.SOCOPF}}
     @test all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active]))
     @test all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
 end
@@ -332,13 +332,13 @@ function test_sampler_script()
         ),
         "OPF" => Dict(
             "DCOPF" => Dict(
-                "type" => "DCPPowerModel",
+                "type" => "DCOPF",
                 "solver" => Dict(
                     "name" => "Clarabel",
                 )
             ),
             "ACOPF" => Dict(
-                "type" => "ACPPowerModel",
+                "type" => "ACOPF",
                 "solver" => Dict(
                     "name" => "Ipopt",
                     "attributes" => Dict(
@@ -361,14 +361,14 @@ function test_sampler_script()
                     "name" => "Clarabel",
                 )
             ),
-            "SOCWRConic" => Dict(
-                "type" => "SOCWRConicPowerModel",
+            "SOCOPF" => Dict(
+                "type" => "SOCOPF",
                 "solver" => Dict(
                     "name" => "Clarabel",
                 )
             ),
-            "SOCWRConic128" => Dict(
-                "type" => "SOCWRConicPowerModel",
+            "SOCOPF128" => Dict(
+                "type" => "SOCOPF",
                 "solver" => Dict(
                     "name" => "Clarabel128",
                     "attributes" => Dict(
