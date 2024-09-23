@@ -9,14 +9,12 @@ function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::St
 
     network_drop = deepcopy(network)
 
-    rng = StableRNG(42)
-
     is_bridge = OPFGenerator.bridges(network_drop)
     non_bridge = [e for (e, b) in is_bridge if !b]
-    drop_branch = non_bridge[rand(rng, 1:length(non_bridge))]
+    drop_branch = first(non_bridge)
     network_drop["branch"]["$drop_branch"]["br_status"] = 0
 
-    drop_gen = rand(rng, 1:length(network_drop["gen"]))
+    drop_gen = argmin(gen->gen["pmax"], network_drop["gen"])
     network_drop["gen"]["$drop_gen"]["gen_status"] = 0
 
     @testset "Branch/Gen Status" begin test_opf_pm(OPF, network_drop) end
