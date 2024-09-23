@@ -25,6 +25,12 @@ end
 function Random.rand(rng::AbstractRNG, rs::Nminus1StatusSampler)
     p = rand(rng)
 
+    E = length(rs.data["branch"])
+    G = length(rs.data["gen"])
+
+    br_status = ones(Int, E)
+    gen_status = ones(Int, G)
+
     if p < 0.5
         # drop a branch 
         is_bridge = bridges(rs.data)
@@ -33,26 +39,16 @@ function Random.rand(rng::AbstractRNG, rs::Nminus1StatusSampler)
         e = rand(rng, non_bridge)
         e_index = rs.data["branch"][e]["index"]
 
-        br_status = ones(Int, length(rs.data["branch"]))
         br_status[e_index] = 0
-
-        gen_status = ones(Int, length(rs.data["gen"]))
-
-        return br_status, gen_status
-
     else
         # drop a generator
         G = length(rs.data["gen"])
         g = rand(rng, 1:G)
 
-        gen_status = ones(Int, G)
         gen_status[g] = 0
-
-        br_status = ones(Int, length(rs.data["branch"]))
-
-        return br_status, gen_status
-
     end
+
+    return br_status, gen_status
 end
 
 
