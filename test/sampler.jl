@@ -154,6 +154,46 @@ function test_sampler()
     return nothing
 end
 
+function test_nminus1_sampler()
+    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    sampler_config = Dict{String,Any}(
+        "load" => Dict(
+            "noise_type" => "ScaledLogNormal",
+            "l" => 0.8,
+            "u" => 1.2,
+            "sigma" => 0.05,        
+        ),
+        "status" => Dict(
+            "type"=> "NMinus1",
+        )
+    )
+
+    rng = StableRNG(42)
+    opf_sampler  = SimpleOPFSampler(data, sampler_config)
+
+    data1 = rand(rng, opf_sampler)
+
+    println([g for (i, g) in data1["gen"] if g["gen_status"] == 0])
+    println([b for (i, b) in data1["branch"] if b["br_status"] == 0])
+
+    # generator 1 should be disabled
+    for i in 1:length(data1["gen"]) if i != 1
+            @test data1["gen"]["$i"]["gen_status"] == 1
+        end
+    end
+    @test data1["gen"]["1"]["gen_status"] == 0
+
+    # all branches should be enabled
+    for i in 1:length(data1["branch"])
+        @test data1["branch"]["$i"]["br_status"] == 1
+    end
+
+    data2 = rand(StableRNG(42), opf_sampler)
+    @test data2 == data1
+
+    return nothing
+end
+
 function _test_ieee14_LogNormal_s42(data)
     data0 = make_basic_network(pglib("pglib_opf_case14_ieee"))
 
@@ -215,6 +255,13 @@ function _test_ieee14_LogNormal_s42(data)
         @test data["gen"]["$i"]["rmax"] == 0.0
     end
 
+    # all statuses should be 1
+    for i in 1:length(data["gen"])
+        @test data["gen"]["$i"]["gen_status"] == 1
+    end
+    for i in 1:length(data["branch"])
+        @test data["branch"]["$i"]["br_status"] == 1
+    end
     return nothing
 end
 
@@ -447,6 +494,7 @@ end
     @testset test_LoadScaler()
     @testset test_LoadScaler_sanity_checks()
     @testset test_sampler()
+    @testset test_nminus1_sampler()
     @testset test_inplace_sampler()
     @testset test_sampler_script()
     @testset test_update()
