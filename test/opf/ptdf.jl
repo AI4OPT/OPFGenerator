@@ -17,8 +17,11 @@ function test_ptdf(network, data)
 
         # Test ptdf_row
         for e in 1:E
-            row = ptdf_row(Φ, e)
-            @test row == Φ.matrix[e, :]
+            row = if PTDF == FullPTDF
+                Φ.matrix[e, :]
+            else
+                ptdf_row(Φ, e)
+            end
             @test isapprox(row, Φ_pm[e, :]; atol=1e-6)
         end
     end

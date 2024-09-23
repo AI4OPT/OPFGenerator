@@ -15,7 +15,7 @@ struct LazyPTDF <: AbstractPTDF
     BA::SparseMatrixCSC{Float64,Int}  # B*A
     AtBA::SparseMatrixCSC{Float64,Int}  # AᵀBA
 
-    F::LDLt # Factorization of AᵀBA. Must be able to solve linear systems with F \ p
+    F::SparseArrays.CHOLMOD.Factor{Float64, Int64}  # Factorization of AᵀBA
 
     # TODO: cache
 end
@@ -29,6 +29,7 @@ function LazyPTDF(data::OPFData)
     BA = B * A
     S = AtBA = A' * BA
 
+    # Adjust row & column corresponding to slack bus
     S[ref_idx, :] .= 0.0
     S[:, ref_idx] .= 0.0
     S[ref_idx, ref_idx] = 1.0
@@ -43,8 +44,7 @@ end
 
 Compute power flow `pf = Φ*pg` lazily, without forming the PTDF matrix.
 
-Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
-    of (-AᵀBA), e.g., a cholesky / LDLᵀ / LU factorization.
+Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is an LDLᵀ factorization of `AᵀBA`.
 """
 function compute_flow!(pf, pg, Φ::LazyPTDF)
     θ = Φ.F \ pg
@@ -82,7 +82,7 @@ function FullPTDF(data::OPFData)
 end
 
 function FullPTDF(lazy::LazyPTDF)
-    lazy.E > 4096 || @warn "FullPTDF: large PTDF matrix (E = $(lazy.E)). Consider using LazyPTDF instead."
+    (lazy.E > 4096) && @warn "FullPTDF: large PTDF matrix (E = $(lazy.E)). Consider using LazyPTDF instead."
     T = eltype(lazy.F)
     PTDF = zeros(T, lazy.E, lazy.N)
     for e in 1:lazy.E
