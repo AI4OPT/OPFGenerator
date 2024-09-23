@@ -286,6 +286,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |   |-- pd
 |   |-- qd
 |   |-- br_status
+|   |-- gen_status
 |-- ACOPF
 |   |-- meta
 |   |   |-- termination_status

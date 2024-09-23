@@ -138,6 +138,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             "pd" => Vector{Float64}[],
             "qd" => Vector{Float64}[],
             "br_status" => Vector{Bool}[],
+            "gen_status" => Vector{Bool}[],
         )
     )
     for dataset_name in OPFs
@@ -161,6 +162,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         push!(D["input"]["data"]["pd"], [data_["load"]["$l"]["pd"] for l in 1:L])
         push!(D["input"]["data"]["qd"], [data_["load"]["$l"]["qd"] for l in 1:L])
         push!(D["input"]["data"]["br_status"], [Bool(data_["branch"]["$e"]["br_status"]) for e in 1:E])
+        push!(D["input"]["data"]["gen_status"], [Bool(data_["gen"]["$g"]["gen_status"]) for g in 1:G])
 
         # Add output results, one for each OPF dataset
         for dataset_name in OPFs
