@@ -1,4 +1,4 @@
-mutable struct DCOPF <: Formulation end
+struct DCOPF <: AbstractFormulation end
 
 """
     build_dcopf(data, optimizer)

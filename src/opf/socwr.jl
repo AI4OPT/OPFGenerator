@@ -1,5 +1,5 @@
-mutable struct SOCOPFQuad <: Formulation end
-mutable struct SOCOPF <: Formulation end
+struct SOCOPFQuad <: AbstractFormulation end
+struct SOCOPF <: AbstractFormulation end
 
 """
     build_soc_opf(data, optimizer)

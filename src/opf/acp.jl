@@ -1,4 +1,4 @@
-mutable struct ACOPF <: Formulation end
+struct ACOPF <: AbstractFormulation end
 
 """
     build_acopf(data, optimizer)
