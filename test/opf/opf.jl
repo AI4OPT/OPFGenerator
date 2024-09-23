@@ -2,7 +2,7 @@ using OPFGenerator: OPFData
 
 include("utils.jl")
 
-function test_opf_pm(OPF::Type{<:PM.AbstractPowerModel}, casename::String)
+function test_opf_pm(OPF::Type{<:OPFGenerator.Formulation}, casename::String)
     network = make_basic_network(pglib(casename))
     test_opf_pm(OPF, network)
 end
@@ -12,7 +12,7 @@ end
 
 Build & solve opf using OPFGenerator, and compare against PowerModels implementation.
 """
-function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: Formulation}
+function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: OPFGenerator.Formulation}
     error("""`test_opf_pm($(OPF), data)` not implemented.
     You must implement a function with the following signature:
         function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: $(OPF)}

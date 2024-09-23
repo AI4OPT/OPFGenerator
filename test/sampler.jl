@@ -287,7 +287,7 @@ function test_update()
 end
 
 
-function _test_update(::Type{DCOPF}, opf1, opf2)
+function _test_update(::Type{OPFGenerator.DCOPF}, opf1, opf2)
     @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
 end
 
