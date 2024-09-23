@@ -15,13 +15,12 @@ struct LazyPTDF{TF} <: AbstractPTDF
     BA::SparseMatrixCSC{Float64,Int}  # B*A
     AtBA::SparseMatrixCSC{Float64,Int}  # AᵀBA
 
-    F::TF   # Factorization of -(AᵀBA). Must be able to solve linear systems with F \ p
-            # We use a factorization of -(AᵀBA) to support cholesky factorization when possible
+    F::LDLt # Factorization of AᵀBA. Must be able to solve linear systems with F \ p
 
     # TODO: cache
 end
 
-function LazyPTDF(data::OPFData; solver::Symbol=:ldlt)
+function LazyPTDF(data::OPFData)
     N, E, A, b, ref_idx = data.N, data.E, data.A, data.b, data.ref_bus
 
     all(data.branch_status .== 1) || error("LazyPTDF does not support disabled branches.")
@@ -32,30 +31,17 @@ function LazyPTDF(data::OPFData; solver::Symbol=:ldlt)
 
     S[ref_idx, :] .= 0.0
     S[:, ref_idx] .= 0.0
-    S[ref_idx, ref_idx] = -1.0;  # to enable cholesky
-    S = -S
+    S[ref_idx, ref_idx] = 1.0
 
-    if solver == :ldlt
-        F = ldlt(S)
-    elseif solver == :cholesky
-        # If Cholesky is not possible, default to LDLᵀ
-        if maximum(b) < 0.0
-            F = cholesky(S)
-        else
-            @warn "Some branches have positive susceptance, cannot use Cholesky; defaulting to LDLᵀ"
-            F = ldlt(S)
-        end
-    else
-        error("Invalid linear solver: only ldlt and cholesky are supported")
-    end
+    F = ldlt(S)
 
     return LazyPTDF(N, E, ref_idx, A, b, BA, AtBA, F)
 end
 
 """
-    compute_flow_lazy!(pf, pg, Φ::LazyPTDF)
+    compute_flow!(pf, pg, Φ::LazyPTDF)
 
-Compute power flow `pf = Φ*pg` lazyly, without forming the PTDF matrix.
+Compute power flow `pf = Φ*pg` lazily, without forming the PTDF matrix.
 
 Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
     of (-AᵀBA), e.g., a cholesky / LDLᵀ / LU factorization.
@@ -63,7 +49,7 @@ Namely, `pf` is computed as `pf = BA * (F \\ pg)`, where `F` is a factorization
 function compute_flow!(pf, pg, Φ::LazyPTDF)
     θ = Φ.F \ pg
     θ[Φ.islack, :] .= 0  # slack voltage angle is zero
-    mul!(pf, Φ.BA, θ, -one(eltype(pf)), zero(eltype(pf)))
+    mul!(pf, Φ.BA, θ)
     return pf
 end
 
@@ -75,7 +61,7 @@ Return the `e`-th row of (lazy) PTDF matrix `Φ`.
 function ptdf_row(Φ::LazyPTDF, e::Int)
     1 <= e <= Φ.E || error("Invalid row index: $e (must be between 1 and $E)")
 
-    u = -Φ.BA[e, :]
+    u = Φ.BA[e, :]
     y = Φ.F \ u
     y[Φ.islack] = 0.0
 
@@ -105,7 +91,7 @@ function FullPTDF(lazy::LazyPTDF)
 end
 
 """
-    compute_flow_direct!(pf, pg, Φ::FullPTDF)
+    compute_flow!(pf, pg, Φ::FullPTDF)
 
 Compute power flow `pf = Φ*pg` given PTDF matrix `Φ` and nodal injections `pg`.
 """

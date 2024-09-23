@@ -60,8 +60,7 @@ end
         test_opfdata(data, network)
         test_voltage_phasor_bounds(data, network)
         @testset "PTDF" begin
-            test_ptdf_full(network, data)
-            test_ptdf_lazy(network, data)
+            test_ptdf(network, data)
         end
     end
 end
