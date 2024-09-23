@@ -173,9 +173,6 @@ function test_nminus1_sampler()
 
     data1 = rand(rng, opf_sampler)
 
-    println([g for (i, g) in data1["gen"] if g["gen_status"] == 0])
-    println([b for (i, b) in data1["branch"] if b["br_status"] == 0])
-
     # generator 1 should be disabled
     for i in 1:length(data1["gen"]) if i != 1
             @test data1["gen"]["$i"]["gen_status"] == 1
