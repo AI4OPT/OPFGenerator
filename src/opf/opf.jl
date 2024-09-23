@@ -273,6 +273,8 @@ function to_dict(data::OPFData)
 end
 
 include("utils.jl")
+include("ptdf.jl")
+
 include("acp.jl")      # ACPPowerModel
 include("dcp.jl")      # DCPPowerModel
 include("ed.jl")       # EconomicDispatch
