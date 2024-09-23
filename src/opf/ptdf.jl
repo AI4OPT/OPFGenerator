@@ -5,7 +5,7 @@ using LinearAlgebra
 abstract type AbstractPTDF end
 
 
-struct LazyPTDF{TF} <: AbstractPTDF
+struct LazyPTDF <: AbstractPTDF
     N::Int  # number of buses
     E::Int  # number of branches
     islack::Int  # Index of slack bus
