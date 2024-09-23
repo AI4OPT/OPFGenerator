@@ -1,6 +1,7 @@
 using OPFGenerator: OPFData
 
 include("utils.jl")
+include("ptdf.jl")
 
 function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::String)
     network = make_basic_network(pglib(casename))
@@ -58,5 +59,8 @@ end
         data = OPFData(network)
         test_opfdata(data, network)
         test_voltage_phasor_bounds(data, network)
+        @testset "PTDF" begin
+            test_ptdf(network, data)
+        end
     end
 end
