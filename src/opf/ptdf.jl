@@ -24,6 +24,8 @@ end
 function LazyPTDF(data::OPFData; solver::Symbol=:ldlt)
     N, E, A, b, ref_idx = data.N, data.E, data.A, data.b, data.ref_bus
 
+    all(data.branch_status .== 1) || error("LazyPTDF does not support disabled branches.")
+
     B = Diagonal(b)
     BA = B * A
     S = AtBA = A' * BA
