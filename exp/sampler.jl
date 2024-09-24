@@ -35,56 +35,48 @@ value_type(::Any) = Float64
 value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
-function build_models(data, config)
-    opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:OPFGenerator.AbstractFormulation}, Float64}}()
-    for (dataset_name, opf_config) in config["OPF"]
-        OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
-        solver_config = get(opf_config, "solver", Dict())
+function build_and_solve_model(data, config, dataset_name)
+    opf_config = config["OPF"][dataset_name]
+    OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
+    solver_config = get(opf_config, "solver", Dict())
 
-        if solver_config["name"] == "Ipopt"
-            # Make sure we provide an HSL path
-            # The code below does not modify anything if the user provides an HSL path
-            get!(solver_config, "attributes", Dict())
-            get!(solver_config["attributes"], "hsllib", HSL_jll.libhsl_path)
-        end
-
-        solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
-            get(solver_config, "attributes", Dict())...
-        )
-        build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
-
-        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
-            T=value_type(solver.optimizer_constructor),
-            build_kwargs...
-        )
-
-        set_silent(opf.model)
-        opf_models[dataset_name] = (opf, tbuild)
-        @info "Built $dataset_name in $tbuild seconds"
+    if solver_config["name"] == "Ipopt"
+        # Make sure we provide an HSL path
+        get!(solver_config, "attributes", Dict())
+        get!(solver_config["attributes"], "hsllib", HSL_jll.libhsl_path)
     end
 
-    return opf_models
+    solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
+        get(solver_config, "attributes", Dict())...
+    )
+    build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
+
+    tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
+        T=value_type(solver.optimizer_constructor),
+        build_kwargs...
+    )
+
+    set_silent(opf.model)
+    
+    OPFGenerator.solve!(opf)
+
+    time_extract = @elapsed res = OPFGenerator.extract_result(opf)
+    
+    res["time_build"] = tbuild
+    res["time_extract"] = time_extract
+    
+    return OPFGenerator.json2h5(opf.model.ext[:opf_model], res)
 end
 
-function main(data, opf_models, config)
+function main(data, config)
     d = Dict{String,Any}()
     d["meta"] = deepcopy(config)
     
     # Keep track of input data
     d["data"] = data
 
-    for dataset_name in keys(opf_models)
-        opf = opf_models[dataset_name][1]
-
-        OPFGenerator.update!(opf, data)
-        OPFGenerator.solve!(opf)
-
-        time_extract = @elapsed res = OPFGenerator.extract_result(opf)
-        
-        res["time_build"] = opf_models[dataset_name][2]
-        res["time_extract"] = time_extract
-        h = OPFGenerator.json2h5(opf.model.ext[:opf_model], res)
-        d[dataset_name] = h
+    for dataset_name in keys(config["OPF"])
+        d[dataset_name] = build_and_solve_model(data, config, dataset_name)
     end
 
     return d
@@ -108,16 +100,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
     data0 = make_basic_network(pglib("14_ieee"))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
     rand!(StableRNG(1), opf_sampler0, data0)
-    for (opf0, m0) in build_models(data0, config)
-        OPFGenerator.solve!(m0[1])
-        OPFGenerator.extract_result(m0[1])
-    end
+    main(data0, config)
 
     # Load reference data and setup OPF sampler
     data = make_basic_network(pglib(config["ref"]))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
-
-    opf_models = build_models(data, config)
 
     # Data info
     N = length(data["bus"])
@@ -154,7 +141,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     for s in smin:smax
         rng = StableRNG(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
-        tsolve = @elapsed res = main(data_, opf_models, config)
+        tsolve = @elapsed res = main(data_, config)
         res["meta"]["seed"] = s
 
         # Update input data
