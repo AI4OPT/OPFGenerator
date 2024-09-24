@@ -1,263 +1,171 @@
 struct DCOPF <: AbstractFormulation end
 
 """
-    build_dcopf(data, optimizer)
+    build_opf(DCOPF, data, optimizer)
 
-Build a DC-OPF model.
+Build a DCOPF model.
 """
-function build_opf(::Type{DCOPF}, data::Dict{String,Any}, optimizer;
+function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     T=Float64,    
 )
-    # Cleanup and pre-process data
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
-    # Check that slack bus is unique
-    length(ref[:ref_buses]) == 1 || error("Data has $(length(ref[:ref_buses])) slack buses (expected 1).")
-    i0 = first(keys(ref[:ref_buses]))
+    # TODO: remove when all formulations are done
+    data = OPFData(network)
 
     # Grab some data
-    N = length(ref[:bus])
-    G = length(ref[:gen])
-    E = length(data["branch"])
-    L = length(ref[:load])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
+    N, E, G = data.N, data.E, data.G
+    gs = data.gs
+    pd = data.pd
+    i0 = data.ref_bus
+    bus_arcs_fr, bus_arcs_to = data.bus_arcs_fr, data.bus_arcs_to
+    bus_gens = data.bus_gens
+    pgmin, pgmax = data.pgmin, data.pgmax
+    c0, c1, c2 = data.c0, data.c1, data.c2
+    gen_status = data.gen_status
+    bus_fr, bus_to, b = data.bus_fr, data.bus_to, data.b
+    dvamin, dvamax, smax = data.dvamin, data.dvamax, data.smax
+    branch_status = data.branch_status
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = DCOPF  # for internal checks
+    model.ext[:opf_model] = DCOPF
 
     #
     #   I. Variables
     #
+    
+    # nodal voltage
+    @variable(model, va[1:N])
 
-    # bus voltage angle
-    JuMP.@variable(model, va[1:N])
+    # Active and reactive dispatch
+    @variable(model, pg[g in 1:G])
 
-    # generator active dispatch
-    JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
+    # Branch flows
+    @variable(model, pf[e in 1:E])
 
-    # branch flows
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs_from]] <= ref[:branch][l]["rate_a"])
-
-    # https://github.com/lanl-ansi/PowerModels.jl/blob/d9c00d228a4e875ac3426425ad6c8f8338309efa/src/form/dcp.jl#L255-L258
-    # pf_expr = Dict{Any, Any}( ((l,i,j), pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from] )
-    # pf_expr = merge(pf_expr, Dict( ((l,j,i), -1.0*pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from] ))
-    pf_expr = [((l,i,j), pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from]]
-    pf_expr = vcat(pf_expr, [((l,j,i), -1.0*pf[(l,i,j)]) for (l,i,j) in ref[:arcs_from]])
-
-    model[:pf] = pf = JuMP.Containers.DenseAxisArray(collect(getfield.(pf_expr, 2)), collect(getfield.(pf_expr, 1)))
-
-    #
+    # 
     #   II. Constraints
     #
 
+    # Generation bounds (both zero if generator is off)
+    set_lower_bound.(pg, gen_status .* pgmin)
+    set_upper_bound.(pg, gen_status .* pgmax)
+
+    # Flow bounds (both zero if branch is off)
+    set_lower_bound.(pf, branch_status .* -smax)
+    set_upper_bound.(pf, branch_status .* smax)
+
     # Slack bus
-    JuMP.@constraint(model, slack_bus, va[i0] == 0.0)
+    @constraint(model, slack_bus, va[i0] == 0.0)
 
     # Nodal power balance
-    JuMP.@constraint(model,
+    @constraint(model,
         kirchhoff[i in 1:N],
-        sum(pg[g] for g in ref[:bus_gens][i])
-        - sum(pf[a] for a in ref[:bus_arcs][i]) 
-        ==
-        sum(load["pd"] for load in bus_loads[i])
-        + sum(shunt["gs"] for shunt in bus_shunts[i])
+        sum(pg[g] for g in bus_gens[i] if gen_status[g])
+        - sum(pf[a] for a in bus_arcs_fr[i] if branch_status[a])
+        - sum(-pf[a] for a in bus_arcs_to[i] if branch_status[a])
+        == 
+        pd[i] + gs[i]
     )
 
-    # Branch power flow physics and limit constraints
-    # We pre-allocate constraint containers for simplicity
-    model[:voltage_difference_limit] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:ohm_eq] = Vector{JuMP.ConstraintRef}(undef, E)
-    for (i,branch) in ref[:branch]
-        data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
+    model[:ohm] = Vector{ConstraintRef}(undef, E)
+    model[:va_diff] = Vector{ConstraintRef}(undef, E)
 
-        f_idx = (i, branch["f_bus"], branch["t_bus"])
+    for e in 1:E if branch_status[e]
+            # Branch power flow physics and limit constraints
+            model[:ohm][e] = @constraint(model, -b[e] * (va[bus_fr[e]] - va[bus_to[e]]) - pf[e] == 0)
 
-        p_fr = pf[f_idx]
-
-        va_fr = va[branch["f_bus"]]
-        va_to = va[branch["t_bus"]]
-
-        g, b = PM.calc_branch_y(branch)
-
-        # From side of the branch flow
-        model[:ohm_eq][i] = JuMP.@constraint(model, b*(va_to - va_fr) - p_fr == 0)
-
-        # Voltage angle difference limit
-        model[:voltage_difference_limit][i] = JuMP.@constraint(model, branch["angmin"] <= va_fr - va_to <= branch["angmax"])
+            # Voltage angle difference limit
+            model[:va_diff][e] = @constraint(model, dvamin[e] ≤ va[bus_fr[e]] - va[bus_to[e]] ≤ dvamax[e])
+        end
     end
 
     #
     #   III. Objective
     #
-    l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
-    (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
-    JuMP.@objective(model, Min, sum(
-        gen["cost"][2]*pg[i] + gen["cost"][3]
-        for (i,gen) in ref[:gen]
-    ))
+    l, u = extrema(c2[g] for g in 1:G if gen_status[g])
+    (l == u == 0.0) || @warn "Data $(data.case) has quadratic cost terms; those terms are being ignored"
 
-    return OPFModel{DCOPF}(data, model)
+    @objective(model,
+        Min,
+        sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
+    )
+
+    # TODO: update to store OPFData when all formulations are done
+    return OPFModel{DCOPF}(network, model)
 end
 
-
-"""
-    _extract_dcopf_solution(model, data)
-
-Extract DCOPF solution from optimization model.
-The model must have been solved before.
-"""
-function extract_result(opf::OPFModel{DCOPF})
-    data  = opf.data
+function extract_primal(opf::OPFModel{DCOPF})
     model = opf.model
 
-    # Pre-process data
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-    N = length(ref[:bus])
-    G = length(ref[:gen])
-    E = length(data["branch"])
+    # TODO: remove when all formulations are done
+    network = opf.data
+    data = OPFData(network)
 
-    # Build the solution dictionary
-    res = Dict{String,Any}()
-    res["opf_model"] = string(model.ext[:opf_model])
-    res["objective"] = JuMP.objective_value(model)
-    res["objective_lb"] = try JuMP.dual_objective_value(model) catch; NaN end
-    res["optimizer"] = JuMP.solver_name(model)
-    res["solve_time"] = JuMP.solve_time(model)
-    res["termination_status"] = JuMP.termination_status(model)
-    res["primal_status"] = JuMP.primal_status(model)
-    res["dual_status"] = JuMP.dual_status(model)
-    res["solution"] = sol = Dict{String,Any}()
+    N, E, G = data.N, data.E, data.G
 
-    sol["per_unit"] = get(data, "per_unit", false)
-    sol["baseMVA"]  = get(data, "baseMVA", 100.0)
-
-    ### populate branches, gens, buses ###
-
-    sol["bus"] = Dict{String,Any}()
-    sol["branch"] = Dict{String,Any}()
-    sol["gen"] = Dict{String,Any}()
-
-    for bus in 1:N
-        sol["bus"]["$bus"] = Dict(
-            "va" => value(model[:va][bus]),
-            # dual vars
-            "lam_kirchhoff" => dual(model[:kirchhoff][bus])
-        )
-    end
-
-    for b in 1:E
-        if data["branch"]["$b"]["br_status"] == 0
-            # branch is under outage --> we set everything to zero
-            sol["branch"]["$b"] = Dict(
-                "pf" => 0.0,
-                # dual vars
-                "mu_va_diff" => 0.0,
-                "lam_ohm"    => 0.0,
-                "mu_sm_lb"   => 0.0,
-                "mu_sm_ub"   => 0.0,
-            )
-        else
-            branch = ref[:branch][b]
-            f_idx = (b, branch["f_bus"], branch["t_bus"])
-
-            sol["branch"]["$b"] = Dict(
-                "pf" => value(model[:pf][f_idx]),
-                # dual vars
-                "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
-                "lam_ohm"    => dual(model[:ohm_eq][b]),
-                "mu_sm_lb"   => dual(LowerBoundRef(model[:pf][f_idx])),
-                "mu_sm_ub"   => dual(UpperBoundRef(model[:pf][f_idx])),
-            )
-        end
-    end
-
-    for g in 1:G
-        sol["gen"]["$g"] = Dict(
-            "pg" => value(model[:pg][g]),
-            # dual vars
-            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
-            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
-        )
-    end
-
-    sol["global"] = Dict(
-        "lam_slack_bus" => dual(model[:slack_bus]),
-    )
-
-    return json2h5(DCOPF, res)
-end
-
-function json2h5(::Type{DCOPF}, res)
-    sol = res["solution"]
-    N = length(sol["bus"])
-    E = length(sol["branch"])
-    G = length(sol["gen"])
-
-    res_h5 = Dict{String,Any}(
-        "meta" => Dict{String,Any}(
-            "termination_status" => string(res["termination_status"]),
-            "primal_status" => string(res["primal_status"]),
-            "dual_status" => string(res["dual_status"]),
-            "solve_time" => res["solve_time"],
-            "primal_objective_value" => res["objective"],
-            "dual_objective_value" => res["objective_lb"],
-            "formulation" => string(DCOPF),
-        ),
-    )
-
-    res_h5["primal"] = pres_h5 = Dict{String,Any}(
+    primal_solution = Dict{String,Any}(
         "va" => zeros(Float64, N),
         "pg" => zeros(Float64, G),
         "pf" => zeros(Float64, E),
     )
-    res_h5["dual"] = dres_h5 = Dict{String,Any}(
-        "lam_kirchhoff"   => zeros(Float64, N),
-        "mu_pg_lb"               => zeros(Float64, G),
-        "mu_pg_ub"               => zeros(Float64, G),
-        "lam_ohm"                => zeros(Float64, E),
-        "mu_sm_lb"               => zeros(Float64, E),
-        "mu_sm_ub"               => zeros(Float64, E),
-        "mu_va_diff"             => zeros(Float64, E),
-        "lam_slack_bus"          => 0.0,
+    if has_values(model)
+        for i in 1:N
+            primal_solution["va"][i] = value(model[:va][i])
+        end
+
+        for g in 1:G if data.gen_status[g]
+                primal_solution["pg"][g] = value(model[:pg][g])
+            end
+        end
+
+        for e in 1:E if data.branch_status[e]
+                primal_solution["pf"][e] = value(model[:pf][e])
+            end
+        end
+    end
+
+    return primal_solution
+end
+
+function extract_dual(opf::OPFModel{DCOPF})
+    model = opf.model
+
+    # TODO: remove when all formulations are done
+    network = opf.data
+    data = OPFData(network)
+
+    N, E, G = data.N, data.E, data.G
+
+    dual_solution = Dict{String,Any}(
+        "kirchhoff"          => zeros(Float64, N),
+        "pg_lb"              => zeros(Float64, G),
+        "pg_ub"              => zeros(Float64, G),
+        "pf_lb"              => zeros(Float64, E),
+        "pf_ub"              => zeros(Float64, E),
+        "ohm"                => zeros(Float64, E),
+        "va_diff"            => zeros(Float64, E),
+        "slack_bus"          => 0.0,
     )
+    if has_duals(model)
+        for i in 1:N
+            dual_solution["kirchhoff"][i] = dual(model[:kirchhoff][i])
+        end
 
-    # extract from solution
-    for i in 1:N
-        bsol = sol["bus"]["$i"]
+        for g in 1:G if data.gen_status[g]
+                dual_solution["pg_lb"][g] = dual(LowerBoundRef(model[:pg][g]))
+                dual_solution["pg_ub"][g] = dual(UpperBoundRef(model[:pg][g]))
+            end
+        end
 
-        pres_h5["va"][i] = bsol["va"]
+        for e in 1:E if data.branch_status[e]
+                dual_solution["pf_lb"][e] = dual(LowerBoundRef(model[:pf][e]))
+                dual_solution["pf_ub"][e] = dual(UpperBoundRef(model[:pf][e]))
+                dual_solution["ohm"][e] = dual(model[:ohm][e])
+                dual_solution["va_diff"][e] = dual(model[:va_diff][e])
+            end
+        end
 
-        dres_h5["lam_kirchhoff"][i] = bsol["lam_kirchhoff"]
-    end
-    for g in 1:G
-        gsol = sol["gen"]["$g"]
-
-        pres_h5["pg"][g] = gsol["pg"]
-
-        dres_h5["mu_pg_lb"][g] = gsol["mu_pg_lb"]
-        dres_h5["mu_pg_ub"][g] = gsol["mu_pg_ub"]
-    end
-    for e in 1:E
-        brsol = sol["branch"]["$e"]
-
-        pres_h5["pf"][e] = brsol["pf"]
-        
-        dres_h5["lam_ohm"][e] = brsol["lam_ohm"]
-        dres_h5["mu_sm_lb"][e] = brsol["mu_sm_lb"]
-        dres_h5["mu_sm_ub"][e] = brsol["mu_sm_ub"]
-        dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
+        dual_solution["slack_bus"] = dual(model[:slack_bus])
     end
 
-    dres_h5["lam_slack_bus"] = sol["global"]["lam_slack_bus"]
-
-    return res_h5
+    return dual_solution
 end
