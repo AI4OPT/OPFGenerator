@@ -130,31 +130,31 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     end
 
     # Check dual feasibility for select buses and constraints
-    λp  = [res["dual"]["lam_kirchhoff_active"][i] for i in 1:N]
-    λq  = [res["dual"]["lam_kirchhoff_reactive"][i] for i in 1:N]
-    λpf = [res["dual"]["lam_ohm_active_fr"][e] for e in 1:E]
-    λqf = [res["dual"]["lam_ohm_reactive_fr"][e] for e in 1:E]
-    λpt = [res["dual"]["lam_ohm_active_to"][e] for e in 1:E]
-    λqt = [res["dual"]["lam_ohm_reactive_to"][e] for e in 1:E]
+    λp  = [res["dual"]["kirchhoff_active"][i] for i in 1:N]
+    λq  = [res["dual"]["kirchhoff_reactive"][i] for i in 1:N]
+    λpf = [res["dual"]["ohm_pf"][e] for e in 1:E]
+    λqf = [res["dual"]["ohm_qf"][e] for e in 1:E]
+    λpt = [res["dual"]["ohm_pt"][e] for e in 1:E]
+    λqt = [res["dual"]["ohm_qt"][e] for e in 1:E]
 
-    ωf = [res["dual"]["nu_jabr"][e, 1] for e in 1:E]
-    ωt = [res["dual"]["nu_jabr"][e, 2] for e in 1:E]
-    ωr = [res["dual"]["nu_jabr"][e, 3] for e in 1:E]
-    ωi = [res["dual"]["nu_jabr"][e, 4] for e in 1:E]
+    ωf = [res["dual"]["jabr"][e, 1] for e in 1:E]
+    ωt = [res["dual"]["jabr"][e, 2] for e in 1:E]
+    ωr = [res["dual"]["jabr"][e, 3] for e in 1:E]
+    ωi = [res["dual"]["jabr"][e, 4] for e in 1:E]
 
-    μθ_lb = [res["dual"]["mu_va_diff_lb"][e] for e in 1:E]
-    μθ_ub = [-res["dual"]["mu_va_diff_ub"][e] for e in 1:E]
+    μθ_lb = [res["dual"]["va_diff_lb"][e] for e in 1:E]
+    μθ_ub = [-res["dual"]["va_diff_ub"][e] for e in 1:E]
 
     μ_w = [
-        res["dual"]["mu_w_lb"][i] + res["dual"]["mu_w_ub"][i]
+        res["dual"]["w_lb"][i] + res["dual"]["w_ub"][i]
         for i in 1:N
     ]
     μ_wr = [
-        res["dual"]["mu_wr_lb"][e] + res["dual"]["mu_wr_ub"][e]
+        res["dual"]["wr_lb"][e] + res["dual"]["wr_ub"][e]
         for e in 1:E
     ]
     μ_wi = [
-        res["dual"]["mu_wi_lb"][e] + res["dual"]["mu_wi_ub"][e]
+        res["dual"]["wi_lb"][e] + res["dual"]["wi_ub"][e]
         for e in 1:E
     ]
 
@@ -231,9 +231,9 @@ function _test_socwr_DualSolFormat()
     res = OPFGenerator.extract_result(opf)
 
     @test Set(collect(keys(res))) == Set(["meta", "primal", "dual"])
-    @test size(res["dual"]["nu_jabr"]) == (E, 4)
-    @test size(res["dual"]["nu_sm_fr"]) == (E, 3)
-    @test size(res["dual"]["nu_sm_to"]) == (E, 3)
+    @test size(res["dual"]["jabr"]) == (E, 4)
+    @test size(res["dual"]["sm_fr"]) == (E, 3)
+    @test size(res["dual"]["sm_to"]) == (E, 3)
     return nothing
 end
 
