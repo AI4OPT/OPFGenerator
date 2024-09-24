@@ -40,6 +40,11 @@ type = "EconomicDispatch"
 kwargs.soft_thermal_limit = true
 solver.name = "Mosek"
 
+[OPF.EDR]
+type = "EconomicDispatchWithReserves"
+kwargs.soft_thermal_limit = true
+solver.name = "Mosek"
+
 [OPF.SOCOPF]
 type = "SOCOPF"
 solver.name = "Mosek"

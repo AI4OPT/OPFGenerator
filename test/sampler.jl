@@ -342,11 +342,8 @@ function test_sampler_script()
                     "name" => "Clarabel",
                 )
             ),
-            "ED_noniterative" => Dict(
-                "type" => "EconomicDispatch",
-                "kwargs" => Dict(
-                    "iterative_ptdf" => false,
-                ),
+            "EDR" => Dict(
+                "type" => "EconomicDispatchWithReserves",
                 "solver" => Dict(
                     "name" => "Clarabel",
                 )
