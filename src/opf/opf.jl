@@ -42,6 +42,10 @@ struct OPFData
     c1::Vector{Float64}  # linear cost
     c2::Vector{Float64}  # quadratic cost
     gen_status::Vector{Bool}  # generator status
+    rmin::Vector{Float64}  # reserve lower bound
+    rmax::Vector{Float64}  # reserve upper bound
+
+    minimum_reserve::Float64  # minimum reserve requirement
 
     # Branch data
     bus_fr::Vector{Int}  # from bus
@@ -121,6 +125,8 @@ function OPFData(network::Dict{String,Any})
     Ag_i = zeros(Int, G)
     Ag_j = zeros(Int, G)
     Ag_v = zeros(Float64, G)
+    rmin = zeros(Float64, G)
+    rmax = zeros(Float64, G)
     for g in 1:G
         gen = network["gen"]["$g"]
 
@@ -139,14 +145,21 @@ function OPFData(network::Dict{String,Any})
         gen_status[g] = gen["gen_status"] == 1
 
         # Generator incidence matrix
-        Ag_i[g] = network["gen"]["$g"]["gen_bus"]
+        Ag_i[g] = gen["gen_bus"]
         Ag_j[g] = g
-        Ag_v[g] = network["gen"]["$g"]["gen_status"]
+        Ag_v[g] = gen["gen_status"]
+
+        # Reserve bounds
+        rmin[g] = get(gen, "rmin", 0.0)
+        rmax[g] = get(gen, "rmax", 0.0)
     end
     # sort everything again
     sort!.(bus_gens)
 
     Ag = sparse(Ag_i, Ag_j, Ag_v, N, G)
+
+    # Minimum reserve requirement
+    minimum_reserve = get(network, "reserve_requirement", 0.0)
 
     # Branch data
     bus_fr = zeros(Int, E)
@@ -248,6 +261,7 @@ function OPFData(network::Dict{String,Any})
         qgmin, qgmax,
         c0, c1, c2,
         gen_status,
+        rmin, rmax, minimum_reserve,
         bus_fr, bus_to,
         branch_g, branch_b,
         gff, gft, gtf, gtt,
