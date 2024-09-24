@@ -61,3 +61,25 @@ function compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, dvamin, dvama
 
     return wr_min, wr_max, wi_min, wi_max
 end
+
+function extract_metadata(opf::OPFModel{<:AbstractFormulation})
+    model = opf.model
+
+    return Dict{String,Any}(
+        "formulation" => string(model.ext[:opf_model]),
+        "termination_status" => string(termination_status(model)),
+        "primal_status" => string(primal_status(model)),
+        "dual_status" => string(dual_status(model)),
+        "solve_time" => solve_time(model),
+        "primal_objective_value" => if has_values(model) objective_value(model) else Inf end,
+        "dual_objective_value" => if has_duals(model) dual_objective_value(model) else -Inf end,
+    )
+end
+
+function extract_result(opf::OPFModel{<:AbstractFormulation})
+    result = Dict{String,Any}()
+    result["meta"] = extract_metadata(opf)
+    result["primal"] = extract_primal(opf)
+    result["dual"] = extract_dual(opf)
+    return result
+end

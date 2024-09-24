@@ -366,7 +366,7 @@ function extract_result(opf::OPFModel{EconomicDispatch})
         "mu_reserve_requirement" => dual(model[:reserve_requirement]),
     )
 
-    return res
+    return json2h5(EconomicDispatch, res)
 end
 
 function json2h5(::Type{EconomicDispatch}, res)
@@ -381,6 +381,9 @@ function json2h5(::Type{EconomicDispatch}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
+            "formulation" => string(EconomicDispatch),
         ),
     )
 

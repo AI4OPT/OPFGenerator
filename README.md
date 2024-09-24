@@ -131,7 +131,7 @@ acopf = OPFGenerator.build_opf(ACOPF, data, Ipopt.Optimizer)
 optimize!(acopf.model)
 res = OPFGenerator.extract_result(acopf)
 
-res["objective"]  # should be close to 2178.08041
+res["primal_objective_value"]  # should be close to 2178.08041
 ```
 
 ## Generating datasets

@@ -17,21 +17,21 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     res_pm = PM.solve_opf_ptdf_branch_power_cuts!(data, solver)
 
     # Check that the right problem was indeed solved
-    @test res["opf_model"] == string(OPF)
-    @test res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
-    @test res["primal_status"] == FEASIBLE_POINT
-    @test res["dual_status"] == FEASIBLE_POINT
+    @test res["meta"]["formulation"] == string(OPF)
+    @test res["meta"]["termination_status"] ∈ ["LOCALLY_SOLVED", "OPTIMAL"]
+    @test res["meta"]["primal_status"] == "FEASIBLE_POINT"
+    @test res["meta"]["dual_status"] == "FEASIBLE_POINT"
     # Check objective value against PowerModels
-    @test isapprox(res["objective"], res_pm["objective"], atol=1e-6, rtol=1e-6)
+    @test isapprox(res["meta"]["primal_objective_value"], res_pm["objective"], atol=1e-6, rtol=1e-6)
     # @test res["ptdf_iterations"] == res_pm["iterations"]
 
     # check that iterative ptdf produces same solution
     opf2 = OPFGenerator.build_opf(OPF, data, solver, iterative_ptdf=false)
     OPFGenerator.solve!(opf2)
     res2 = OPFGenerator.extract_result(opf2)
-    @test isapprox(res["objective"], res2["objective"], atol=1e-6, rtol=1e-6)
+    @test isapprox(res["meta"]["primal_objective_value"], res2["meta"]["primal_objective_value"], atol=1e-6, rtol=1e-6)
 
-    h5 = OPFGenerator.json2h5(OPF, res)
+    h5 = res
     @test haskey(h5, "meta")
     @test haskey(h5, "primal")
     @test haskey(h5, "dual")

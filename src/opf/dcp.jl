@@ -193,7 +193,7 @@ function extract_result(opf::OPFModel{DCOPF})
         "lam_slack_bus" => dual(model[:slack_bus]),
     )
 
-    return res
+    return json2h5(DCOPF, res)
 end
 
 function json2h5(::Type{DCOPF}, res)
@@ -210,6 +210,7 @@ function json2h5(::Type{DCOPF}, res)
             "solve_time" => res["solve_time"],
             "primal_objective_value" => res["objective"],
             "dual_objective_value" => res["objective_lb"],
+            "formulation" => string(DCOPF),
         ),
     )
 

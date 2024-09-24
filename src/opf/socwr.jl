@@ -326,7 +326,7 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOP
         )
     end
     
-    return res
+    return json2h5(OPF, res)
 end
 
 function json2h5(::Type{OPF}, res) where{OPF <: Union{SOCOPFQuad,SOCOPF}}
@@ -343,6 +343,7 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{SOCOPFQuad,SOCOPF}}
             "solve_time" => res["solve_time"],
             "primal_objective_value" => res["objective"],
             "dual_objective_value" => res["objective_lb"],
+            "formulation" => string(OPF),
         ),
     )
 

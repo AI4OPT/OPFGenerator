@@ -62,10 +62,10 @@ function build_and_solve_model(data, config, dataset_name)
 
     time_extract = @elapsed res = OPFGenerator.extract_result(opf)
     
-    res["time_build"] = tbuild
-    res["time_extract"] = time_extract
+    res["meta"]["build_time"] = tbuild
+    res["meta"]["extract_time"] = time_extract
     
-    return OPFGenerator.json2h5(opf.model.ext[:opf_model], res)
+    return res
 end
 
 function main(data, config)
