@@ -74,8 +74,8 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
         # Branch power flow physics and limit constraints
         model[:ohm][e] = @constraint(model,
             branch_status[e] * (
-                -b[e] * (va[bus_fr[e]] - va[bus_to[e]]) - pf[e]
-            ) == 0
+                -b[e] * (va[bus_fr[e]] - va[bus_to[e]])
+            ) - pf[e] == 0
         )
 
         # Voltage angle difference limit
