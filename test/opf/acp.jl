@@ -15,22 +15,26 @@ function test_opf_pm(::Type{OPFGenerator.ACOPF}, data::Dict)
     opf = OPFGenerator.build_opf(OPF, data, solver)
     OPFGenerator.solve!(opf)
     res = OPFGenerator.extract_result(opf)
-    @test res["opf_model"] == string(OPF)
+    @test res["meta"]["formulation"] == string(OPF)
     
     # Check that problem was solved
-    @test res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
-    @test res["primal_status"] == FEASIBLE_POINT
-    @test res["dual_status"] == FEASIBLE_POINT
+    @test res["meta"]["termination_status"] ∈ ["LOCALLY_SOLVED", "OPTIMAL"]
+    @test res["meta"]["primal_status"] == "FEASIBLE_POINT"
+    @test res["meta"]["dual_status"] == "FEASIBLE_POINT"
     # Check objective value against PowerModels
-    @test isapprox(res["objective"], res_pm["objective"], atol=1e-6, rtol=1e-6)
+    @test isapprox(res["meta"]["primal_objective_value"], res_pm["objective"], atol=1e-6, rtol=1e-6)
 
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
     #    (would require extracting a variable => value Dict)
     sol_pm = res_pm["solution"]
     var2val_pm = Dict(
-        :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
-        :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
+        :pg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "pg", 0) for g in 1:G
+        ],
+        :qg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "qg", 0) for g in 1:G
+        ],
         :va => Float64[sol_pm["bus"]["$i"]["va"] for i in 1:N],
         :vm => Float64[sol_pm["bus"]["$i"]["vm"] for i in 1:N],
     )

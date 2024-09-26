@@ -165,24 +165,6 @@ function build_opf(::Type{ACOPF}, data::Dict{String,Any}, optimizer;
     return OPFModel{ACOPF}(data, model)
 end
 
-function update!(opf::OPFModel{ACOPF}, data::Dict{String,Any})
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
-    opf.data = data
-
-    N = length(ref[:bus])
-
-    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    qd = [sum(ref[:load][l]["qd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    
-    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
-    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
-
-    return nothing
-end
-
 
 """
     _extract_acopf_solution(model, data)
@@ -284,7 +266,7 @@ function extract_result(opf::OPFModel{ACOPF})
         "lam_slack_bus" => dual(model[:slack_bus]),
     )
 
-    return res
+    return json2h5(ACOPF, res)
 end
 
 function json2h5(::Type{ACOPF}, res)
@@ -301,6 +283,7 @@ function json2h5(::Type{ACOPF}, res)
             "solve_time" => res["solve_time"],
             "primal_objective_value" => res["objective"],
             "dual_objective_value" => res["objective_lb"],
+            "formulation" => string(ACOPF),
         ),
     )
 

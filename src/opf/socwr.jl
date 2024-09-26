@@ -195,23 +195,7 @@ function build_opf(::Type{OPF}, data::Dict{String,Any}, optimizer;
     return OPFModel{OPF}(data, model)
 end
 
-function update!(opf::OPFModel{OPF}, data::Dict{String,Any}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
 
-    opf.data = data
-
-    N = length(ref[:bus])
-
-    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    qd = [sum(ref[:load][l]["qd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-
-    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
-    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
-
-    return nothing
-end
 
 """
     _extract_solution(model, data)
@@ -342,7 +326,7 @@ function extract_result(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOP
         )
     end
     
-    return res
+    return json2h5(OPF, res)
 end
 
 function json2h5(::Type{OPF}, res) where{OPF <: Union{SOCOPFQuad,SOCOPF}}
@@ -359,6 +343,7 @@ function json2h5(::Type{OPF}, res) where{OPF <: Union{SOCOPFQuad,SOCOPF}}
             "solve_time" => res["solve_time"],
             "primal_objective_value" => res["objective"],
             "dual_objective_value" => res["objective_lb"],
+            "formulation" => string(OPF),
         ),
     )
 

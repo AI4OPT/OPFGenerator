@@ -146,54 +146,6 @@ function build_opf(::Type{EconomicDispatch}, data::Dict{String,Any}, optimizer;
     return OPFModel{EconomicDispatch}(data, model)
 end
 
-function update!(opf::OPFModel{EconomicDispatch}, data::Dict{String,Any})
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
-    opf.data = data
-    T = typeof(opf.model).parameters[1]
-
-    L = length(ref[:load])
-    PD = sum(ref[:load][l]["pd"] for l in 1:L)
-
-    JuMP.set_normalized_rhs(opf.model[:power_balance], PD)
-
-    MRR = get(data, "minimum_reserve", 0.0)
-    JuMP.set_normalized_rhs(opf.model[:reserve_requirement], MRR)
-
-    G = length(ref[:gen])
-    rmin = (MRR > 0.0) ? [ref[:gen][g]["rmin"] for g in 1:G] : zeros(T, G)
-    rmax = (MRR > 0.0) ? [ref[:gen][g]["rmax"] for g in 1:G] : zeros(T, G)
-
-    JuMP.set_lower_bound.(opf.model[:r], rmin)
-    JuMP.set_upper_bound.(opf.model[:r], rmax)
-
-    if opf.model.ext[:solve_metadata][:iterative_ptdf]
-        opf.model.ext[:ptdf_iterations] = 0
-        
-        E = length(ref[:branch])
-        
-        JuMP.delete.(opf.model, opf.model[:ptdf_flow][opf.model.ext[:tracked_branches]])
-        
-        JuMP.unregister.(opf.model, :ptdf_flow)
-        opf.model[:ptdf_flow] = Vector{JuMP.ConstraintRef}(undef, E)
-
-        opf.model.ext[:termination_info] = Dict{Symbol,Any}(
-            :termination_status => nothing,
-            :primal_status => nothing,
-            :dual_status => nothing,
-            :solve_time => nothing,
-        )
-        opf.model.ext[:tracked_branches] .= false
-    else
-        Ag, Al, pd = _ptdf_terms_from_data(data; T=T)
-
-        JuMP.set_normalized_rhs.(opf.model[:ptdf_flow], opf.model.ext[:PTDF] * Al * pd)
-    end
-    
-    return nothing
-end
 
 function _ptdf_terms_from_data(data::Dict{String,Any}; T=Float64)
     N = length(data["bus"])
@@ -414,7 +366,7 @@ function extract_result(opf::OPFModel{EconomicDispatch})
         "mu_reserve_requirement" => dual(model[:reserve_requirement]),
     )
 
-    return res
+    return json2h5(EconomicDispatch, res)
 end
 
 function json2h5(::Type{EconomicDispatch}, res)
@@ -429,6 +381,9 @@ function json2h5(::Type{EconomicDispatch}, res)
             "primal_status" => string(res["primal_status"]),
             "dual_status" => string(res["dual_status"]),
             "solve_time" => res["solve_time"],
+            "primal_objective_value" => res["objective"],
+            "dual_objective_value" => res["objective_lb"],
+            "formulation" => string(EconomicDispatch),
         ),
     )
 

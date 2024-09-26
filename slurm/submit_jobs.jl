@@ -7,6 +7,8 @@ using TOML
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
+opfgenerator_dir = "$(@__DIR__)/../"
+
 case = config["ref"]
 result_dir = config["export_dir"]
 S = config["slurm"]["n_samples"]
@@ -22,14 +24,12 @@ sysimage_memory = get(config["slurm"], "sysimage_memory", "16gb")
 julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")
 cpus_per_task = get(config["slurm"], "cpus_per_task", 24)
 env_path = get(config["slurm"], "env_path", joinpath(@__DIR__, "template", "env.sh"))
+sampler_script = get(config["slurm"], "sampler_script", joinpath(opfgenerator_dir, "exp", "sampler.jl"))
 
 B, r = divrem(S, J)
 B = B + (r > 0)
 
 datasetname = splitdir(result_dir)[end]
-
-opfgenerator_dir = "$(@__DIR__)/../"
-sampler_script = joinpath(opfgenerator_dir, "exp", "sampler.jl")
 
 slurm_dir = joinpath(result_dir, "slurm")
 json_dir = joinpath(result_dir, "res_json")

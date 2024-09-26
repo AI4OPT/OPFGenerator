@@ -7,10 +7,11 @@ function Random.rand(::AbstractRNG, ::AbstractOPFSampler)
     error("`rand` function not implemented for $(typeof(s)).")
 end
 
-struct SimpleOPFSampler{LS,RS}
+struct SimpleOPFSampler{LS,RS,SS}
     data::Dict
     load_sampler::LS
     reserve_sampler::RS
+    status_sampler::SS
 end
 
 function SimpleOPFSampler(data::Dict, config::Dict)
@@ -23,7 +24,11 @@ function SimpleOPFSampler(data::Dict, config::Dict)
     get!(config, "reserve", Dict())
     reserve_sampler = ReserveScaler(data, config["reserve"])
 
-    return SimpleOPFSampler(data, load_sampler, reserve_sampler)
+    # Instantiate status sampler
+    get!(config, "status", Dict())
+    status_sampler = StatusSampler(data, config["status"])
+
+    return SimpleOPFSampler(data, load_sampler, reserve_sampler, status_sampler)
 end
 
 function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
@@ -45,6 +50,9 @@ function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
 
     MRR, rmin, rmax = rand(rng, s.reserve_sampler)
     _set_reserve!(data, MRR, rmin, rmax)
+
+    br_status, gen_status = rand(rng, s.status_sampler)
+    _set_status!(data, br_status, gen_status)
 
     return data
 end
@@ -79,5 +87,20 @@ function _set_reserve!(data, MRR, rmin, rmax)
     return nothing
 end
 
+function _set_status!(data, br_status, gen_status)
+    for i in 1:length(data["branch"])
+        bdat = data["branch"]["$i"]
+        bdat["br_status"] = br_status[i]
+    end
+
+    for i in 1:length(data["gen"])
+        gdat = data["gen"]["$i"]
+        gdat["gen_status"] = gen_status[i]
+    end
+
+    return nothing
+end
+
 include("load.jl")
 include("reserve.jl")
+include("status.jl")
