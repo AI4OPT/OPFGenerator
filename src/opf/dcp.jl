@@ -60,9 +60,9 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     @expression(model, pt[e in 1:E], -pf[e])
     @constraint(model,
         kirchhoff[i in 1:N],
-        sum(pg[g] for g in bus_gens[i] if gen_status[g])
-        - sum(pf[a] for a in bus_arcs_fr[i] if branch_status[a])
-        - sum(pt[a] for a in bus_arcs_to[i] if branch_status[a])
+        sum(gen_status[g] * pg[g] for g in bus_gens[i])
+        - sum(branch_status[a] * pf[a] for a in bus_arcs_fr[i])
+        - sum(branch_status[a] * pt[a] for a in bus_arcs_to[i])
         == 
         pd[i] + gs[i]
     )
@@ -70,13 +70,18 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     model[:ohm] = Vector{ConstraintRef}(undef, E)
     model[:va_diff] = Vector{ConstraintRef}(undef, E)
 
-    for e in 1:E if branch_status[e]
-            # Branch power flow physics and limit constraints
-            model[:ohm][e] = @constraint(model, -b[e] * (va[bus_fr[e]] - va[bus_to[e]]) - pf[e] == 0)
+    for e in 1:E
+        # Branch power flow physics and limit constraints
+        model[:ohm][e] = @constraint(model,
+            branch_status[e] * (
+                -b[e] * (va[bus_fr[e]] - va[bus_to[e]]) - pf[e]
+            ) == 0
+        )
 
-            # Voltage angle difference limit
-            model[:va_diff][e] = @constraint(model, dvamin[e] ≤ va[bus_fr[e]] - va[bus_to[e]] ≤ dvamax[e])
-        end
+        # Voltage angle difference limit
+        model[:va_diff][e] = @constraint(model,
+            dvamin[e] ≤ branch_status[e] * (va[bus_fr[e]] - va[bus_to[e]]) ≤ dvamax[e]
+        )
     end
 
     #
@@ -87,7 +92,9 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
 
     @objective(model,
         Min,
-        sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
+        sum(
+            gen_status[g] * (c1[g] * pg[g] + c0[g]) for g in 1:G
+        )
     )
 
     # TODO: update to store OPFData when all formulations are done
