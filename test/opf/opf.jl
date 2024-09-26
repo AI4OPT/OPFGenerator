@@ -12,10 +12,10 @@ function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::St
     is_bridge = OPFGenerator.bridges(network_drop)
     non_bridge = [e for (e, b) in is_bridge if !b]
     drop_branch = first(non_bridge)
-    network_drop["branch"]["$drop_branch"]["br_status"] = 0
+    network_drop["branch"][drop_branch]["br_status"] = 0
 
-    drop_gen = argmin(gen->gen["pmax"], network_drop["gen"])
-    network_drop["gen"]["$drop_gen"]["gen_status"] = 0
+    drop_gen = argmin(gen->gen[2]["pmax"], network_drop["gen"])[1]
+    network_drop["gen"][drop_gen]["gen_status"] = 0
 
     @testset "Branch/Gen Status" begin test_opf_pm(OPF, network_drop) end
 end
@@ -50,8 +50,7 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         @testset "$(casename)" for casename in PGLIB_CASES
-            network = make_basic_network(pglib(casename))
-            test_opf_pm(OPF, network)
+            test_opf_pm(OPF, casename)
         end
 
         @testset "QuadObj" begin test_quad_obj_warn(OPF) end
