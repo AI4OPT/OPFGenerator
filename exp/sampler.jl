@@ -89,13 +89,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
 
-    if !(lowercase(get(get(get(config, "sampler", Dict()), "status", Dict()), "type", "")) ∈ ["full", ""])
-        throw(DomainError(
-            config["sampler"]["status"]["type"],
-            "This script uses in-place updates which are incompatible with status sampling. Please use slow_sampler.jl"
-        ))
-    end
-
     # Dummy run (for pre-compilation)
     data0 = make_basic_network(pglib("14_ieee"))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
