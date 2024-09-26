@@ -84,18 +84,18 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
     # Nodal power balance
     @constraint(model,
         kirchhoff_active[i in 1:N],
-        sum(pg[g] for g in bus_gens[i] if gen_status[g])
-        - sum(pf[e] for e in bus_arcs_fr[i] if branch_status[e])
-        - sum(pt[e] for e in bus_arcs_to[i] if branch_status[e])
+        sum(gen_status[g] * pg[g] for g in bus_gens[i])
+        - sum(branch_status[e] * pf[e] for e in bus_arcs_fr[i])
+        - sum(branch_status[e] * pt[e] for e in bus_arcs_to[i])
         - gs[i] * vm[i]^2
         == 
         pd[i]
     )
     @constraint(model,
         kirchhoff_reactive[i in 1:N],
-        sum(qg[g] for g in bus_gens[i] if gen_status[g])
-        - sum(qf[e] for e in bus_arcs_fr[i] if branch_status[e])
-        - sum(qt[e] for e in bus_arcs_to[i] if branch_status[e])
+        sum(gen_status[g] * qg[g] for g in bus_gens[i])
+        - sum(branch_status[e] * qf[e] for e in bus_arcs_fr[i])
+        - sum(branch_status[e] * qt[e] for e in bus_arcs_to[i])
         + bs[i] * vm[i]^2
         ==
         qd[i]
@@ -114,20 +114,29 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
     @expression(model, wr[e in 1:E], vm[bus_fr[e]] * vm[bus_to[e]] * cos(va[bus_fr[e]] - va[bus_to[e]]))
     @expression(model, wi[e in 1:E], vm[bus_fr[e]] * vm[bus_to[e]] * sin(va[bus_fr[e]] - va[bus_to[e]]))
 
-    for e in 1:E if branch_status[e]
-            # Ohm's law
-            model[:ohm_pf][e] = @constraint(model,  gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e] - pf[e] == 0)
-            model[:ohm_qf][e] = @constraint(model, -bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e] - qf[e] == 0)
-            model[:ohm_pt][e] = @constraint(model,  gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e] - pt[e] == 0)
-            model[:ohm_qt][e] = @constraint(model, -btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e] - qt[e] == 0)
-        
-            # Thermal limit
-            model[:sm_fr][e] = @constraint(model, pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
-            model[:sm_to][e] = @constraint(model, pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
-        
-            # Voltage angle difference limit
-            model[:va_diff][e] = @constraint(model, dvamin[e] ≤ va[bus_fr[e]] - va[bus_to[e]] ≤ dvamax[e])
-        end
+    for e in 1:E
+        # Ohm's law
+        model[:ohm_pf][e] = @constraint(model,
+            branch_status[e] * ( gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e]) - pf[e] == 0
+        )
+        model[:ohm_qf][e] = @constraint(model,
+            branch_status[e] * (-bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e]) - qf[e] == 0
+        )
+        model[:ohm_pt][e] = @constraint(model,
+            branch_status[e] * ( gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e]) - pt[e] == 0
+        )
+        model[:ohm_qt][e] = @constraint(model,
+            branch_status[e] * (-btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e]) - qt[e] == 0
+        )
+    
+        # Thermal limit
+        model[:sm_fr][e] = @constraint(model, pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
+        model[:sm_to][e] = @constraint(model, pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
+    
+        # Voltage angle difference limit
+        model[:va_diff][e] = @constraint(model,
+            dvamin[e] ≤ branch_status[e] * (va[bus_fr[e]] - va[bus_to[e]]) ≤ dvamax[e]
+        )
     end
 
     #
