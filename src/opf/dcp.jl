@@ -57,11 +57,12 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     @constraint(model, slack_bus, va[i0] == 0.0)
 
     # Nodal power balance
+    @expression(model, pt[e in 1:E], -pf[e])
     @constraint(model,
         kirchhoff[i in 1:N],
         sum(pg[g] for g in bus_gens[i] if gen_status[g])
         - sum(pf[a] for a in bus_arcs_fr[i] if branch_status[a])
-        - sum(-pf[a] for a in bus_arcs_to[i] if branch_status[a])
+        - sum(pt[a] for a in bus_arcs_to[i] if branch_status[a])
         == 
         pd[i] + gs[i]
     )
