@@ -39,10 +39,6 @@ function test_opf_pm(::Type{OPFGenerator.DCOPF}, data::Dict)
         ],
     )
     model = opf.model
-    # reorder pf according to branch order in our model
-    dcopf_branch_order = [key[1][1] for key in keys(model[:pf])][1:E]
-    var2val_pm[:pf] = var2val_pm[:pf][dcopf_branch_order]
-    var2val_pm[:pf] = vcat(var2val_pm[:pf], -var2val_pm[:pf])
 
     @constraint(model, var2val_pm[:pg] .<= model[:pg] .<= var2val_pm[:pg])
     @constraint(model, var2val_pm[:va] .<= model[:va] .<= var2val_pm[:va])
