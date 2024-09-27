@@ -11,9 +11,9 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{OPFGenerator.E
     res = OPFGenerator.extract_result(opf)
 
     # Solve OPF with PowerModels
-    # must be after OPFGenerator since it modifies `data`
+    data_pm = deepcopy(data)
     solver = OPT_SOLVERS[OPF]
-    res_pm = PM.solve_opf_ptdf_branch_power_cuts!(data, solver)
+    res_pm = PM.solve_opf_ptdf_branch_power_cuts!(data_pm, solver)
 
     # Check that the right problem was indeed solved
     @test res["meta"]["formulation"] == string(OPF)
