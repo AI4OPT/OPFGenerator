@@ -63,10 +63,10 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     set_upper_bound.(w, vmax.^2)
 
     # Voltage product bounds
-    set_lower_bound.(wr, wr_min)
-    set_upper_bound.(wr, wr_max)
-    set_lower_bound.(wi, wi_min)
-    set_upper_bound.(wi, wi_max)
+    set_lower_bound.(wr, branch_status .* wr_min)
+    set_upper_bound.(wr, branch_status .* wr_max)
+    set_lower_bound.(wi, branch_status .* wi_min)
+    set_upper_bound.(wi, branch_status .* wi_max)
 
     # Active generation bounds (both zero if generator is off)
     set_lower_bound.(pg, gen_status .* pgmin)
