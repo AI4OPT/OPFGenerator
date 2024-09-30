@@ -137,7 +137,7 @@ function test_sampler()
         )
     )
     
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     data1 = rand(rng, opf_sampler)
 
@@ -148,7 +148,7 @@ function test_sampler()
     _test_ieee14_LogNormal_s42(data1)
 
     # Same RNG and seed should give the same data
-    data2 = rand(StableRNG(42), opf_sampler)
+    data2 = rand(MersenneTwister(42), opf_sampler)
     @test data2 == data1
 
     return nothing
@@ -172,7 +172,7 @@ function _test_ieee14_LogNormal_s42(data)
     # Check sampled active / reactive power loads
     # The numerical values below were generated as follows, on 03/06/2024 on a Linux machine:
     # * PGLib v21.07 case `14_ieee`, in basic network format
-    # * The random number generator StableRNG(42)
+    # * The random number generator MersenneTwister(42)
     # * ScaledLogNormal load scaler with [0.8, 1.2] range and σ=0.05
     # ⚠ this test will fail if either condition is met
     #   * the initial data dictionary is changed
@@ -229,7 +229,7 @@ function test_inplace_sampler()
         )
     )
 
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     rand!(rng, opf_sampler, data)
 
@@ -255,7 +255,7 @@ function test_update()
         )
     )
 
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data1, sampler_config)
     data2 = rand(rng, opf_sampler)
 
