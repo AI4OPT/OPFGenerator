@@ -2,7 +2,6 @@ using Random
 using Test
 
 using Quadmath
-using StableRNGs
 
 using Clarabel
 using Ipopt

@@ -137,7 +137,7 @@ function test_sampler()
         )
     )
     
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     data1 = rand(rng, opf_sampler)
 
@@ -148,7 +148,7 @@ function test_sampler()
     _test_ieee14_LogNormal_s42(data1)
 
     # Same RNG and seed should give the same data
-    data2 = rand(StableRNG(42), opf_sampler)
+    data2 = rand(MersenneTwister(42), opf_sampler)
     @test data2 == data1
 
     return nothing
@@ -170,39 +170,39 @@ function _test_ieee14_LogNormal_s42(data)
     end
 
     # Check sampled active / reactive power loads
-    # The numerical values below were generated as follows, on 03/06/2024 on a Linux machine:
+    # The numerical values below were generated as follows, on 09/30/2024 on a RHEL 9.4 Linux machine:
     # * PGLib v21.07 case `14_ieee`, in basic network format
-    # * The random number generator StableRNG(42)
+    # * The random number generator MersenneTwister(42)
     # * ScaledLogNormal load scaler with [0.8, 1.2] range and σ=0.05
     # ⚠ this test will fail if either condition is met
     #   * the initial data dictionary is changed
     #   * the underlying RNG or seed is changed
     #   * the load sampler config is changed
     _pd = [
-        0.22876645866010775,
-        1.0401653977680627,
-        0.5261234671438964,
-        0.07884509050225688,
-        0.11947946005047866,
-        0.28901062150438117,
-        0.08917335057505481,
-        0.03943021890027896,
-        0.06710035789805892,
-        0.12819215399981734,
-        0.15983091550108355,
+        0.21477996272972988,
+        0.9546062298568199,
+        0.47654988934858145,
+        0.08406264413456561,
+        0.10703861785986431,
+        0.29162856400218445,
+        0.09179453210074041,
+        0.031037135295027923,
+        0.06490828337508349,
+        0.14421853133555987,
+        0.1522058057935015,
     ]
     _qd = [
-        0.1338863605983119,
-        0.20979981483644575,
-       -0.042926391670736315,
-        0.016598966421527767,
-        0.08000856699808839,
-        0.1626297056600925,
-        0.05746727037059088,
-        0.020278398291572037,
-        0.0176000938749007,
-        0.05507514764436597,
-        0.05363453540304818,
+        0.12570071551463455,
+        0.1925426578267471,
+        -0.038881685532624846,
+        0.01769739876517171,
+        0.071677645888302,
+        0.1641028529639411,
+        0.059156476242699374,
+        0.01596195529458579,
+        0.01702512350821862,
+        0.061960554203425715,
+        0.05107577375620856,
     ]
     for (i, (p, q)) in enumerate(zip(_pd, _qd))
         @test data["load"]["$i"]["pd"] ≈ p
@@ -229,7 +229,7 @@ function test_inplace_sampler()
         )
     )
 
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     rand!(rng, opf_sampler, data)
 
@@ -255,7 +255,7 @@ function test_update()
         )
     )
 
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data1, sampler_config)
     data2 = rand(rng, opf_sampler)
 
