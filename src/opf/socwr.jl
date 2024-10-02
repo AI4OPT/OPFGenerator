@@ -38,6 +38,12 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     #
     #   I. Variables
     #
+    #=
+        Some generators and branches may be inactive, as indicated by `branch_status` and `gen_status`.
+        Primal variables associated to inactive components are still declared, and handled as follows:
+        * lower/upper bounds are set to zero
+        * constraint coefficients are set to zero
+    =#
     
     # voltage magnitude and product
     @variable(model, w[1:N])
