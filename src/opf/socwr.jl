@@ -96,7 +96,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
 
     # Nodal power balance
     @constraint(model,
-        kirchhoff_active[i in 1:N],
+        kcl_p[i in 1:N],
         sum(gen_status[g] * pg[g] for g in bus_gens[i])
         - sum(branch_status[e] * pf[e] for e in bus_arcs_fr[i])
         - sum(branch_status[e] * pt[e] for e in bus_arcs_to[i])
@@ -105,7 +105,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
         pd[i]
     )
     @constraint(model,
-        kirchhoff_reactive[i in 1:N],
+        kcl_q[i in 1:N],
         sum(gen_status[g] * qg[g] for g in bus_gens[i])
         - sum(branch_status[e] * qf[e] for e in bus_arcs_fr[i])
         - sum(branch_status[e] * qt[e] for e in bus_arcs_to[i])
@@ -220,24 +220,24 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
     N, E, G = data.N, data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "w_lb"               => zeros(Float64, N),
-        "w_ub"               => zeros(Float64, N),
-        "kirchhoff_active"   => zeros(Float64, N),
-        "kirchhoff_reactive" => zeros(Float64, N),
-        "pg_lb"              => zeros(Float64, G),
-        "pg_ub"              => zeros(Float64, G),
-        "qg_lb"              => zeros(Float64, G),
-        "qg_ub"              => zeros(Float64, G),
-        "wr_lb"              => zeros(Float64, E),
-        "wr_ub"              => zeros(Float64, E),
-        "wi_lb"              => zeros(Float64, E),
-        "wi_ub"              => zeros(Float64, E),
-        "ohm_pf"             => zeros(Float64, E),
-        "ohm_pt"             => zeros(Float64, E),
-        "ohm_qf"             => zeros(Float64, E),
-        "ohm_qt"             => zeros(Float64, E),
-        "va_diff_lb"         => zeros(Float64, E),
-        "va_diff_ub"         => zeros(Float64, E),
+        "w_lb"       => zeros(Float64, N),
+        "w_ub"       => zeros(Float64, N),
+        "kcl_p"      => zeros(Float64, N),
+        "kcl_q"      => zeros(Float64, N),
+        "pg_lb"      => zeros(Float64, G),
+        "pg_ub"      => zeros(Float64, G),
+        "qg_lb"      => zeros(Float64, G),
+        "qg_ub"      => zeros(Float64, G),
+        "wr_lb"      => zeros(Float64, E),
+        "wr_ub"      => zeros(Float64, E),
+        "wi_lb"      => zeros(Float64, E),
+        "wi_ub"      => zeros(Float64, E),
+        "ohm_pf"     => zeros(Float64, E),
+        "ohm_pt"     => zeros(Float64, E),
+        "ohm_qf"     => zeros(Float64, E),
+        "ohm_qt"     => zeros(Float64, E),
+        "va_diff_lb" => zeros(Float64, E),
+        "va_diff_ub" => zeros(Float64, E),
     )
 
     if OPF == SOCOPFQuad
@@ -254,8 +254,8 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
         for i in 1:N
             dual_solution["w_lb"][i] = dual(LowerBoundRef(model[:w][i]))
             dual_solution["w_ub"][i] = dual(UpperBoundRef(model[:w][i]))
-            dual_solution["kirchhoff_active"][i] = dual(model[:kirchhoff_active][i])
-            dual_solution["kirchhoff_reactive"][i] = dual(model[:kirchhoff_reactive][i])
+            dual_solution["kcl_p"][i] = dual(model[:kcl_p][i])
+            dual_solution["kcl_q"][i] = dual(model[:kcl_q][i])
         end
 
         for g in 1:G if data.gen_status[g]
