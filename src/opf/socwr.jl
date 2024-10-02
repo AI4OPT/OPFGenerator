@@ -118,50 +118,38 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     @expression(model, wf[e in 1:E], w[bus_fr[e]])
     @expression(model, wt[e in 1:E], w[bus_to[e]])
 
-    model[:sm_fr] = Vector{ConstraintRef}(undef, E)
-    model[:sm_to] = Vector{ConstraintRef}(undef, E)
-    model[:va_diff_lb] = Vector{ConstraintRef}(undef, E)
-    model[:va_diff_ub] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_pf] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_qf] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_pt] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_qt] = Vector{ConstraintRef}(undef, E)
-    model[:jabr] = Vector{ConstraintRef}(undef, E)
+    # Ohm's law
+    @constraint(model, ohm_pf[e in 1:E],
+        branch_status[e] * ( gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e]) - pf[e] == 0
+    )
+    @constraint(model, ohm_qf[e in 1:E],
+        branch_status[e] * (-bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e]) - qf[e] == 0
+    )
+    @constraint(model, ohm_pt[e in 1:E],
+        branch_status[e] * ( gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e]) - pt[e] == 0
+    )
+    @constraint(model, ohm_qt[e in 1:E],
+        branch_status[e] * (-btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e]) - qt[e] == 0
+    )
 
-    for e in 1:E
-        # Ohm's law
-        model[:ohm_pf][e] = @constraint(model,
-            branch_status[e] * ( gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e]) - pf[e] == 0
-        )
-        model[:ohm_qf][e] = @constraint(model,
-            branch_status[e] * (-bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e]) - qf[e] == 0
-        )
-        model[:ohm_pt][e] = @constraint(model,
-            branch_status[e] * ( gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e]) - pt[e] == 0
-        )
-        model[:ohm_qt][e] = @constraint(model,
-            branch_status[e] * (-btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e]) - qt[e] == 0
-        )
-    
-        # Thermal limit
-        if OPF == SOCOPF
-            model[:sm_fr][e] = @constraint(model, [smax[e], pf[e], qf[e]] in SecondOrderCone())
-            model[:sm_to][e] = @constraint(model, [smax[e], pt[e], qt[e]] in SecondOrderCone())
-        elseif OPF == SOCOPFQuad
-            model[:sm_fr][e] = @constraint(model, pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
-            model[:sm_to][e] = @constraint(model, pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
-        end
-    
-        # Voltage angle difference limit
-        model[:va_diff_lb][e] = @constraint(model, wi[e] >= tan(dvamin[e]) * wr[e])
-        model[:va_diff_ub][e] = @constraint(model, wi[e] <= tan(dvamax[e]) * wr[e])
+    # Thermal limit
+    if OPF == SOCOPF
+        @constraint(model, sm_fr[e in 1:E], [smax[e], pf[e], qf[e]] in SecondOrderCone())
+        @constraint(model, sm_to[e in 1:E], [smax[e], pt[e], qt[e]] in SecondOrderCone())
+    elseif OPF == SOCOPFQuad
+        @constraint(model, sm_fr[e in 1:E], pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
+        @constraint(model, sm_to[e in 1:E], pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
+    end
 
-        # Jabr constraints
-        if OPF == SOCOPF
-            model[:jabr][e] = @constraint(model, [wf[e] / sqrt(2), wt[e] / sqrt(2), wr[e], wi[e]] in RotatedSecondOrderCone())
-        elseif OPF == SOCOPFQuad
-            model[:jabr][e] = @constraint(model, wr[e]^2 + wi[e]^2 ≤ wf[e] * wt[e])
-        end
+    # Voltage angle difference limit
+    @constraint(model, va_diff_lb[e in 1:E], wi[e] >= tan(dvamin[e]) * wr[e])
+    @constraint(model, va_diff_ub[e in 1:E], wi[e] <= tan(dvamax[e]) * wr[e])
+
+    # Jabr constraints
+    if OPF == SOCOPF
+        @constraint(model, jabr[e in 1:E], [wf[e] / sqrt(2), wt[e] / sqrt(2), wr[e], wi[e]] in RotatedSecondOrderCone())
+    elseif OPF == SOCOPFQuad
+        @constraint(model, jabr[e in 1:E], wr[e]^2 + wi[e]^2 ≤ wf[e] * wt[e])
     end
 
     #
