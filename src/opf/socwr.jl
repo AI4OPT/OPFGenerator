@@ -142,8 +142,8 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     end
 
     # Voltage angle difference limit
-    @constraint(model, va_diff_lb[e in 1:E], wi[e] >= tan(dvamin[e]) * wr[e])
-    @constraint(model, va_diff_ub[e in 1:E], wi[e] <= tan(dvamax[e]) * wr[e])
+    @constraint(model, va_diff_lb[e in 1:E], branch_status[e] * wi[e] - branch_status[e] * tan(dvamin[e]) * wr[e] >= 0)
+    @constraint(model, va_diff_ub[e in 1:E], branch_status[e] * wi[e] - branch_status[e] * tan(dvamax[e]) * wr[e] <= 0)
 
     # Jabr constraints
     if OPF == SOCOPF
