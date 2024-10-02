@@ -130,8 +130,8 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     end
 
     # Check dual feasibility for select buses and constraints
-    λp  = [res["dual"]["kirchhoff_active"][i] for i in 1:N]
-    λq  = [res["dual"]["kirchhoff_reactive"][i] for i in 1:N]
+    λp  = [res["dual"]["kcl_p"][i] for i in 1:N]
+    λq  = [res["dual"]["kcl_q"][i] for i in 1:N]
     λpf = [res["dual"]["ohm_pf"][e] for e in 1:E]
     λqf = [res["dual"]["ohm_qf"][e] for e in 1:E]
     λpt = [res["dual"]["ohm_pt"][e] for e in 1:E]
