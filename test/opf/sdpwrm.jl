@@ -144,7 +144,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         (x, y) -> x
     ))
 
-    # Check dual constraint corresponding to `wr` variables
+    # Check dual constraint corresponding to `WR` variables
     AR_ff_values = [(
             λpf[e] * (g[e]+g_fr[e]) / ttm[e]
             + λqf[e] * (-(b[e]+b_fr[e]) / ttm[e])
@@ -173,12 +173,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         N, N
     ))
     @test norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf) <= atol
-    display(Matrix(Float32.(AR)))
-    display(Matrix(Float32.(S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)])))
-    display(Matrix(Float32.(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)])))
-    println(norm(AR + S[1:N, 1:N] + S[(N+1):(2*N), (N+1):(2*N)], Inf))
 
-    # Check dual constraint corresponding to `wi` variables
+    # Check dual constraint corresponding to `WI` variables
     AI_values = [(
             λpf[e] * (-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]
             - λpt[e] * (-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]
@@ -193,7 +189,6 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         vcat(br_i_array, br_j_array), vcat(br_j_array, br_i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
     )
     @test norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf) <= atol
-    println(norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf))
     return nothing
 end
 
