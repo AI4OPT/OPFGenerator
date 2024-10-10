@@ -406,14 +406,10 @@ function test_sampler_script()
     @test isdir(h5_dir)
 
     @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
-
-    h5_paths = [
-        joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
-        for opf in OPFs
-    ]
-    @test all(isfile.(h5_paths))
     
-    for h5_path in h5_paths
+    @testset "$(opf)" for opf in OPFs
+        h5_path = joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
+        @test isfile(h5_path)
         h5open(h5_path, "r") do h5
             @test haskey(h5, "meta")
             @test haskey(h5, "primal")
