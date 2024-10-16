@@ -37,7 +37,7 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
     #
     
     # nodal voltage
-    @variable(model, vm[i in 1:N], start=1.0)
+    @variable(model, vm[1:N], start=1.0)
     @variable(model, va[1:N])
 
     # Active and reactive dispatch
