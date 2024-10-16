@@ -83,7 +83,7 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
 
     # Nodal power balance
     @constraint(model,
-        kirchhoff_active[i in 1:N],
+        kcl_p[i in 1:N],
         sum(gen_status[g] * pg[g] for g in bus_gens[i])
         - sum(branch_status[e] * pf[e] for e in bus_arcs_fr[i])
         - sum(branch_status[e] * pt[e] for e in bus_arcs_to[i])
@@ -92,7 +92,7 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
         pd[i]
     )
     @constraint(model,
-        kirchhoff_reactive[i in 1:N],
+        kcl_q[i in 1:N],
         sum(gen_status[g] * qg[g] for g in bus_gens[i])
         - sum(branch_status[e] * qf[e] for e in bus_arcs_fr[i])
         - sum(branch_status[e] * qt[e] for e in bus_arcs_to[i])
@@ -202,29 +202,29 @@ function extract_dual(opf::OPFModel{ACOPF})
     N, E, G = data.N, data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "vm_lb"              => zeros(Float64, N),
-        "vm_ub"              => zeros(Float64, N),
-        "kirchhoff_active"   => zeros(Float64, N),
-        "kirchhoff_reactive" => zeros(Float64, N),
-        "pg_lb"              => zeros(Float64, G),
-        "pg_ub"              => zeros(Float64, G),
-        "qg_lb"              => zeros(Float64, G),
-        "qg_ub"              => zeros(Float64, G),
-        "sm_fr"              => zeros(Float64, E),
-        "sm_to"              => zeros(Float64, E),
-        "ohm_pf"             => zeros(Float64, E),
-        "ohm_pt"             => zeros(Float64, E),
-        "ohm_qf"             => zeros(Float64, E),
-        "ohm_qt"             => zeros(Float64, E),
-        "va_diff"            => zeros(Float64, E),
-        "slack_bus"          => 0.0,
+        "vm_lb"     => zeros(Float64, N),
+        "vm_ub"     => zeros(Float64, N),
+        "kcl_p"     => zeros(Float64, N),
+        "kcl_q"     => zeros(Float64, N),
+        "pg_lb"     => zeros(Float64, G),
+        "pg_ub"     => zeros(Float64, G),
+        "qg_lb"     => zeros(Float64, G),
+        "qg_ub"     => zeros(Float64, G),
+        "sm_fr"     => zeros(Float64, E),
+        "sm_to"     => zeros(Float64, E),
+        "ohm_pf"    => zeros(Float64, E),
+        "ohm_pt"    => zeros(Float64, E),
+        "ohm_qf"    => zeros(Float64, E),
+        "ohm_qt"    => zeros(Float64, E),
+        "va_diff"   => zeros(Float64, E),
+        "slack_bus" => 0.0,
     )
     if has_duals(model)
         for i in 1:N
             dual_solution["vm_lb"][i] = dual(LowerBoundRef(model[:vm][i]))
             dual_solution["vm_ub"][i] = dual(UpperBoundRef(model[:vm][i]))
-            dual_solution["kirchhoff_active"][i] = dual(model[:kirchhoff_active][i])
-            dual_solution["kirchhoff_reactive"][i] = dual(model[:kirchhoff_reactive][i])
+            dual_solution["kcl_p"][i] = dual(model[:kcl_p][i])
+            dual_solution["kcl_q"][i] = dual(model[:kcl_q][i])
         end
 
         for g in 1:G if data.gen_status[g]
