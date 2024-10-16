@@ -101,43 +101,40 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
         qd[i]
     )
 
-    model[:sm_fr] = Vector{ConstraintRef}(undef, E)
-    model[:sm_to] = Vector{ConstraintRef}(undef, E)
-    model[:va_diff] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_pf] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_qf] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_pt] = Vector{ConstraintRef}(undef, E)
-    model[:ohm_qt] = Vector{ConstraintRef}(undef, E)
 
+    # Ohm's law
+    # Some useful expressions first
     @expression(model, wf[e in 1:E], vm[bus_fr[e]]^2)
     @expression(model, wt[e in 1:E], vm[bus_to[e]]^2)
     @expression(model, wr[e in 1:E], vm[bus_fr[e]] * vm[bus_to[e]] * cos(va[bus_fr[e]] - va[bus_to[e]]))
     @expression(model, wi[e in 1:E], vm[bus_fr[e]] * vm[bus_to[e]] * sin(va[bus_fr[e]] - va[bus_to[e]]))
+    # Actual constraints
+    @constraint(model,
+        ohm_pf[e in 1:E],
+        branch_status[e] * ( gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e]) - pf[e] == 0
+    )
+    @constraint(model,
+        ohm_qf[e in 1:E],
+        branch_status[e] * (-bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e]) - qf[e] == 0
+    )
+    @constraint(model,
+        ohm_pt[e in 1:E],
+        branch_status[e] * ( gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e]) - pt[e] == 0
+    )
+    @constraint(model,
+        ohm_qt[e in 1:E],
+        branch_status[e] * (-btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e]) - qt[e] == 0
+    )
+    
+    # Thermal limit
+    @constraint(model, sm_fr[e in 1:E], pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
+    @constraint(model, sm_to[e in 1:E], pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
 
-    for e in 1:E
-        # Ohm's law
-        model[:ohm_pf][e] = @constraint(model,
-            branch_status[e] * ( gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e]) - pf[e] == 0
-        )
-        model[:ohm_qf][e] = @constraint(model,
-            branch_status[e] * (-bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e]) - qf[e] == 0
-        )
-        model[:ohm_pt][e] = @constraint(model,
-            branch_status[e] * ( gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e]) - pt[e] == 0
-        )
-        model[:ohm_qt][e] = @constraint(model,
-            branch_status[e] * (-btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e]) - qt[e] == 0
-        )
-    
-        # Thermal limit
-        model[:sm_fr][e] = @constraint(model, pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
-        model[:sm_to][e] = @constraint(model, pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
-    
-        # Voltage angle difference limit
-        model[:va_diff][e] = @constraint(model,
-            dvamin[e] ≤ branch_status[e] * (va[bus_fr[e]] - va[bus_to[e]]) ≤ dvamax[e]
-        )
-    end
+    # Voltage angle difference limit
+    @constraint(model,
+        va_diff[e in 1:E],
+        dvamin[e] ≤ branch_status[e] * (va[bus_fr[e]] - va[bus_to[e]]) ≤ dvamax[e]
+    )
 
     #
     #   III. Objective
