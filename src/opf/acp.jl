@@ -142,7 +142,7 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
 
     @objective(model,
         Min,
-        sum(c2[g] * pg[g]^2 + c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
+        sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
     )
 
     # TODO: update to store OPFData when all formulations are done
