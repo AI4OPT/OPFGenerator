@@ -4,6 +4,7 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
     @test data.N == length(network["bus"])
     @test data.E == length(network["branch"])
     @test data.G == length(network["gen"])
+    @test data.L == length(network["load"])
 
     # Bus data
     @test data.vmin == [ref[:bus][i]["vmin"] for i in 1:data.N]
@@ -21,13 +22,8 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
     @test data.gs == gs_ref
 
     # Aggregate loads at the bus level
-    pd_ref = zeros(Float64, data.N)
-    qd_ref = zeros(Float64, data.N)
-
-    for (_, load) in ref[:load]  # filters out inactive loads
-        pd_ref[load["load_bus"]] += load["pd"]
-        qd_ref[load["load_bus"]] += load["qd"]
-    end
+    pd_ref = [network["load"]["$l"]["pd"] for l in 1:data.L]
+    qd_ref = [network["load"]["$l"]["qd"] for l in 1:data.L]
 
     @test data.pd == pd_ref
     @test data.qd == qd_ref
