@@ -62,7 +62,7 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
         kcl_p[i in 1:N],
         sum(gen_status[g] * pg[g] for g in bus_gens[i])
         - sum(branch_status[a] * pf[a] for a in bus_arcs_fr[i])
-        - sum(branch_status[a] * pt[a] for a in bus_arcs_to[i])
+        - sum(branch_status[a] * pt[a] for a in bus_arcs_to[i])  # pt == -pf
         == 
         pd[i] + gs[i]
     )
