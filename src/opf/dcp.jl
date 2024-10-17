@@ -36,10 +36,10 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     @variable(model, va[1:N])
 
     # Active and reactive dispatch
-    @variable(model, pg[g in 1:G])
+    @variable(model, pg[1:G])
 
     # Branch flows
-    @variable(model, pf[e in 1:E])
+    @variable(model, pf[1:E])
 
     # 
     #   II. Constraints
