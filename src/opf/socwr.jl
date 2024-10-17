@@ -102,7 +102,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
         - sum(branch_status[e] * pt[e] for e in bus_arcs_to[i])
         - gs[i] * w[i]
         == 
-        pd[i]
+        sum(pd[l] for l in data.bus_loads[i])
     )
     @constraint(model,
         kcl_q[i in 1:N],
@@ -111,7 +111,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
         - sum(branch_status[e] * qt[e] for e in bus_arcs_to[i])
         + bs[i] * w[i]
         ==
-        qd[i]
+        sum(qd[l] for l in data.bus_loads[i])
     )
 
     # Branch power flow physics and limit constraints
