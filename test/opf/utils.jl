@@ -22,8 +22,8 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
     @test data.gs == gs_ref
 
     # Aggregate loads at the bus level
-    pd_ref = [network["load"]["$l"]["pd"] for l in 1:L]
-    qd_ref = [network["load"]["$l"]["qd"] for l in 1:L]
+    pd_ref = [network["load"]["$l"]["pd"] for l in 1:data.L]
+    qd_ref = [network["load"]["$l"]["qd"] for l in 1:data.L]
 
     @test data.pd == pd_ref
     @test data.qd == qd_ref
