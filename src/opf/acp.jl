@@ -89,7 +89,7 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
         - sum(branch_status[e] * pt[e] for e in bus_arcs_to[i])
         - gs[i] * vm[i]^2
         == 
-        pd[i]
+        sum(pd[l] for l in data.bus_loads[i])
     )
     @constraint(model,
         kcl_q[i in 1:N],
@@ -98,7 +98,7 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
         - sum(branch_status[e] * qt[e] for e in bus_arcs_to[i])
         + bs[i] * vm[i]^2
         ==
-        qd[i]
+        sum(qd[l] for l in data.bus_loads[i])
     )
 
 
