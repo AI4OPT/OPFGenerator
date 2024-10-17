@@ -26,12 +26,15 @@ struct OPFData
     vmax::Vector{Float64}
     gs::Vector{Float64}  # shunt
     bs::Vector{Float64}  # shunt
-    pd::Vector{Float64}  # nodal active power load
-    qd::Vector{Float64}  # nodal reactive power load
     bus_arcs_fr::Vector{Vector{Int}}  # indices of branches exiting the bus
     bus_arcs_to::Vector{Vector{Int}}  # indices of branches entering the bus
     bus_gens::Vector{Vector{Int}}  # indices of generators at the bus
+    bus_loads::Vector{Vector{Int}}
     ref_bus::Int  # index of slack bus
+
+    # Load data
+    pd::Vector{Float64}  # active power demand
+    qd::Vector{Float64}  # reactive power demand
 
     # Generator data
     pgmin::Vector{Float64}
@@ -97,20 +100,23 @@ function OPFData(network::Dict{String,Any})
         bs[i] += shunt["bs"]
     end
 
-    # Aggregate loads at the bus level
-    pd = zeros(Float64, N)
-    qd = zeros(Float64, N)
-    for (_, load) in network["load"]
-        load["status"] == 1 || continue  # skip inactive loads
-        i = load["load_bus"]
-        pd[i] += load["pd"]
-        qd[i] += load["qd"]
-    end
-
     # Reference bus
     ref_buses = [i for i in 1:N if network["bus"]["$i"]["bus_type"] == 3]
     @assert length(ref_buses) == 1 "There must be exactly one reference bus"
     ref_bus = ref_buses[1]
+
+    # Load data
+    pd = zeros(Float64, L)
+    qd = zeros(Float64, L)
+    bus_loads = [Int[] for _ in 1:N]
+    for l in 1:L
+        load = network["load"]["$l"]
+        i = load["load_bus"]
+        push!(bus_loads[i], l)
+        pd[l] = (load["status"] == 1) * load["pd"]
+        qd[l] = (load["status"] == 1) * load["qd"]
+    end
+    sort!.(bus_loads)
 
     # Generator data
     pgmin = zeros(Float64, G)
@@ -142,7 +148,7 @@ function OPFData(network::Dict{String,Any})
         c1[g] = gen["cost"][2]
         c2[g] = gen["cost"][1]
 
-        gen_status[g] = gen["gen_status"] == 1
+        gen_status[g] = (gen["gen_status"] == 1)
 
         # Generator incidence matrix
         Ag_i[g] = gen["gen_bus"]
@@ -255,8 +261,9 @@ function OPFData(network::Dict{String,Any})
     return OPFData(
         network["name"], network["baseMVA"],
         N, E, G, L, A, Ag,
-        vnom, vmin, vmax, gs, bs, pd, qd,
-        bus_arcs_fr, bus_arcs_to, bus_gens, ref_bus,
+        vnom, vmin, vmax, gs, bs,
+        bus_arcs_fr, bus_arcs_to, bus_gens, bus_loads, ref_bus,
+        pd, qd,
         pgmin, pgmax,
         qgmin, qgmax,
         c0, c1, c2,
