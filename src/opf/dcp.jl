@@ -68,7 +68,7 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     )
 
     @constraint(model, 
-        ohm[e in 1:E],
+        ohm_pf[e in 1:E],
         branch_status[e] * (
             -b[e] * (va[bus_fr[e]] - va[bus_to[e]])
         ) - pf[e] == 0
@@ -136,14 +136,14 @@ function extract_dual(opf::OPFModel{DCOPF})
     N, E, G = data.N, data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "kcl_p"              => zeros(Float64, N),
-        "pg_lb"              => zeros(Float64, G),
-        "pg_ub"              => zeros(Float64, G),
-        "pf_lb"              => zeros(Float64, E),
-        "pf_ub"              => zeros(Float64, E),
-        "ohm"                => zeros(Float64, E),
-        "va_diff"            => zeros(Float64, E),
-        "slack_bus"          => 0.0,
+        "kcl_p"     => zeros(Float64, N),
+        "pg_lb"     => zeros(Float64, G),
+        "pg_ub"     => zeros(Float64, G),
+        "pf_lb"     => zeros(Float64, E),
+        "pf_ub"     => zeros(Float64, E),
+        "ohm_pf"    => zeros(Float64, E),
+        "va_diff"   => zeros(Float64, E),
+        "slack_bus" => 0.0,
     )
     if has_duals(model)
         for i in 1:N
@@ -159,7 +159,7 @@ function extract_dual(opf::OPFModel{DCOPF})
         for e in 1:E if data.branch_status[e]
                 dual_solution["pf_lb"][e] = dual(LowerBoundRef(model[:pf][e]))
                 dual_solution["pf_ub"][e] = dual(UpperBoundRef(model[:pf][e]))
-                dual_solution["ohm"][e] = dual(model[:ohm][e])
+                dual_solution["ohm_pf"][e] = dual(model[:ohm_pf][e])
                 dual_solution["va_diff"][e] = dual(model[:va_diff][e])
             end
         end
