@@ -27,6 +27,7 @@ const OPT_SOLVERS = Dict(
     OPFGenerator.SOCOPF            => CLRBL_SOLVER,
     OPFGenerator.DCOPF             => CLRBL_SOLVER,
     OPFGenerator.EconomicDispatch  => CLRBL_SOLVER,
+    OPFGenerator.EconomicDispatchWithReserves => CLRBL_SOLVER,
 )
 
 include("io.jl")
