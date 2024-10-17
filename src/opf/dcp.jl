@@ -87,14 +87,12 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     #
     #   III. Objective
     #
-    l, u = extrema(c2[g] for g in 1:G if gen_status[g])
+    l, u = extrema(c2)
     (l == u == 0.0) || @warn "Data $(data.case) has quadratic cost terms; those terms are being ignored"
 
     @objective(model,
         Min,
-        sum(
-            gen_status[g] * (c1[g] * pg[g] + c0[g]) for g in 1:G
-        )
+        sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
     )
 
     # TODO: update to store OPFData when all formulations are done
