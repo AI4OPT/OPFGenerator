@@ -59,7 +59,7 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
     # Nodal power balance
     @expression(model, pt[e in 1:E], -pf[e])
     @constraint(model,
-        kirchhoff[i in 1:N],
+        kcl_p[i in 1:N],
         sum(gen_status[g] * pg[g] for g in bus_gens[i])
         - sum(branch_status[a] * pf[a] for a in bus_arcs_fr[i])
         - sum(branch_status[a] * pt[a] for a in bus_arcs_to[i])
@@ -144,7 +144,7 @@ function extract_dual(opf::OPFModel{DCOPF})
     N, E, G = data.N, data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "kirchhoff"          => zeros(Float64, N),
+        "kcl_p"              => zeros(Float64, N),
         "pg_lb"              => zeros(Float64, G),
         "pg_ub"              => zeros(Float64, G),
         "pf_lb"              => zeros(Float64, E),
@@ -155,7 +155,7 @@ function extract_dual(opf::OPFModel{DCOPF})
     )
     if has_duals(model)
         for i in 1:N
-            dual_solution["kirchhoff"][i] = dual(model[:kirchhoff][i])
+            dual_solution["kcl_p"][i] = dual(model[:kcl_p][i])
         end
 
         for g in 1:G if data.gen_status[g]
