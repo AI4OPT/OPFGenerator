@@ -237,7 +237,7 @@ function solve!(opf::OPFModel{EconomicDispatch})
     return
 end
 
-function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{EconomicDispatch, EconomicDispatchWithReserves}}
+function extract_primal(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
 
     # TODO: remove when all formulations are done
@@ -250,33 +250,27 @@ function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{EconomicDispatch
         "pg" => zeros(Float64, G),
         "pf" => zeros(Float64, E),
         "δf" => zeros(Float64, E),
+        "r"  => zeros(Float64, G),
     )
-    
-    if OPF == EconomicDispatchWithReserves
-        primal_solution["r"] = zeros(Float64, G)
-    end
 
     if has_values(model)
-        for g in 1:G if data.gen_status[g]
-                primal_solution["pg"][g] = value(model[:pg][g])
-
-                if OPF == EconomicDispatchWithReserves
-                    primal_solution["r"][g] = value(model[:r][g])
-                end
-            end
+        for g in 1:G
+            data.gen_status[g] || continue
+            primal_solution["pg"][g] = value(model[:pg][g])
+            primal_solution["r"][g] = value(model[:r][g])
         end
 
-        for e in 1:E if data.branch_status[e]
-                primal_solution["pf"][e] = value(model[:pf][e])
-                primal_solution["δf"][e] = value(model[:δf][e])
-            end
+        for e in 1:E 
+            data.branch_status[e] || continue
+            primal_solution["pf"][e] = value(model[:pf][e])
+            primal_solution["δf"][e] = value(model[:δf][e])
         end
     end
 
     return primal_solution
 end
 
-function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{EconomicDispatch, EconomicDispatchWithReserves}}
+function extract_dual(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
 
     # TODO: remove when all formulations are done
