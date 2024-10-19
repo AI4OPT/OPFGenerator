@@ -17,10 +17,10 @@ function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::St
     drop_gen = argmin(gen->gen[2]["pmax"], network_drop["gen"])[1]
     network_drop["gen"][drop_gen]["gen_status"] = 0
 
-    if OPF ∉ [OPFGenerator.EconomicDispatch, OPFGenerator.EconomicDispatchWithReserves]
-        @testset "Branch/Gen Status" begin test_opf_pm(OPF, network_drop) end
-    else
+    if OPF == OPFGenerator.EconomicDispatch
         @test_throws ErrorException test_opf_pm(OPF, network_drop) # ED does not yet support branch status
+    else
+        @testset "Branch/Gen Status" begin test_opf_pm(OPF, network_drop) end
     end
 end
 
