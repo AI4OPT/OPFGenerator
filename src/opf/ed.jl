@@ -120,7 +120,7 @@ function build_opf(::Type{EconomicDispatch}, network::Dict{String,Any}, optimize
 end
 
 
-function solve!(opf::OPFModel{OPF}) where {OPF <: Union{EconomicDispatch, EconomicDispatchWithReserves}}
+function solve!(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
 
     # TODO: remove when all formulations are done
