@@ -282,54 +282,39 @@ function extract_dual(opf::OPFModel{EconomicDispatch})
     dual_solution = Dict{String,Any}(
         "pg_lb"               => zeros(Float64, G),
         "pg_ub"               => zeros(Float64, G),
+        "r_lb"                => zeros(Float64, G),
+        "r_ub"                => zeros(Float64, G),
         "pf_lb"               => zeros(Float64, E),
         "pf_ub"               => zeros(Float64, E),
         "δf_lb"               => zeros(Float64, E),
-        "δf_ub"               => zeros(Float64, E),
         "ptdf_flow"           => zeros(Float64, E),
-        "power_balance"       => 0.0,
     )
 
-    if OPF == EconomicDispatchWithReserves
-        dual_solution["r_lb"] = zeros(Float64, G)
-        dual_solution["r_ub"] = zeros(Float64, G)
-        dual_solution["total_generation"] = zeros(Float64, G)
-        dual_solution["reserve_requirement"] = 0.0
-    end
 
     if has_duals(model)
-        for g in 1:G if data.gen_status[g]
-                dual_solution["pg_lb"][g] = dual(LowerBoundRef(model[:pg][g]))
-                dual_solution["pg_ub"][g] = dual(UpperBoundRef(model[:pg][g]))
+        for g in 1:G 
+            data.gen_status[g] || continue
+            
+            dual_solution["pg_lb"][g] = dual(LowerBoundRef(model[:pg][g]))
+            dual_solution["pg_ub"][g] = dual(model[:gen_max_output][g])
 
-                if OPF == EconomicDispatchWithReserves
-                    dual_solution["r_lb"][g] = dual(LowerBoundRef(model[:r][g]))
-                    dual_solution["r_ub"][g] = dual(UpperBoundRef(model[:r][g]))
-                    dual_solution["total_generation"][g] = dual(model[:total_generation][g])
-                end
+            dual_solution["r_lb"][g] = dual(LowerBoundRef(model[:r][g]))
+            dual_solution["r_ub"][g] = dual(UpperBoundRef(model[:r][g]))
+        end
+
+        for e in 1:E 
+            data.branch_status[e] || continue
+            dual_solution["pf_lb"][e] = dual(model[:pf_lower_bound][e])
+            dual_solution["pf_ub"][e] = dual(model[:pf_upper_bound][e])
+            dual_solution["δf_lb"][e] = dual(LowerBoundRef(model[:δf][e]))
+
+            if isassigned(model[:ptdf_flow], e)
+                dual_solution["ptdf_flow"][e] = dual(model[:ptdf_flow][e])
             end
         end
 
-        for e in 1:E if data.branch_status[e]
-                dual_solution["pf_lb"][e] = dual(model[:pf_lower_bound][e])
-                dual_solution["pf_ub"][e] = dual(model[:pf_upper_bound][e])
-                dual_solution["δf_lb"][e] = dual(LowerBoundRef(model[:δf][e]))
-
-                if has_upper_bound(model[:δf][e])
-                    dual_solution["δf_ub"][e] = dual(UpperBoundRef(model[:δf][e]))
-                end
-
-                if isassigned(model[:ptdf_flow], e)
-                    dual_solution["ptdf_flow"][e] = dual(model[:ptdf_flow][e])
-                end
-            end
-        end
-
-        dual_solution["power_balance"] = dual(model[:power_balance])
-        
-        if OPF == EconomicDispatchWithReserves
-            dual_solution["reserve_requirement"] = dual(model[:reserve_requirement])
-        end
+        dual_solution["power_balance"] = dual(model[:global_power_balance])
+        dual_solution["reserve_requirement"] = dual(model[:global_reserve_requirement])
     end
 
     return dual_solution
