@@ -1,21 +1,20 @@
 using SparseArrays
 
 struct EconomicDispatch <: AbstractFormulation end
-struct EconomicDispatchWithReserves <: AbstractFormulation end
 
 const THERMAL_PENALTY = 150000.0
 const MAX_PTDF_ITERATIONS = 128
 const MAX_PTDF_PER_ITERATION = 8
 const ITERATIVE_PTDF_TOL = 1e-6
 
-function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
+function build_opf(::Type{EconomicDispatch}, network::Dict{String,Any}, optimizer;
     T=Float64,
     soft_thermal_limit::Bool=false,
     thermal_penalty=THERMAL_PENALTY,
     iterative_ptdf_tol=ITERATIVE_PTDF_TOL,
     max_ptdf_iterations=MAX_PTDF_ITERATIONS,
     max_ptdf_per_iteration=MAX_PTDF_PER_ITERATION,
-) where {OPF <: Union{EconomicDispatch, EconomicDispatchWithReserves}}
+)
     # TODO: remove when all formulations are done
     data = OPFData(network)
 
@@ -30,7 +29,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     smax = data.smax
     branch_status, gen_status = data.branch_status, data.gen_status
 
-    all(branch_status) || error("$OPF does not support disabled branches.")
+    all(branch_status) || error("EconomicDispatch does not support disabled branches.")
 
     PD = sum(data.pd) # total demand
 
@@ -40,7 +39,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     rmax = data.rmax
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = OPF
+    model.ext[:opf_model] = EconomicDispatch
     model.ext[:solve_metadata] = Dict{Symbol,Any}(
         :iterative_ptdf_tol => iterative_ptdf_tol,
         :max_ptdf_iterations => max_ptdf_iterations,
@@ -53,11 +52,8 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
 
     # Active dispatch
     @variable(model, pg[g in 1:G])
-
-    if OPF == EconomicDispatchWithReserves
-        # Active reserves
-        @variable(model, r[g in 1:G])
-    end
+    # Active reserves
+    @variable(model, r[g in 1:G])
 
     # Active branch flow
     @variable(model, pf[e in 1:E])
@@ -71,52 +67,35 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
 
     # Generation bounds (zero if generator is off)
     set_lower_bound.(pg, gen_status .* pgmin)
-    set_upper_bound.(pg, gen_status .* pgmax)
+    # ⚠️ we do not set upper bounds on pg because they are redundant
+    #       with the constraint pg + r <= pgmax
 
-    if OPF == EconomicDispatchWithReserves
-        # Reserve bounds (zero if generator is off)
-        set_lower_bound.(r, gen_status .* rmin)
-        set_upper_bound.(r, gen_status .* rmax)
-    end
+    # Reserve bounds (zero if generator is off)
+    set_lower_bound.(r, gen_status .* rmin)
+    set_upper_bound.(r, gen_status .* rmax)
 
     # Flow and flow slack bounds
-    for e in 1:E if !branch_status[e]
-            set_upper_bound(δf[e], 0.0)
-        end
-    end
     active_smax = branch_status .* smax
 
-    if soft_thermal_limit
-        # Soft thermal limits
-        # For active branches, sets pf + δf ≥ -smax and pf - δf ≤ smax and 0 ≤ δf ≤ Inf
-        # For inactive branches, sets pf + δf ≥ 0 and pf - δf ≤ 0 (pf = δf) and 0 ≤ δf ≤ 0 -> pf = 0
-        @constraint(model, pf_lower_bound[e in 1:E], pf[e] + δf[e] >= -active_smax[e])
-        @constraint(model, pf_upper_bound[e in 1:E], pf[e] - δf[e] <= active_smax[e])
-    else
-        # Hard thermal limits
-        # For active branches, sets pf ≥ -smax and pf ≤ smax
-        # For inactive branches, sets pf ≥ 0 and pf ≤ 0
-        @constraint(model, pf_lower_bound[e in 1:E], pf[e] >= -active_smax[e])
-        @constraint(model, pf_upper_bound[e in 1:E], pf[e] <= active_smax[e])
-    end
+    # Thermal limits
+    # Note that `soft_thermal_limit` is a boolean flag such that 
+    #   * if `true`, the penalty variables `δf` appears as expected
+    #   * if `false`, the penalty variables `δf` do not appear in the constraint
+    @constraint(model, pf_lower_bound[e in 1:E], pf[e] + soft_thermal_limit * δf[e] >= -active_smax[e])
+    @constraint(model, pf_upper_bound[e in 1:E], pf[e] - soft_thermal_limit * δf[e] <= active_smax[e])
 
-    if OPF == EconomicDispatchWithReserves
-        # Total generation
-        model[:total_generation] = Vector{ConstraintRef}(undef, G)
-        for g in 1:G if gen_status[g]
-                model[:total_generation][g] = @constraint(model, pg[g] + r[g] <= pgmax[g])
-            end
-        end
+    # Maximum generator output
+    @constraint(model, gen_max_output[g in 1:G], pg[g] + r[g] <= gen_status[g] * pgmax[g])
 
-        @constraint(model,
-            reserve_requirement,
-            sum(r[g] for g in 1:G if gen_status[g]) >= MRR
-        )
-    end
+    # Total reserve requirement
+    @constraint(model,
+        global_reserve_requirement,
+        sum(r[g] for g in 1:G if gen_status[g]) >= MRR
+    )
 
     @constraint(model,
-        power_balance,
-        sum(pg[g] for g in 1:G if gen_status[g]) .== PD
+        global_power_balance,
+        sum(pg[g] for g in 1:G if gen_status[g]) == PD
     )
 
     model.ext[:PTDF] = LazyPTDF(data)
@@ -131,17 +110,13 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     l, u = extrema(c2[g] for g in 1:G if gen_status[g])
     (l == u == 0.0) || @warn "Data $(data.case) has quadratic cost terms; those terms are being ignored"
 
-    obj_expr = if soft_thermal_limit
+    @objective(model, Min, 
         sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
         + thermal_penalty * sum(δf)
-    else
-        sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
-    end
-
-    @objective(model, Min, obj_expr)
+    )
 
     # TODO: update to store OPFData when all formulations are done
-    return OPFModel{OPF}(network, model)
+    return OPFModel{EconomicDispatch}(network, model)
 end
 
 
