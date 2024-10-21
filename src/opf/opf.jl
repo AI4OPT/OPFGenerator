@@ -301,7 +301,6 @@ const SUPPORTED_OPF_MODELS = Type{<:AbstractFormulation}[
     ACOPF,
     DCOPF,
     EconomicDispatch,
-    EconomicDispatchWithReserves,
     SOCOPFQuad,
     SOCOPF,
 ]
@@ -312,7 +311,6 @@ const OPF2TYPE = Dict{String,Type{<:AbstractFormulation}}(
     "ACOPF" => ACOPF,
     "DCOPF" => DCOPF,
     "EconomicDispatch" => EconomicDispatch,
-    "EconomicDispatchWithReserves" => EconomicDispatchWithReserves,
     "SOCOPFQuad" => SOCOPFQuad,
     "SOCOPF" => SOCOPF,
 )

@@ -342,12 +342,6 @@ function test_sampler_script()
                     "name" => "Clarabel",
                 )
             ),
-            "EDR" => Dict(
-                "type" => "EconomicDispatchWithReserves",
-                "solver" => Dict(
-                    "name" => "Clarabel",
-                )
-            ),
             "SOCOPF" => Dict(
                 "type" => "SOCOPF",
                 "solver" => Dict(
