@@ -8,7 +8,7 @@ mutable struct OPFModel{OPF <: AbstractFormulation}
     model::JuMP.GenericModel
 end
 
-struct OPFData
+mutable struct OPFData
     case::String
     base_mva::Float64
 
