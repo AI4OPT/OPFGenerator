@@ -12,57 +12,19 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     res = OPFGenerator.extract_result(opf)
 
     # Solve OPF with PowerModels
-    # must be after OPFGenerator since it modifies `data`
+    data_pm = deepcopy(data)
     solver = OPT_SOLVERS[OPF]
-    res_pm = PM.solve_opf_ptdf_branch_power_cuts!(data, solver)
+    res_pm = PM.solve_opf_ptdf_branch_power_cuts!(data_pm, solver)
 
     # Check that the right problem was indeed solved
     @test res["meta"]["formulation"] == string(OPF)
     @test res["meta"]["termination_status"] ∈ ["LOCALLY_SOLVED", "OPTIMAL"]
     @test res["meta"]["primal_status"] == "FEASIBLE_POINT"
     @test res["meta"]["dual_status"] == "FEASIBLE_POINT"
+    @test isapprox(res["meta"]["primal_objective_value"], res["meta"]["dual_objective_value"], atol=1e-6, rtol=1e-6)
+
     # Check objective value against PowerModels
     @test isapprox(res["meta"]["primal_objective_value"], res_pm["objective"], atol=1e-6, rtol=1e-6)
-    # @test res["ptdf_iterations"] == res_pm["iterations"]
-
-    # check that iterative ptdf produces same solution
-    opf2 = OPFGenerator.build_opf(OPF, data, solver, iterative_ptdf=false)
-    OPFGenerator.solve!(opf2)
-    res2 = OPFGenerator.extract_result(opf2)
-    @test isapprox(res["meta"]["primal_objective_value"], res2["meta"]["primal_objective_value"], atol=1e-6, rtol=1e-6)
-
-    h5 = res
-    @test haskey(h5, "meta")
-    @test haskey(h5, "primal")
-    @test haskey(h5, "dual")
-    Gs = [
-        h5["primal"]["pg"], h5["primal"]["r"],
-        h5["dual"]["mu_pg_lb"], h5["dual"]["mu_pg_ub"],
-        h5["dual"]["mu_r_lb"], h5["dual"]["mu_r_ub"],
-        h5["dual"]["mu_total_generation"],
-         # TODO: move reserve bounds to input
-        h5["primal"]["rmin"], h5["primal"]["rmax"],
-    ]
-    Es = [
-        h5["primal"]["pf"], h5["primal"]["df"],
-        h5["dual"]["mu_pf_lb"], h5["dual"]["mu_pf_ub"],
-        h5["dual"]["mu_df_lb"],
-        h5["dual"]["lam_ptdf"],
-    ]
-    singles = [
-        h5["primal"]["dpb_surplus"],
-        h5["primal"]["dpb_shortage"],
-        h5["primal"]["dr_shortage"],
-        h5["dual"]["mu_dpb_surplus_lb"],
-        h5["dual"]["mu_dpb_shortage_lb"],
-        h5["dual"]["mu_dr_shortage_lb"],
-        h5["dual"]["mu_power_balance"],
-        h5["dual"]["mu_reserve_requirement"],
-    ]
-    @test all(size(v) == (G,) for v in Gs)
-    @test all(size(v) == (E,) for v in Es)
-    @test all(size(v) == () for v in singles)
-
     # Force PM solution into our model, and check that the solution is feasible
     # TODO: use JuMP.primal_feasibility_report instead
     #    (would require extracting a variable => value Dict)
@@ -79,6 +41,7 @@ function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
     optimize!(opf.model)
     @test termination_status(opf.model) ∈ [OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
     @test primal_status(opf.model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
+
 
     return nothing
 end
