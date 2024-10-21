@@ -262,7 +262,7 @@ function extract_primal(opf::OPFModel{EconomicDispatch})
 
         for e in 1:E 
             data.branch_status[e] || continue
-            primal_solution["pf"][e] = value(model[:pf][e])
+            primal_solution["pf"][e] = value(model.ext[:ptdf_pf][e])
             primal_solution["δf"][e] = value(model[:δf][e])
         end
     end
