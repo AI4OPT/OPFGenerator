@@ -90,12 +90,12 @@ function build_opf(::Type{EconomicDispatch}, network::Dict{String,Any}, optimize
     # Total reserve requirement
     @constraint(model,
         global_reserve_requirement,
-        sum(r[g] for g in 1:G if gen_status[g]) >= MRR
+        sum(gen_status[g] * r[g] for g in 1:G) >= MRR
     )
 
     @constraint(model,
         global_power_balance,
-        sum(pg[g] for g in 1:G if gen_status[g]) == PD
+        sum(gen_status[g] * pg[g] for g in 1:G) == PD
     )
 
     model.ext[:PTDF] = LazyPTDF(data)
