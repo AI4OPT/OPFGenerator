@@ -228,11 +228,13 @@ function solve!(opf::OPFModel{EconomicDispatch})
     model.ext[:termination_info][:ptdf_iterations] = niter
     model.ext[:termination_info][:termination_status] = st
 
-    # save the final pf based on pg
-    pg_ = value.(model[:pg])
-    p_ = Ag * pg_ - pd
-    compute_flow!(pf_, p_, model.ext[:PTDF])
-    model.ext[:ptdf_pf] = pf_
+    if has_values(model)
+        # save the final pf based on pg
+        pg_ = value.(model[:pg])
+        p_ = Ag * pg_ - pd
+        compute_flow!(pf_, p_, model.ext[:PTDF])
+        model.ext[:ptdf_pf] = pf_
+    end
 
     return
 end
