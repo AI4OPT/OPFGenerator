@@ -8,9 +8,10 @@ function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::St
     @testset "Full data" begin test_opf_pm(OPF, network) end
 
     network_drop = deepcopy(network)
+    data_drop = OPFGenerator.OPFData(network_drop)
 
-    is_bridge = OPFGenerator.bridges(network_drop)
-    non_bridge = [e for (e, b) in is_bridge if !b]
+    is_bridge = OPFGenerator.bridges(data_drop)
+    non_bridge = [e for (e, b) in enumerate(is_bridge) if !b]
     drop_branch = first(non_bridge)
     network_drop["branch"][drop_branch]["br_status"] = 0
 
