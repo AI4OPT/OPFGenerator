@@ -295,6 +295,9 @@ function to_dict(data::OPFData)
     return d
 end
 
+# use == instead of === on fields. see julia#4648
+Base.:(==)(a::OPFData, b::OPFData) = all(getfield(a, field) == getfield(b, field) for field in fieldnames(OPFData))
+
 include("utils.jl")
 include("ptdf.jl")
 
