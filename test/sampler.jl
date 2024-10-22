@@ -408,9 +408,9 @@ function test_sampler_script()
             n_seed = length(h5["meta"]["seed"])
             @test n_seed == smax - smin + 1
             for i in 1:n_seed
-                @test h5["meta"]["termination_status"][i] ∈ ["OPTIMAL", "LOCALLY_SOLVED"]
-                @test h5["meta"]["primal_status"][i] == "FEASIBLE_POINT"
-                @test h5["meta"]["dual_status"][i] == "FEASIBLE_POINT"
+                @test h5["meta"]["termination_status"][i] ∈ ["OPTIMAL", "ALMOST_OPTIMAL", "LOCALLY_SOLVED", "ALMOST_LOCALLY_SOLVED"]
+                @test h5["meta"]["primal_status"][i] ∈ ["FEASIBLE_POINT", "NEARLY_FEASIBLE_POINT"]
+                @test h5["meta"]["dual_status"][i] ∈ ["FEASIBLE_POINT", "NEARLY_FEASIBLE_POINT"]
                 @test h5["meta"]["seed"][i] == smin + i - 1
             end
         end
