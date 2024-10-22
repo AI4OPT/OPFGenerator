@@ -14,6 +14,7 @@ using JuMP
 using Clarabel
 using Ipopt
 using Mosek, MosekTools
+using HiGHS
 
 using HSL_jll
 const LIB_COINHSL = HSL_jll.libhsl_path
@@ -27,6 +28,7 @@ const NAME2OPTIMIZER = Dict(
     "Clarabel" => Clarabel.Optimizer{Float64},
     "Ipopt" => Ipopt.Optimizer,
     "Mosek" => Mosek.Optimizer,
+    "HiGHS" => HiGHS.Optimizer,
 )
 
 # Helper function to use correct arithmetic
@@ -90,20 +92,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smax = parse(Int, ARGS[3])
 
     # Dummy run (for pre-compilation)
-    data0 = make_basic_network(pglib("14_ieee"))
+    data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
     rand!(StableRNG(1), opf_sampler0, data0)
     main(data0, config)
 
     # Load reference data and setup OPF sampler
-    data = make_basic_network(pglib(config["ref"]))
+    data = OPFGenerator.OPFData(make_basic_network(pglib(config["ref"])))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
 
     # Data info
-    N = length(data["bus"])
-    E = length(data["branch"])
-    L = length(data["load"])
-    G = length(data["gen"])
+    N, E, L, G = data.N, data.E, data.L, data.G
 
     OPFs = sort(collect(keys(config["OPF"])))
     caseref = config["ref"]
@@ -117,7 +116,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         "data" => Dict{String,Any}(
             "pd" => Vector{Float64}[],
             "qd" => Vector{Float64}[],
-            "br_status" => Vector{Bool}[],
+            "branch_status" => Vector{Bool}[],
             "gen_status" => Vector{Bool}[],
         )
     )
@@ -139,10 +138,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
         # Update input data
         push!(D["input"]["meta"]["seed"], s)
-        push!(D["input"]["data"]["pd"], [data_["load"]["$l"]["pd"] for l in 1:L])
-        push!(D["input"]["data"]["qd"], [data_["load"]["$l"]["qd"] for l in 1:L])
-        push!(D["input"]["data"]["br_status"], [Bool(data_["branch"]["$e"]["br_status"]) for e in 1:E])
-        push!(D["input"]["data"]["gen_status"], [Bool(data_["gen"]["$g"]["gen_status"]) for g in 1:G])
+        push!(D["input"]["data"]["pd"], data_.pd)
+        push!(D["input"]["data"]["qd"], data_.qd)
+        push!(D["input"]["data"]["branch_status"], data_.branch_status)
+        push!(D["input"]["data"]["gen_status"], data_.gen_status)
 
         # Add output results, one for each OPF dataset
         for dataset_name in OPFs

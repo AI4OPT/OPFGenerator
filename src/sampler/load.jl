@@ -25,14 +25,10 @@ function Random.rand(rng::AbstractRNG, ls::LoadScaler)
     return pd, qd
 end
 
-function LoadScaler(data::Dict, options::Dict)
-    get(data, "basic_network", false) || error(
-        """Invalid data: network data must be in basic format.
-        Call `make_basic_network(data)` before calling this function"""
-    )
-    L = length(data["load"])
-    pd = [data["load"]["$i"]["pd"] for i in 1:L]
-    qd = [data["load"]["$i"]["qd"] for i in 1:L]
+function LoadScaler(data::OPFData, options::Dict)
+    L = data.L
+    pd = data.pd
+    qd = data.qd
 
     # Noise distribution
     # TODO: modularize this

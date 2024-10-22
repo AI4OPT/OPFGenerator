@@ -46,11 +46,7 @@ function Random.rand(rng::AbstractRNG, rs::NullReserveScaler)
     return 0.0, zeros(Float64, rs.n_gen), zeros(Float64, rs.n_gen)
 end
 
-function ReserveScaler(data::Dict, options::Dict)
-    get(data, "basic_network", false) || error(
-        """Invalid data: network data must be in basic format.
-        Call `make_basic_network(data)` before calling this function"""
-    )
+function ReserveScaler(data::OPFData, options::Dict)
 
     reserve_type = get(options, "type", "")
     if reserve_type == "E2ELR"
@@ -62,15 +58,10 @@ function ReserveScaler(data::Dict, options::Dict)
         u = options["u"]
         factor = options["factor"]
         mrr_dist = Uniform(l, u)
-        
-        G = length(data["gen"])
-        pg_min = [data["gen"]["$g"]["pmin"] for g in 1:G]
-        pg_max = [data["gen"]["$g"]["pmax"] for g in 1:G]
 
-        return E2ELRReserveScaler(mrr_dist, factor, pg_min, pg_max)
+        return E2ELRReserveScaler(mrr_dist, factor, data.pgmin, data.pgmax)
     elseif reserve_type == ""
-        n_gen = length(data["gen"])
-        return NullReserveScaler(n_gen)
+        return NullReserveScaler(data.G)
     else
         error("Invalid noise type: $(reserve_type).\nOnly \"E2ELR\", or no reserves, is supported.")
     end

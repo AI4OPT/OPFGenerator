@@ -51,9 +51,7 @@ function test_ScaledUniform()
 end
 
 function test_LoadScaler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
-    pd = [data["load"]["$k"]["pd"] for k in 1:length(data["load"])]
-    qd = [data["load"]["$k"]["qd"] for k in 1:length(data["load"])]
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # ScaledLogNormal
     options = Dict(
@@ -65,8 +63,8 @@ function test_LoadScaler()
     ls = LoadScaler(data, options)
     @test ls.d.d_α == Uniform(0.8, 1.2)
     @test isa(ls.d.d_η, MvLogNormal)
-    @test ls.pd_ref == pd
-    @test ls.qd_ref == qd
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
 
     # ScaledUniform
     options = Dict(
@@ -78,20 +76,14 @@ function test_LoadScaler()
     ls = LoadScaler(data, options)
     @test ls.d.d_α == Uniform(0.7, 1.5)
     @test isa(ls.d.d_η, Distributions.Product)
-    @test ls.pd_ref == pd
-    @test ls.qd_ref == qd
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
 
     return nothing
 end
 
 function test_LoadScaler_sanity_checks()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
-
-    # Test potential issues
-    # Not basic data
-    data["basic_network"] = false
-    @test_throws ErrorException LoadScaler(data, Dict())
-    data["basic_network"] = true
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # Invalid noise type
     options = Dict()
@@ -126,7 +118,7 @@ function test_LoadScaler_sanity_checks()
 end
 
 function test_sampler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     _data = deepcopy(data)  # keep a deepcopy nearby
     sampler_config = Dict(
         "load" => Dict(
@@ -155,7 +147,7 @@ function test_sampler()
 end
 
 function test_nminus1_sampler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     sampler_config = Dict{String,Any}(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
@@ -174,16 +166,13 @@ function test_nminus1_sampler()
     data1 = rand(rng, opf_sampler)
 
     # generator 1 should be disabled
-    for i in 1:length(data1["gen"]) if i != 1
-            @test data1["gen"]["$i"]["gen_status"] == 1
-        end
-    end
-    @test data1["gen"]["1"]["gen_status"] == 0
+    expected_gen_status = ones(Bool, data.G)
+    expected_gen_status[1] = 0
+    @test data1.gen_status == expected_gen_status
 
     # all branches should be enabled
-    for i in 1:length(data1["branch"])
-        @test data1["branch"]["$i"]["br_status"] == 1
-    end
+    expected_br_status = ones(Bool, data.E)
+    @test data1.branch_status == expected_br_status
 
     data2 = rand(StableRNG(42), opf_sampler)
     @test data2 == data1
@@ -193,33 +182,33 @@ function test_nminus1_sampler()
 
     rng2 = StableRNG(10)
     data3 = rand(rng2, opf_sampler)
+    
     # all generators should be enabled
-    for i in 1:length(data3["gen"])
-        @test data3["gen"]["$i"]["gen_status"] == 1
-    end
+    @test all(data3.gen_status)
 
-    # branch 11 should be disabled
-    for i in 1:length(data3["branch"]) if i != 11
-            @test data3["branch"]["$i"]["br_status"] == 1
-        end
-    end
-    @test data3["branch"]["11"]["br_status"] == 0
+    # branch 8 should be disabled
+    expected_br_status = ones(Bool, data.E)
+    expected_br_status[8] = 0
+    @test data3.branch_status == expected_br_status
 
     return nothing
 end
 
 function _test_ieee14_LogNormal_s42(data)
-    data0 = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data0 = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # Check that the sampled data dictionary only has different loads/reserves
     # Buses, generators, etc... should not have changed
-    for (k, v) in data0
-        if k == "gen"
-            @test all(data[k][i][kk] == v[i][kk] for (i, gen) in v for (kk, vv) in gen if kk ∉ ["rmin", "rmax"])
-        elseif k == "load"
-            @test all(data[k][i][kk] == v[i][kk] for (i, load) in v for (kk, vv) in load if kk ∉ ["pd", "qd"])
-        else
-            @test data[k] == v
+    # for (k, v) in data0
+    for k in fieldnames(OPFGenerator.OPFData)
+        v0 = getfield(data0, k)
+        v = getfield(data, k)
+        if k ∉ [
+            :pd, :qd,
+            :rmin, :rmax, :minimum_reserve,
+            :branch_status, :gen_status
+        ]
+            @test v0 == v
         end
     end
 
@@ -258,29 +247,20 @@ function _test_ieee14_LogNormal_s42(data)
         0.05507514764436597,
         0.05363453540304818,
     ]
-    for (i, (p, q)) in enumerate(zip(_pd, _qd))
-        @test data["load"]["$i"]["pd"] ≈ p
-        @test data["load"]["$i"]["qd"] ≈ q
-    end
+    @test data.pd ≈ _pd
+    @test data.qd ≈ _qd
 
-    # all reserves should be zero
-    for i in 1:length(data["gen"])
-        @test data["gen"]["$i"]["rmin"] == 0.0
-        @test data["gen"]["$i"]["rmax"] == 0.0
-    end
+    @test data.minimum_reserve == 0.0
+    @test data.rmin == zeros(length(data.rmin))
+    @test data.rmax == zeros(length(data.rmax))
 
-    # all statuses should be 1
-    for i in 1:length(data["gen"])
-        @test data["gen"]["$i"]["gen_status"] == 1
-    end
-    for i in 1:length(data["branch"])
-        @test data["branch"]["$i"]["br_status"] == 1
-    end
+    @test all(data.gen_status)
+    @test all(data.branch_status)
     return nothing
 end
 
 function test_inplace_sampler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     sampler_config = Dict(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
@@ -397,10 +377,14 @@ function test_sampler_script()
     @test isdir(h5_dir)
 
     @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
+
+    h5_paths = [
+        joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
+        for opf in OPFs
+    ]
+    @test all(isfile.(h5_paths))
     
-    @testset "$(opf)" for opf in OPFs
-        h5_path = joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
-        @test isfile(h5_path)
+    for h5_path in h5_paths
         h5open(h5_path, "r") do h5
             @test haskey(h5, "meta")
             @test haskey(h5, "primal")

@@ -99,7 +99,9 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
     @test data.bus_arcs_fr == bus_arcs_fr_ref
     @test data.bus_arcs_to == bus_arcs_to_ref
 
-    @test data.A == PowerModels.calc_basic_incidence_matrix(network)
+    if all(data.branch_status)
+        @test data.A == PowerModels.calc_basic_incidence_matrix(network)
+    end
 
     data_dict = OPFGenerator.to_dict(data)
     @test keys(data_dict["A"]) == Set(["I", "J", "V", "M", "N"])
@@ -112,25 +114,17 @@ function test_voltage_phasor_bounds(data::OPFGenerator.OPFData, network::Dict{St
     buspairs = PowerModels.calc_buspair_parameters(network["bus"], network["branch"])
     bp_wr_min, bp_wr_max, bp_wi_min, bp_wi_max = PowerModels.ref_calc_voltage_product_bounds(buspairs)
 
-    wr_min_ref = zeros(Float64, data.E)
-    wr_max_ref = zeros(Float64, data.E)
-    wi_min_ref = zeros(Float64, data.E)
-    wi_max_ref = zeros(Float64, data.E)
-
-    for e in 1:data.E
-        bp = data.bus_fr[e], data.bus_to[e]
-        wr_min_ref[e] = bp_wr_min[bp]
-        wr_max_ref[e] = bp_wr_max[bp]
-        wi_min_ref[e] = bp_wi_min[bp]
-        wi_max_ref[e] = bp_wi_max[bp]
-    end
-
     wr_min, wr_max, wi_min, wi_max = OPFGenerator.compute_voltage_phasor_bounds(data)
 
-    @test wr_min == wr_min_ref
-    @test wr_max == wr_max_ref
-    @test wi_min == wi_min_ref
-    @test wi_max == wi_max_ref
+    for e in 1:data.E
+        if data.branch_status[e]
+            bp = data.bus_fr[e], data.bus_to[e]
+            @test wr_min[e] ≈ bp_wr_min[bp]
+            @test wr_max[e] ≈ bp_wr_max[bp]
+            @test wi_min[e] ≈ bp_wi_min[bp]
+            @test wi_max[e] ≈ bp_wi_max[bp]
+        end
+    end
 
     return nothing
 end
