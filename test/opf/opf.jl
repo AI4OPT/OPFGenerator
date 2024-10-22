@@ -8,15 +8,14 @@ function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::St
     @testset "Full data" begin test_opf_pm(OPF, network) end
 
     network_drop = deepcopy(network)
-    data_drop = OPFGenerator.OPFData(network_drop)
 
-    is_bridge = OPFGenerator.bridges(data_drop)
-    non_bridge = [e for (e, b) in enumerate(is_bridge) if !b]
-    drop_branch = first(non_bridge)
-    network_drop["branch"][drop_branch]["br_status"] = 0
+    is_bridge = OPFGenerator.bridges(OPFGenerator.OPFData(network_drop))
+    non_bridge = [network_drop["branch"]["$e"] for (e, b) in enumerate(is_bridge) if !b]
+    drop_branch = argmin(branch->branch["rate_a"], non_bridge)["index"]
+    network_drop["branch"]["$drop_branch"]["br_status"] = 0
 
     drop_gen = argmin(gen->gen[2]["pmax"], network_drop["gen"])[1]
-    network_drop["gen"][drop_gen]["gen_status"] = 0
+    network_drop["gen"]["$drop_gen"]["gen_status"] = 0
 
     if OPF == OPFGenerator.EconomicDispatch
         @test_throws ErrorException test_opf_pm(OPF, network_drop) # ED does not yet support branch status
