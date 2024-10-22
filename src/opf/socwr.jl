@@ -159,7 +159,7 @@ function build_opf(::Type{OPF}, data::OPFData, optimizer;
         sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
     )
 
-    return OPFModel{OPF}(network, model)
+    return OPFModel{OPF}(data, model)
 end
 
 function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
