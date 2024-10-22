@@ -168,6 +168,7 @@ end
 
 function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
     # TODO: remove when all formulations are done
     network = opf.data
@@ -176,36 +177,34 @@ function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOP
     N, E, G = data.N, data.E, data.G
 
     primal_solution = Dict{String,Any}(
-        "w" => zeros(Float64, N),
-        "wr" => zeros(Float64, E),
-        "wi" => zeros(Float64, E),
-        "pg" => zeros(Float64, G),
-        "qg" => zeros(Float64, G),
-        "pf" => zeros(Float64, E),
-        "qf" => zeros(Float64, E),
-        "pt" => zeros(Float64, E),
-        "qt" => zeros(Float64, E),
+        # bus
+        "w" => zeros(T, N),
+        # generator
+        "pg" => zeros(T, G),
+        "qg" => zeros(T, G),
+        # branch
+        "wr" => zeros(T, E),
+        "wi" => zeros(T, E),
+        "pf" => zeros(T, E),
+        "qf" => zeros(T, E),
+        "pt" => zeros(T, E),
+        "qt" => zeros(T, E),
     )
     if has_values(model)
-        for i in 1:N
-            primal_solution["w"][i] = value(model[:w][i])
-        end
+        # bus
+        primal_solution["w"] = value.(model[:w])
 
-        for g in 1:G if data.gen_status[g]
-                primal_solution["pg"][g] = value(model[:pg][g])
-                primal_solution["qg"][g] = value(model[:qg][g])
-            end
-        end
+        # generator
+        primal_solution["pg"] = value.(model[:pg])
+        primal_solution["qg"] = value.(model[:qg])
 
-        for e in 1:E if data.branch_status[e]
-                primal_solution["wr"][e] = value(model[:wr][e])
-                primal_solution["wi"][e] = value(model[:wi][e])
-                primal_solution["pf"][e] = value(model[:pf][e])
-                primal_solution["qf"][e] = value(model[:qf][e])
-                primal_solution["pt"][e] = value(model[:pt][e])
-                primal_solution["qt"][e] = value(model[:qt][e])
-            end
-        end
+        # branch
+        primal_solution["wr"] = value.(model[:wr])
+        primal_solution["wi"] = value.(model[:wi])
+        primal_solution["pf"] = value.(model[:pf])
+        primal_solution["qf"] = value.(model[:qf])
+        primal_solution["pt"] = value.(model[:pt])
+        primal_solution["qt"] = value.(model[:qt])
     end
 
     return primal_solution
