@@ -5,12 +5,9 @@ struct ACOPF <: AbstractFormulation end
 
 Build an ACOPF model.
 """
-function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
+function build_opf(::Type{ACOPF}, data::OPFData, optimizer;
     T=Float64,    
 )
-    # TODO: remove when all formulations are done
-    data = OPFData(network)
-    
     # Grab some data
     N, E, G = data.N, data.E, data.G
     vmin, vmax = data.vmin, data.vmax
@@ -146,16 +143,13 @@ function build_opf(::Type{ACOPF}, network::Dict{String,Any}, optimizer;
         sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
     )
 
-    # TODO: update to store OPFData when all formulations are done
-    return OPFModel{ACOPF}(network, model)
+    return OPFModel{ACOPF}(data, model)
 end
 
 function extract_primal(opf::OPFModel{ACOPF})
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     N, E, G = data.N, data.E, data.G
 
@@ -196,9 +190,7 @@ end
 function extract_dual(opf::OPFModel{ACOPF})
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     N, E, G = data.N, data.E, data.G
 

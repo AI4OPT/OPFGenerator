@@ -8,13 +8,13 @@ function Random.rand(::AbstractRNG, ::AbstractOPFSampler)
 end
 
 struct SimpleOPFSampler{LS,RS,SS}
-    data::Dict
+    data::OPFData
     load_sampler::LS
     reserve_sampler::RS
     status_sampler::SS
 end
 
-function SimpleOPFSampler(data::Dict, config::Dict)
+function SimpleOPFSampler(data::OPFData, config::Dict)
     data = deepcopy(data)
 
     # Instantiate load sampler
@@ -44,7 +44,7 @@ Sample one new OPF instance and modify `data` in-place.
 `data` must be a `Dict` in PowerModels format, representing the same network
     (i.e., same grid components with same indexing) as the one used to create `s`.
 """
-function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
+function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::OPFData)
     pd, qd = rand(rng, s.load_sampler)
     _set_loads!(data, pd, qd)
 
@@ -58,45 +58,34 @@ function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
 end
 
 function _set_loads!(data, pd, qd)
-    L = length(data["load"])
+    L = data.L
     length(pd) == L || throw(DimensionMismatch())
     length(qd) == L || throw(DimensionMismatch())
     
-    for i in 1:L
-        ldat = data["load"]["$i"]
-        ldat["pd"] = pd[i]
-        ldat["qd"] = qd[i]
-    end
+    data.pd .= pd
+    data.qd .= qd
 
     return nothing
 end
 
 function _set_reserve!(data, MRR, rmin, rmax)
-    G = length(data["gen"])
+    G = data.G
     length(rmin) == G || throw(DimensionMismatch())
     length(rmax) == G || throw(DimensionMismatch())
 
-    for i in 1:length(data["gen"])
-        gdat = data["gen"]["$i"]
-        gdat["rmin"] = rmin[i]
-        gdat["rmax"] = rmax[i]
-    end
-
-    data["minimum_reserve"] = MRR
+    data.rmin .= rmin
+    data.rmax .= rmax
+    data.minimum_reserve = MRR
 
     return nothing
 end
 
 function _set_status!(data, br_status, gen_status)
-    for i in 1:length(data["branch"])
-        bdat = data["branch"]["$i"]
-        bdat["br_status"] = br_status[i]
-    end
+    length(br_status) == data.E || throw(DimensionMismatch())
+    length(gen_status) == data.G || throw(DimensionMismatch())
 
-    for i in 1:length(data["gen"])
-        gdat = data["gen"]["$i"]
-        gdat["gen_status"] = gen_status[i]
-    end
+    data.branch_status .= br_status
+    data.gen_status .= gen_status
 
     return nothing
 end

@@ -19,32 +19,24 @@ If a generator is inactive:
 3. Construct the status vector to be all ones except for zero at the sampled generator.
 """
 struct Nminus1StatusSampler <: AbstractStatusSampler
-    data::Dict
+    E::Int
+    G::Int
+    non_bridges::Vector{Int}
 end
 
 function Random.rand(rng::AbstractRNG, rs::Nminus1StatusSampler)
     p = rand(rng)
 
-    E = length(rs.data["branch"])
-    G = length(rs.data["gen"])
-
-    br_status = ones(Int, E)
-    gen_status = ones(Int, G)
+    br_status = ones(Bool, rs.E)
+    gen_status = ones(Bool, rs.G)
 
     if p < 0.5
         # drop a branch 
-        is_bridge = bridges(rs.data)
-        non_bridge = [e for (e, b) in is_bridge if !b]
-        
-        e = rand(rng, non_bridge)
-        e_index = rs.data["branch"][e]["index"]
-
-        br_status[e_index] = 0
+        e = rand(rng, rs.non_bridges)
+        br_status[e] = 0
     else
         # drop a generator
-        G = length(rs.data["gen"])
-        g = rand(rng, 1:G)
-
+        g = rand(rng, 1:rs.G)
         gen_status[g] = 0
     end
 
@@ -53,24 +45,22 @@ end
 
 
 struct FullStatusSampler <: AbstractStatusSampler
-    data::Dict
+    E::Int
+    G::Int
 end
 
 function Random.rand(rng::AbstractRNG, rs::FullStatusSampler)
-    return ones(Int, length(rs.data["branch"])), ones(Int, length(rs.data["gen"]))
+    return ones(Bool, rs.E), ones(Bool, rs.G)
 end
 
-function StatusSampler(data::Dict, options::Dict)
-    get(data, "basic_network", false) || error(
-        """Invalid data: network data must be in basic format.
-        Call `make_basic_network(data)` before calling this function"""
-    )
-
+function StatusSampler(data::OPFData, options::Dict)
     status_type = lowercase(get(options, "type", ""))
     if status_type == "nminus1"
-        return Nminus1StatusSampler(data)
+        is_bridge = bridges(data)
+        non_bridges = [e for (e, b) in enumerate(is_bridge) if !b]
+        return Nminus1StatusSampler(data.E, data.G, non_bridges)
     elseif status_type == "full" || status_type == ""
-        return FullStatusSampler(data)
+        return FullStatusSampler(data.E, data.G)
     else
         error("Invalid status sampler type: $status_type. Only 'Nminus1' and 'Full' are supported.")
     end

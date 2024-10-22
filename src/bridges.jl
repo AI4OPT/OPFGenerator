@@ -11,23 +11,21 @@ A branch is a bridge if removing it renders the network disconnected.
 Returns a dictionary `res::Dict{String,Bool}` such that
     `res[br]` is true if branch `br` is a bridge, and `false` otherwise.
 """
-function bridges(data::Dict)
-    get(data, "basic_network", false) || error(
-        """Invalid data: network data must be in basic format.
-        Call `make_basic_network(data)` before calling this function"""
-    )
+function bridges(data::OPFData)
+    N, E = data.N, data.E
+    bus_fr, bus_to = data.bus_fr, data.bus_to
 
-    N::Int = length(data["bus"])
-    E::Int = length(data["branch"])
+    return bridges(N, E, bus_fr, bus_to)
+end
 
+function bridges(N::Int, E::Int, bus_fr::Vector{Int}, bus_to::Vector{Int})
     # Build the adjacency graph...
     G = Graph(N)
     # ... and record which branches have dupplicates
     D = Dict{Tuple{Int,Int},Vector{Int}}()
     for e in 1:E
-        br::Dict = data["branch"]["$e"]
-        i::Int = br["f_bus"]
-        j::Int = br["t_bus"]
+        i = bus_fr[e]
+        j = bus_to[e]
 
         # Ensure all edges are of the form i --> j with i ≤ j
         _i, _j = extrema((i, j))
@@ -52,5 +50,5 @@ function bridges(data::Dict)
             res[u] .= true
         end
     end
-    return Dict("$e" => res[e] for e in 1:E)
+    return res
 end
