@@ -163,7 +163,7 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
     )
 
     # TODO: update to store OPFData when all formulations are done
-    return OPFModel{SOCOPF}(network, model)
+    return OPFModel{OPF}(network, model)
 end
 
 function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
