@@ -64,7 +64,7 @@ function build_opf(::Type{DCOPF}, network::Dict{String,Any}, optimizer;
         - sum(branch_status[a] * pf[a] for a in bus_arcs_fr[i])
         - sum(branch_status[a] * pt[a] for a in bus_arcs_to[i])  # pt == -pf
         == 
-        pd[i] + gs[i]
+        sum(pd[l] for l in data.bus_loads[i]) + gs[i]
     )
 
     @constraint(model, 

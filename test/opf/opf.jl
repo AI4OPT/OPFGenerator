@@ -49,8 +49,6 @@ include("ed.jl")
 # other tests
 include("quad_obj.jl")
 
-const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
-
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         @testset "$(casename)" for casename in PGLIB_CASES
@@ -65,7 +63,6 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
     @testset _test_socwr_DualFeasibility()
 end
-
 
 @testset "OPFData" begin
     test_voltage_phasor_bounds_scalar()

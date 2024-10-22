@@ -128,15 +128,22 @@ function solve!(opf::OPFModel{EconomicDispatch})
     data = OPFData(network)
 
     # Grab some data
-    Ag, pd, E, smax = data.Ag, data.pd, data.E, data.smax
+    N, E, G, L = data.N, data.E, data.G, data.L
+    Ag, smax = data.Ag, data.smax
     tol = model.ext[:solve_metadata][:iterative_ptdf_tol]
 
     # Get bus-wise pg VariableRef
     pg_bus = Ag * model[:pg]
     
-    # Compute PTDF * pd
+    # Compute load-induced power flows
+    pd_nodal = zeros(N)
+    for (i, loads) in enumerate(data.bus_loads)
+        for l in loads
+            pd_nodal[i] += data.pd[l]
+        end
+    end
     ptdfb = zeros(E)
-    compute_flow!(ptdfb, pd, model.ext[:PTDF]) # ptdfb = PTDF * pd
+    compute_flow!(ptdfb, pd_nodal, model.ext[:PTDF]) # ptdfb = PTDF * pd
 
     # Initialize lazy pf buffer
     pf_ = zeros(E)
@@ -154,7 +161,8 @@ function solve!(opf::OPFModel{EconomicDispatch})
     st = nothing
 
     # Begin lazy PTDF loop
-    solve_time = @elapsed while !solved && niter < model.ext[:solve_metadata][:max_ptdf_iterations]
+    t0 = time()
+    while !solved && niter < model.ext[:solve_metadata][:max_ptdf_iterations]
         # Solve model
         optimize!(opf.model, _differentiation_backend = MathOptSymbolicAD.DefaultBackend())
         
@@ -164,7 +172,7 @@ function solve!(opf::OPFModel{EconomicDispatch})
 
         # Get pg and the corresponding pf_
         pg_ = value.(model[:pg])
-        p_ = Ag * pg_ - pd
+        p_ = Ag * pg_ - pd_nodal
         compute_flow!(pf_, p_, model.ext[:PTDF])
         
         # Check pf_ for violations
@@ -190,6 +198,7 @@ function solve!(opf::OPFModel{EconomicDispatch})
         solved = n_violated == 0
         niter += 1
     end
+    solve_time = time() - t0
 
     if niter == model.ext[:solve_metadata][:max_ptdf_iterations]
         model.ext[:termination_info] = Dict{Symbol,Any}(
@@ -231,7 +240,7 @@ function solve!(opf::OPFModel{EconomicDispatch})
     if has_values(model)
         # save the final pf based on pg
         pg_ = value.(model[:pg])
-        p_ = Ag * pg_ - pd
+        p_ = Ag * pg_ - pd_nodal
         compute_flow!(pf_, p_, model.ext[:PTDF])
         model.ext[:ptdf_pf] = pf_
     end

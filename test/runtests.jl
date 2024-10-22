@@ -30,6 +30,8 @@ const OPT_SOLVERS = Dict(
 )
 
 
+const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
+
 include("io.jl")
 include("bridges.jl")
 include("sampler.jl")
