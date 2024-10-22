@@ -14,6 +14,7 @@ using JuMP
 using Clarabel
 using Ipopt
 using Mosek, MosekTools
+using HiGHS
 
 using HSL_jll
 const LIB_COINHSL = HSL_jll.libhsl_path
@@ -27,6 +28,7 @@ const NAME2OPTIMIZER = Dict(
     "Clarabel" => Clarabel.Optimizer{Float64},
     "Ipopt" => Ipopt.Optimizer,
     "Mosek" => Mosek.Optimizer,
+    "HiGHS" => HiGHS.Optimizer,
 )
 
 # Helper function to use correct arithmetic
