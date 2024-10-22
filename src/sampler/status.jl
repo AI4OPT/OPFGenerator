@@ -27,8 +27,8 @@ end
 function Random.rand(rng::AbstractRNG, rs::Nminus1StatusSampler)
     p = rand(rng)
 
-    br_status = ones(Int, rs.E)
-    gen_status = ones(Int, rs.G)
+    br_status = ones(Bool, rs.E)
+    gen_status = ones(Bool, rs.G)
 
     if p < 0.5
         # drop a branch 
@@ -50,7 +50,7 @@ struct FullStatusSampler <: AbstractStatusSampler
 end
 
 function Random.rand(rng::AbstractRNG, rs::FullStatusSampler)
-    return ones(Int, rs.E), ones(Int, rs.G)
+    return ones(Bool, rs.E), ones(Bool, rs.G)
 end
 
 function StatusSampler(data::OPFData, options::Dict)

@@ -62,8 +62,8 @@ function _set_loads!(data, pd, qd)
     length(pd) == L || throw(DimensionMismatch())
     length(qd) == L || throw(DimensionMismatch())
     
-    data.pd = pd
-    data.qd = qd
+    data.pd .= pd
+    data.qd .= qd
 
     return nothing
 end
@@ -73,21 +73,19 @@ function _set_reserve!(data, MRR, rmin, rmax)
     length(rmin) == G || throw(DimensionMismatch())
     length(rmax) == G || throw(DimensionMismatch())
 
-    data.rmin = rmin
-    data.rmax = rmax
+    data.rmin .= rmin
+    data.rmax .= rmax
     data.minimum_reserve = MRR
 
     return nothing
 end
 
 function _set_status!(data, br_status, gen_status)
-    G = data.G
-    E = data.E
-    length(br_status) == E || throw(DimensionMismatch())
-    length(gen_status) == G || throw(DimensionMismatch())
+    length(br_status) == data.E || throw(DimensionMismatch())
+    length(gen_status) == data.G || throw(DimensionMismatch())
 
-    data.branch_status = br_status
-    data.gen_status = gen_status
+    data.branch_status .= br_status
+    data.gen_status .= gen_status
 
     return nothing
 end

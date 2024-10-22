@@ -166,12 +166,12 @@ function test_nminus1_sampler()
     data1 = rand(rng, opf_sampler)
 
     # generator 1 should be disabled
-    expected_gen_status = ones(Int, data.G)
+    expected_gen_status = ones(Bool, data.G)
     expected_gen_status[1] = 0
     @test data1.gen_status == expected_gen_status
 
     # all branches should be enabled
-    expected_br_status = ones(Int, data.E)
+    expected_br_status = ones(Bool, data.E)
     @test data1.branch_status == expected_br_status
 
     data2 = rand(StableRNG(42), opf_sampler)
@@ -187,7 +187,7 @@ function test_nminus1_sampler()
     @test all(data3.gen_status)
 
     # branch 8 should be disabled
-    expected_br_status = ones(Int, data.E)
+    expected_br_status = ones(Bool, data.E)
     expected_br_status[8] = 0
     @test data3.branch_status == expected_br_status
 
