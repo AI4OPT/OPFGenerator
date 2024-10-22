@@ -3,10 +3,6 @@ using SparseArrays
 
 abstract type AbstractFormulation end
 
-mutable struct OPFModel{OPF <: AbstractFormulation}
-    data::Dict{String,Any}
-    model::JuMP.GenericModel
-end
 
 mutable struct OPFData
     case::String
@@ -298,6 +294,12 @@ end
 # use == instead of === on fields. see julia#4648
 Base.:(==)(a::OPFData, b::OPFData) = all(getfield(a, field) == getfield(b, field) for field in fieldnames(OPFData))
 
+
+mutable struct OPFModel{OPF <: AbstractFormulation}
+    data::OPFData
+    model::JuMP.GenericModel
+end
+
 include("utils.jl")
 include("ptdf.jl")
 
@@ -324,6 +326,10 @@ const OPF2TYPE = Dict{String,Type{<:AbstractFormulation}}(
     "SOCOPFQuad" => SOCOPFQuad,
     "SOCOPF" => SOCOPF,
 )
+
+function build_opf(OPF::Type{<:AbstractFormulation}, network::Dict, optimizer; kwargs...)
+    return build_opf(OPF, OPFData(network), optimizer; kwargs...)
+end
 
 function solve!(opf::OPFModel{<:AbstractFormulation})
     optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())

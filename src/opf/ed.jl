@@ -7,7 +7,7 @@ const MAX_PTDF_ITERATIONS = 128
 const MAX_PTDF_PER_ITERATION = 8
 const ITERATIVE_PTDF_TOL = 1e-6
 
-function build_opf(::Type{EconomicDispatch}, network::Dict{String,Any}, optimizer;
+function build_opf(::Type{EconomicDispatch}, data::OPFData, optimizer;
     T=Float64,
     soft_thermal_limit::Bool=false,
     thermal_penalty=THERMAL_PENALTY,
@@ -15,9 +15,6 @@ function build_opf(::Type{EconomicDispatch}, network::Dict{String,Any}, optimize
     max_ptdf_iterations=MAX_PTDF_ITERATIONS,
     max_ptdf_per_iteration=MAX_PTDF_PER_ITERATION,
 )
-    # TODO: remove when all formulations are done
-    data = OPFData(network)
-
     thermal_penalty >= 0.0 || error("$OPF option transmission_penalty must be non-negative")
     max_ptdf_iterations > 0 || error("$OPF option max_ptdf_iterations must be a positive integer")
     max_ptdf_per_iteration > 0 || error("$OPF option max_ptdf_per_iteration must be a positive integer")
@@ -115,17 +112,14 @@ function build_opf(::Type{EconomicDispatch}, network::Dict{String,Any}, optimize
         + thermal_penalty * sum(δf)
     )
 
-    # TODO: update to store OPFData when all formulations are done
-    return OPFModel{EconomicDispatch}(network, model)
+    return OPFModel{EconomicDispatch}(data, model)
 end
 
 
 function solve!(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     # Grab some data
     N, E, G, L = data.N, data.E, data.G, data.L
@@ -251,9 +245,7 @@ end
 function extract_primal(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     E, G = data.E, data.G
 
@@ -284,9 +276,7 @@ end
 function extract_dual(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     E, G = data.E, data.G
 

@@ -6,12 +6,9 @@ struct SOCOPF <: AbstractFormulation end
 
 Build an SOCOPF model.
 """
-function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
+function build_opf(::Type{OPF}, data::OPFData, optimizer;
     T=Float64,    
 ) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
-    # TODO: remove when all formulations are done
-    data = OPFData(network)
-
     # Grab some data
     N, E, G = data.N, data.E, data.G
     vmin, vmax = data.vmin, data.vmax
@@ -162,16 +159,13 @@ function build_opf(::Type{OPF}, network::Dict{String,Any}, optimizer;
         sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
     )
 
-    # TODO: update to store OPFData when all formulations are done
-    return OPFModel{SOCOPF}(network, model)
+    return OPFModel{SOCOPF}(data, model)
 end
 
 function extract_primal(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     N, E, G = data.N, data.E, data.G
 
@@ -214,9 +208,7 @@ end
 function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     model = opf.model
 
-    # TODO: remove when all formulations are done
-    network = opf.data
-    data = OPFData(network)
+    data = opf.data
 
     N, E, G = data.N, data.E, data.G
 
