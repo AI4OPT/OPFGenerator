@@ -72,7 +72,7 @@ function extract_metadata(opf::OPFModel{<:AbstractFormulation})
         "dual_status" => string(dual_status(model)),
         "solve_time" => solve_time(model),
         "primal_objective_value" => if has_values(model) objective_value(model) else Inf end,
-        "dual_objective_value" => try if has_duals(model) dual_objective_value(model) else -Inf end catch; -Inf end,
+        "dual_objective_value" => if has_duals(model) dual_objective_value(model) else -Inf end,
     )
 end
 
