@@ -212,6 +212,7 @@ end
 
 function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}}
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
     # TODO: remove when all formulations are done
     network = opf.data
@@ -220,75 +221,101 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
     N, E, G = data.N, data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "w_lb"       => zeros(Float64, N),
-        "w_ub"       => zeros(Float64, N),
-        "kcl_p"      => zeros(Float64, N),
-        "kcl_q"      => zeros(Float64, N),
-        "pg_lb"      => zeros(Float64, G),
-        "pg_ub"      => zeros(Float64, G),
-        "qg_lb"      => zeros(Float64, G),
-        "qg_ub"      => zeros(Float64, G),
-        "wr_lb"      => zeros(Float64, E),
-        "wr_ub"      => zeros(Float64, E),
-        "wi_lb"      => zeros(Float64, E),
-        "wi_ub"      => zeros(Float64, E),
-        "ohm_pf"     => zeros(Float64, E),
-        "ohm_pt"     => zeros(Float64, E),
-        "ohm_qf"     => zeros(Float64, E),
-        "ohm_qt"     => zeros(Float64, E),
-        "va_diff_lb" => zeros(Float64, E),
-        "va_diff_ub" => zeros(Float64, E),
+        # bus
+        "kcl_p"      => zeros(T, N),
+        "kcl_q"      => zeros(T, N),
+        # generator
+        # N/A
+        # branch
+        "ohm_pf"     => zeros(T, E),
+        "ohm_pt"     => zeros(T, E),
+        "ohm_qf"     => zeros(T, E),
+        "ohm_qt"     => zeros(T, E),
+        "va_diff_lb" => zeros(T, E),
+        "va_diff_ub" => zeros(T, E),
+        # variables lower/upper bounds
+        # bus
+        "w_lb"       => zeros(T, N),
+        "w_ub"       => zeros(T, N),
+        # generator
+        "pg_lb"      => zeros(T, G),
+        "pg_ub"      => zeros(T, G),
+        "qg_lb"      => zeros(T, G),
+        "qg_ub"      => zeros(T, G),
+        # branch
+        "wr_lb"      => zeros(T, E),
+        "wr_ub"      => zeros(T, E),
+        "wi_lb"      => zeros(T, E),
+        "wi_ub"      => zeros(T, E),
+        "pf_lb"      => zeros(T, E),
+        "pf_ub"      => zeros(T, E),
+        "qf_lb"      => zeros(T, E),
+        "qf_ub"      => zeros(T, E),
+        "pt_lb"      => zeros(T, E),
+        "pt_ub"      => zeros(T, E),
+        "qt_lb"      => zeros(T, E),
+        "qt_ub"      => zeros(T, E),
     )
 
     if OPF == SOCOPFQuad
-        dual_solution["sm_fr"] = zeros(Float64, E)
-        dual_solution["sm_to"] = zeros(Float64, E)
-        dual_solution["jabr"] = zeros(Float64, E)
+        dual_solution["sm_fr"] = zeros(T, E)
+        dual_solution["sm_to"] = zeros(T, E)
+        dual_solution["jabr"] = zeros(T, E)
     elseif OPF == SOCOPF
-        dual_solution["sm_fr"] = zeros(Float64, E, 3)
-        dual_solution["sm_to"] = zeros(Float64, E, 3)
-        dual_solution["jabr"] = zeros(Float64, E, 4)
+        dual_solution["sm_fr"] = zeros(T, E, 3)
+        dual_solution["sm_to"] = zeros(T, E, 3)
+        dual_solution["jabr"] = zeros(T, E, 4)
     end
 
     if has_duals(model)
-        for i in 1:N
-            dual_solution["w_lb"][i] = dual(LowerBoundRef(model[:w][i]))
-            dual_solution["w_ub"][i] = dual(UpperBoundRef(model[:w][i]))
-            dual_solution["kcl_p"][i] = dual(model[:kcl_p][i])
-            dual_solution["kcl_q"][i] = dual(model[:kcl_q][i])
+        # Bus-level constraints
+        dual_solution["kcl_p"] = dual.(model[:kcl_p])
+        dual_solution["kcl_q"] = dual.(model[:kcl_q])
+
+        # Generator-level constraints
+        # N/A
+
+        # Branch-level constraints
+        dual_solution["ohm_pf"] = dual.(model[:ohm_pf])
+        dual_solution["ohm_pt"] = dual.(model[:ohm_pt])
+        dual_solution["ohm_qf"] = dual.(model[:ohm_qf])
+        dual_solution["ohm_qt"] = dual.(model[:ohm_qt])
+        dual_solution["va_diff_lb"] = dual.(model[:va_diff_lb])
+        dual_solution["va_diff_ub"] = dual.(model[:va_diff_ub])
+        dual_solution["sm_fr"] = dual.(model[:sm_fr])
+        dual_solution["sm_to"] = dual.(model[:sm_to])
+        dual_solution["jabr"] = dual.(model[:jabr])
+        
+        if OPF == SOCOPF
+            # For conic constraints, JuMP will return Vector{Vector{T}}
+            # reshape duals of conic constraints into matrix shape
+            dual_solution["sm_fr"] = mapreduce(permutedims, vcat, dual_solution["sm_fr"])
+            dual_solution["sm_to"] = mapreduce(permutedims, vcat, dual_solution["sm_to"])
+            dual_solution["jabr"]  = mapreduce(permutedims, vcat, dual_solution["jabr"])
         end
 
-        for g in 1:G if data.gen_status[g]
-                dual_solution["pg_lb"][g] = dual(LowerBoundRef(model[:pg][g]))
-                dual_solution["pg_ub"][g] = dual(UpperBoundRef(model[:pg][g]))
-                dual_solution["qg_lb"][g] = dual(LowerBoundRef(model[:qg][g]))
-                dual_solution["qg_ub"][g] = dual(UpperBoundRef(model[:qg][g]))
-            end
-        end
-
-        for e in 1:E if data.branch_status[e]
-                dual_solution["wr_lb"][e] = dual(LowerBoundRef(model[:wr][e]))
-                dual_solution["wr_ub"][e] = dual(UpperBoundRef(model[:wr][e]))
-                dual_solution["wi_lb"][e] = dual(LowerBoundRef(model[:wi][e]))
-                dual_solution["wi_ub"][e] = dual(UpperBoundRef(model[:wi][e]))
-                dual_solution["ohm_pf"][e] = dual(model[:ohm_pf][e])
-                dual_solution["ohm_pt"][e] = dual(model[:ohm_pt][e])
-                dual_solution["ohm_qf"][e] = dual(model[:ohm_qf][e])
-                dual_solution["ohm_qt"][e] = dual(model[:ohm_qt][e])
-                dual_solution["va_diff_lb"][e] = dual(model[:va_diff_lb][e])
-                dual_solution["va_diff_ub"][e] = dual(model[:va_diff_ub][e])
-
-                if OPF == SOCOPFQuad
-                    dual_solution["sm_fr"][e] = dual(model[:sm_fr][e])
-                    dual_solution["sm_to"][e] = dual(model[:sm_to][e])
-                    dual_solution["jabr"][e] = dual(model[:jabr][e])
-                elseif OPF == SOCOPF
-                    dual_solution["sm_fr"][e, :] .= dual(model[:sm_fr][e])
-                    dual_solution["sm_to"][e, :] .= dual(model[:sm_to][e])
-                    dual_solution["jabr"][e, :] .= dual(model[:jabr][e])
-                end
-            end
-        end
+        # Duals of variable lower/upper bounds
+        # bus
+        dual_solution["w_lb"] = dual.(LowerBoundRef.(model[:w]))
+        dual_solution["w_ub"] = dual.(UpperBoundRef.(model[:w]))
+        # generator
+        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
+        dual_solution["pg_ub"] = dual.(UpperBoundRef.(model[:pg]))
+        dual_solution["qg_lb"] = dual.(LowerBoundRef.(model[:qg]))
+        dual_solution["qg_ub"] = dual.(UpperBoundRef.(model[:qg]))
+        # branch
+        dual_solution["wr_lb"] = dual.(LowerBoundRef.(model[:wr]))
+        dual_solution["wr_ub"] = dual.(UpperBoundRef.(model[:wr]))
+        dual_solution["wi_lb"] = dual.(LowerBoundRef.(model[:wi]))
+        dual_solution["wi_ub"] = dual.(UpperBoundRef.(model[:wi]))
+        dual_solution["pf_lb"] = dual.(LowerBoundRef.(model[:pf]))
+        dual_solution["pf_ub"] = dual.(UpperBoundRef.(model[:pf]))
+        dual_solution["qf_lb"] = dual.(LowerBoundRef.(model[:qf]))
+        dual_solution["qf_ub"] = dual.(UpperBoundRef.(model[:qf]))
+        dual_solution["pt_lb"] = dual.(LowerBoundRef.(model[:pt]))
+        dual_solution["pt_ub"] = dual.(UpperBoundRef.(model[:pt]))
+        dual_solution["qt_lb"] = dual.(LowerBoundRef.(model[:qt]))
+        dual_solution["qt_ub"] = dual.(UpperBoundRef.(model[:qt]))
     end
 
     return dual_solution
