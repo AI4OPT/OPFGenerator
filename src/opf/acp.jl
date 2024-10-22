@@ -175,18 +175,18 @@ function extract_primal(opf::OPFModel{ACOPF})
     )
     if has_values(model)
         # bus
-        primal_solution["vm"] = value(model[:vm])
-        primal_solution["va"] = value(model[:va])
+        primal_solution["vm"] = value.(model[:vm])
+        primal_solution["va"] = value.(model[:va])
 
         # generator
-        primal_solution["pg"] = value(model[:pg])
-        primal_solution["qg"] = value(model[:qg])
+        primal_solution["pg"] = value.(model[:pg])
+        primal_solution["qg"] = value.(model[:qg])
 
         # branch
-        primal_solution["pf"] = value(model[:pf])
-        primal_solution["qf"] = value(model[:qf])
-        primal_solution["pt"] = value(model[:pt])
-        primal_solution["qt"] = value(model[:qt])
+        primal_solution["pf"] = value.(model[:pf])
+        primal_solution["qf"] = value.(model[:qf])
+        primal_solution["pt"] = value.(model[:pt])
+        primal_solution["qt"] = value.(model[:qt])
     end
 
     return primal_solution
