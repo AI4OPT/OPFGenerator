@@ -48,6 +48,10 @@ function main(config::Dict)
 
     rm(joinpath(export_dir, "res_h5"), recursive=true)
 
+    if "--no-split" in ARGS || get(slurm_config, "no_split", false)
+        return
+    end
+
     rng = MersenneTwister(42)
 
     feasible = nothing
