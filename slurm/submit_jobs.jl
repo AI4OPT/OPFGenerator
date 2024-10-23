@@ -43,7 +43,8 @@ mkpath(logs_dir)
 @info "Generating $S samples"
 B, r = divrem(S, J)
 B = B + (r > 0)
-for (j, seed_range) in enumerate(partition(1:S, B))
+jobs = partition(1:S, B)
+for (j, seed_range) in enumerate(jobs)
     # Update job files
     open(joinpath(jobs_dir, "jobs_$j.txt"), "w") do io
         for minibatch in partition(seed_range, b)
@@ -110,7 +111,7 @@ sampler_sbatch = Mustache.render(
         logs_dir=logs_dir,
         jobs_dir=jobs_dir,
         queue=queue,
-        J=J,
+        J=length(jobs),
         opfgenerator_dir=opfgenerator_dir,
         sampler_memory=sampler_memory,
         cpus_per_task=cpus_per_task,
