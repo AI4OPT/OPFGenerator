@@ -160,35 +160,36 @@ function test_nminus1_sampler()
         )
     )
 
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
 
     data1 = rand(rng, opf_sampler)
 
-    # generator 1 should be disabled
+    # all generators should be enabled
     expected_gen_status = ones(Bool, data.G)
-    expected_gen_status[1] = 0
     @test data1.gen_status == expected_gen_status
 
-    # all branches should be enabled
+    # branch 1 should be disabled
     expected_br_status = ones(Bool, data.E)
+    expected_br_status[1] = 0
     @test data1.branch_status == expected_br_status
 
-    data2 = rand(StableRNG(42), opf_sampler)
+    data2 = rand(MersenneTwister(42), opf_sampler)
     @test data2 == data1
 
     sampler_config["status"]["type"] = "error"
     @test_throws ErrorException SimpleOPFSampler(data, sampler_config)
 
-    rng2 = StableRNG(10)
+    rng2 = MersenneTwister(4)
     data3 = rand(rng2, opf_sampler)
     
-    # all generators should be enabled
-    @test all(data3.gen_status)
+    # generator 3 should be disabled
+    expected_gen_status = ones(Bool, data.G)
+    expected_gen_status[3] = 0
+    @test data3.gen_status == expected_gen_status
 
-    # branch 8 should be disabled
+    # all branches should be enabled
     expected_br_status = ones(Bool, data.E)
-    expected_br_status[8] = 0
     @test data3.branch_status == expected_br_status
 
     return nothing
