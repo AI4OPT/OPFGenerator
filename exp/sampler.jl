@@ -72,7 +72,7 @@ end
 
 function main(data, config)
     d = Dict{String,Any}()
-    d["meta"] = deepcopy(config)
+    d["config"] = deepcopy(config)
     
     # Keep track of input data
     d["data"] = data
