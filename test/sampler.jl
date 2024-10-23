@@ -376,7 +376,30 @@ function test_sampler_script()
 
     @test isdir(h5_dir)
 
-    @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
+    input_file_path = joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5")
+    @test isfile(input_file_path)
+    # Check that input data file is structured as expected
+    h5open(input_file_path, "r") do h5
+        @test haskey(h5, "data")
+
+        @test haskey(h5["data"], "pd")
+        @test size(h5["data"]["pd"]) == (11, 4)
+        @test eltype(h5["data"]["pd"]) == Float64
+        @test haskey(h5["data"], "qd")
+        @test size(h5["data"]["pd"]) == (11, 4)
+        @test eltype(h5["data"]["qd"]) == Float64
+
+        @test haskey(h5["data"], "branch_status")
+        @test size(h5["data"]["branch_status"]) == (20, 4)
+        @test eltype(h5["data"]["branch_status"]) == Bool
+        @test haskey(h5["data"], "gen_status")
+        @test size(h5["data"]["gen_status"]) == (5, 4)
+        @test eltype(h5["data"]["gen_status"]) == Bool
+
+        @test haskey(h5["data"], "reserve_requirement")
+        @test size(h5["data"]["reserve_requirement"]) == (4,)
+        @test eltype(h5["data"]["reserve_requirement"]) == Float64
+    end
 
     h5_paths = [
         joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
