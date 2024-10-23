@@ -44,7 +44,7 @@ mutable struct OPFData
     rmin::Vector{Float64}  # reserve lower bound
     rmax::Vector{Float64}  # reserve upper bound
 
-    minimum_reserve::Float64  # minimum reserve requirement
+    reserve_requirement::Float64  # minimum reserve requirement
 
     # Branch data
     bus_fr::Vector{Int}  # from bus
@@ -161,7 +161,7 @@ function OPFData(network::Dict{String,Any})
     Ag = sparse(Ag_i, Ag_j, Ag_v, N, G)
 
     # Minimum reserve requirement
-    minimum_reserve = get(network, "reserve_requirement", 0.0)
+    reserve_requirement = get(network, "reserve_requirement", 0.0)
 
     # Branch data
     bus_fr = zeros(Int, E)
@@ -264,7 +264,7 @@ function OPFData(network::Dict{String,Any})
         qgmin, qgmax,
         c0, c1, c2,
         gen_status,
-        rmin, rmax, minimum_reserve,
+        rmin, rmax, reserve_requirement,
         bus_fr, bus_to,
         branch_g, branch_b,
         gff, gft, gtf, gtt,

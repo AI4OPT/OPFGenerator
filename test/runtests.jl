@@ -1,6 +1,7 @@
 using Random
 using Test
 
+using HDF5
 using Quadmath
 using StableRNGs
 

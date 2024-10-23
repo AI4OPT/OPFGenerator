@@ -31,7 +31,7 @@ function build_opf(::Type{EconomicDispatch}, data::OPFData, optimizer;
     PD = sum(data.pd) # total demand
 
     # reserves data
-    MRR = data.minimum_reserve
+    MRR = data.reserve_requirement
     rmin = data.rmin
     rmax = data.rmax
 

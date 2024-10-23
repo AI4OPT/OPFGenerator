@@ -114,8 +114,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
     D["input"] = Dict{String,Any}(
         "meta" => Dict{String,Any}("seed" => Int[]),
         "data" => Dict{String,Any}(
+            "reserve_requirement" => Float64[],
+            # Demand data
             "pd" => Vector{Float64}[],
             "qd" => Vector{Float64}[],
+            # Generator reserves min/max levels
+            "rmin" => Vector{Float64}[],
+            "rmax" => Vector{Float64}[],
+            # Component status
             "branch_status" => Vector{Bool}[],
             "gen_status" => Vector{Bool}[],
         )
@@ -140,6 +146,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
         push!(D["input"]["meta"]["seed"], s)
         push!(D["input"]["data"]["pd"], data_.pd)
         push!(D["input"]["data"]["qd"], data_.qd)
+        push!(D["input"]["data"]["rmin"], data_.rmin)
+        push!(D["input"]["data"]["rmax"], data_.rmax)
+        push!(D["input"]["data"]["reserve_requirement"], data_.reserve_requirement)
         push!(D["input"]["data"]["branch_status"], data_.branch_status)
         push!(D["input"]["data"]["gen_status"], data_.gen_status)
 
