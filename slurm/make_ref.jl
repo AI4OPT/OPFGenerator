@@ -8,29 +8,14 @@ using OPFGenerator
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 casename = config["ref"]
-export_dir = config["export_dir"]
+export_dir = pop!(config, "export_dir")
+pop!(config, "slurm")
 
-data = make_basic_network(pglib(casename))
+data = OPFGenerator.OPFData(make_basic_network(pglib(casename)))
 
 include("../exp/sampler.jl")
 
-d = Dict{String,Any}()
-d["data"] = data
-d["meta"] = config
-# d["meta"]["seed"] = "ref"
+d = main(data, config)
 
-opf_models = build_models(data, config)
-
-# Solve all OPF formulations
-ttrial = @elapsed for dataset_name in keys(opf_models)
-    opf = opf_models[dataset_name][1]
-
-    OPFGenerator.solve!(opf)
-
-    res = OPFGenerator.extract_result(opf)
-
-    d[dataset_name] = res
-    d[dataset_name]["time_build"] = opf_models[dataset_name][2]
-end
-
-OPFGenerator.save_json("$(export_dir)/$(casename).ref.json", d)
+mkpath(export_dir)
+OPFGenerator.save_json("$(export_dir)/case.json", d)
