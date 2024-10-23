@@ -244,30 +244,27 @@ end
 
 function extract_primal(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
     data = opf.data
 
     E, G = data.E, data.G
 
     primal_solution = Dict{String,Any}(
-        "pg" => zeros(Float64, G),
-        "pf" => zeros(Float64, E),
-        "δf" => zeros(Float64, E),
-        "r"  => zeros(Float64, G),
+        "pg" => zeros(T, G),
+        "pf" => zeros(T, E),
+        "δf" => zeros(T, E),
+        "r"  => zeros(T, G),
     )
 
     if has_values(model)
-        for g in 1:G
-            data.gen_status[g] || continue
-            primal_solution["pg"][g] = value(model[:pg][g])
-            primal_solution["r"][g] = value(model[:r][g])
-        end
+        # generator
+        primal_solution["pg"] = value.(model[:pg])
+        primal_solution["r"]  = value.(model[:r])
 
-        for e in 1:E 
-            data.branch_status[e] || continue
-            primal_solution["pf"][e] = value(model.ext[:ptdf_pf][e])
-            primal_solution["δf"][e] = value(model[:δf][e])
-        end
+        # branch
+        primal_solution["pf"] = value.(model.ext[:ptdf_pf])
+        primal_solution["δf"] = value.(model[:δf])
     end
 
     return primal_solution
@@ -275,47 +272,50 @@ end
 
 function extract_dual(opf::OPFModel{EconomicDispatch}) 
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
     data = opf.data
 
     E, G = data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "pg_lb"               => zeros(Float64, G),
-        "pg_ub"               => zeros(Float64, G),
-        "r_lb"                => zeros(Float64, G),
-        "r_ub"                => zeros(Float64, G),
-        "pf_lb"               => zeros(Float64, E),
-        "pf_ub"               => zeros(Float64, E),
-        "δf_lb"               => zeros(Float64, E),
-        "ptdf_flow"           => zeros(Float64, E),
+        # global
+        # generator
+        # branch
+        "ptdf_flow" => zeros(T, E),
+        # Variable lower/upper bound
+        "pg_lb"     => zeros(T, G),
+        "pg_ub"     => zeros(T, G),
+        "r_lb"      => zeros(T, G),
+        "r_ub"      => zeros(T, G),
+        "pf_lb"     => zeros(T, E),
+        "pf_ub"     => zeros(T, E),
+        "δf_lb"     => zeros(T, E),
     )
 
 
     if has_duals(model)
-        for g in 1:G 
-            data.gen_status[g] || continue
-            
-            dual_solution["pg_lb"][g] = dual(LowerBoundRef(model[:pg][g]))
-            dual_solution["pg_ub"][g] = dual(model[:gen_max_output][g])
-
-            dual_solution["r_lb"][g] = dual(LowerBoundRef(model[:r][g]))
-            dual_solution["r_ub"][g] = dual(UpperBoundRef(model[:r][g]))
-        end
-
-        for e in 1:E 
-            data.branch_status[e] || continue
-            dual_solution["pf_lb"][e] = dual(model[:pf_lower_bound][e])
-            dual_solution["pf_ub"][e] = dual(model[:pf_upper_bound][e])
-            dual_solution["δf_lb"][e] = dual(LowerBoundRef(model[:δf][e]))
-
-            if isassigned(model[:ptdf_flow], e)
-                dual_solution["ptdf_flow"][e] = dual(model[:ptdf_flow][e])
-            end
-        end
-
+        # global
         dual_solution["power_balance"] = dual(model[:global_power_balance])
         dual_solution["reserve_requirement"] = dual(model[:global_reserve_requirement])
+
+        # branch
+        dual_solution["ptdf_flow"] = [
+            # if a constraint wasn't added to the model, its dual is zero
+            isassigned(model[:ptdf_flow], e) ? dual(model[:ptdf_flow][e]) : zero(T)
+            for e in 1:E
+        ]
+
+        # Variable lower/upper bound
+        # generator
+        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
+        dual_solution["pg_ub"] = dual.(model[:gen_max_output])
+        dual_solution["r_lb"] = dual.(LowerBoundRef.(model[:r]))
+        dual_solution["r_ub"] = dual.(UpperBoundRef.(model[:r]))
+        # branch
+        dual_solution["pf_lb"] = dual.(model[:pf_lower_bound])
+        dual_solution["pf_ub"] = dual.(model[:pf_upper_bound])
+        dual_solution["δf_lb"] = dual.(LowerBoundRef.(model[:δf]))
     end
 
     return dual_solution

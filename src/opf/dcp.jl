@@ -91,30 +91,27 @@ end
 
 function extract_primal(opf::OPFModel{DCOPF})
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
     data = opf.data
 
     N, E, G = data.N, data.E, data.G
 
     primal_solution = Dict{String,Any}(
-        "va" => zeros(Float64, N),
-        "pg" => zeros(Float64, G),
-        "pf" => zeros(Float64, E),
+        # bus
+        "va" => zeros(T, N),
+        # generator
+        "pg" => zeros(T, G),
+        # branch
+        "pf" => zeros(T, E),
     )
     if has_values(model)
-        for i in 1:N
-            primal_solution["va"][i] = value(model[:va][i])
-        end
-
-        for g in 1:G if data.gen_status[g]
-                primal_solution["pg"][g] = value(model[:pg][g])
-            end
-        end
-
-        for e in 1:E if data.branch_status[e]
-                primal_solution["pf"][e] = value(model[:pf][e])
-            end
-        end
+        # bus
+        primal_solution["va"] = value.(model[:va])
+        # generator
+        primal_solution["pg"] = value.(model[:pg])
+        # branch
+        primal_solution["pf"] = value.(model[:pf])
     end
 
     return primal_solution
@@ -122,41 +119,54 @@ end
 
 function extract_dual(opf::OPFModel{DCOPF})
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
     data = opf.data
 
     N, E, G = data.N, data.E, data.G
 
     dual_solution = Dict{String,Any}(
-        "kcl_p"     => zeros(Float64, N),
-        "pg_lb"     => zeros(Float64, G),
-        "pg_ub"     => zeros(Float64, G),
-        "pf_lb"     => zeros(Float64, E),
-        "pf_ub"     => zeros(Float64, E),
-        "ohm_pf"    => zeros(Float64, E),
-        "va_diff"   => zeros(Float64, E),
-        "slack_bus" => 0.0,
+        # global
+        "slack_bus" => zero(T),
+        # bus
+        "kcl_p"     => zeros(T, N),
+        # generator
+        # N/A
+        # branch
+        "ohm_pf"    => zeros(T, E),
+        "va_diff"   => zeros(T, E),
+        # Variable lower/upper bound
+        # bus
+        # N/A
+        # generator
+        "pg_lb"     => zeros(T, G),
+        "pg_ub"     => zeros(T, G),
+        # branch
+        "pf_lb"     => zeros(T, E),
+        "pf_ub"     => zeros(T, E),
     )
     if has_duals(model)
-        for i in 1:N
-            dual_solution["kcl_p"][i] = dual(model[:kcl_p][i])
-        end
-
-        for g in 1:G if data.gen_status[g]
-                dual_solution["pg_lb"][g] = dual(LowerBoundRef(model[:pg][g]))
-                dual_solution["pg_ub"][g] = dual(UpperBoundRef(model[:pg][g]))
-            end
-        end
-
-        for e in 1:E if data.branch_status[e]
-                dual_solution["pf_lb"][e] = dual(LowerBoundRef(model[:pf][e]))
-                dual_solution["pf_ub"][e] = dual(UpperBoundRef(model[:pf][e]))
-                dual_solution["ohm_pf"][e] = dual(model[:ohm_pf][e])
-                dual_solution["va_diff"][e] = dual(model[:va_diff][e])
-            end
-        end
-
         dual_solution["slack_bus"] = dual(model[:slack_bus])
+
+        # Bus-level constraints
+        dual_solution["kcl_p"] = dual.(model[:kcl_p])
+
+        # Generator-level constraints
+        # N/A
+
+        # Branch-level constraints
+        dual_solution["ohm_pf"] = dual.(model[:ohm_pf])
+        dual_solution["va_diff"] = dual.(model[:va_diff])
+
+        # Duals of variable lower/upper bounds
+        # bus
+        # N/A
+        # generator
+        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
+        dual_solution["pg_ub"] = dual.(UpperBoundRef.(model[:pg]))
+        # branch
+        dual_solution["pf_lb"] = dual.(LowerBoundRef.(model[:pf]))
+        dual_solution["pf_ub"] = dual.(UpperBoundRef.(model[:pf]))
     end
 
     return dual_solution
