@@ -205,7 +205,7 @@ function _test_ieee14_LogNormal_s42(data)
         v = getfield(data, k)
         if k ∉ [
             :pd, :qd,
-            :rmin, :rmax, :minimum_reserve,
+            :rmin, :rmax, :reserve_requirement,
             :branch_status, :gen_status
         ]
             @test v0 == v
@@ -250,7 +250,7 @@ function _test_ieee14_LogNormal_s42(data)
     @test data.pd ≈ _pd
     @test data.qd ≈ _qd
 
-    @test data.minimum_reserve == 0.0
+    @test data.reserve_requirement == 0.0
     @test data.rmin == zeros(length(data.rmin))
     @test data.rmax == zeros(length(data.rmax))
 

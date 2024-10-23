@@ -75,7 +75,7 @@ function _set_reserve!(data, MRR, rmin, rmax)
 
     data.rmin .= rmin
     data.rmax .= rmax
-    data.minimum_reserve = MRR
+    data.reserve_requirement = MRR
 
     return nothing
 end

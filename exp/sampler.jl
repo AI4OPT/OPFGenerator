@@ -148,7 +148,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         push!(D["input"]["data"]["qd"], data_.qd)
         push!(D["input"]["data"]["rmin"], data_.rmin)
         push!(D["input"]["data"]["rmax"], data_.rmax)
-        push!(D["input"]["data"]["reserve_requirement"], data_.minimum_reserve)
+        push!(D["input"]["data"]["reserve_requirement"], data_.reserve_requirement)
         push!(D["input"]["data"]["branch_status"], data_.branch_status)
         push!(D["input"]["data"]["gen_status"], data_.gen_status)
 
