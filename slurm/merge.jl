@@ -64,9 +64,9 @@ function main(config::Dict)
                 n_samples = length(read(f["termination_status"]))
                 feasible = trues(n_samples)
             end
-            feasible .&= (String.(read(f["termination_status"])) .== "OPTIMAL") .| (String.(read(f["termination_status"])) .== "LOCALLY_SOLVED")
-            feasible .&= (String.(read(f["primal_status"])) .== "FEASIBLE_POINT")
-            feasible .&= (String.(read(f["dual_status"])) .== "FEASIBLE_POINT")
+            feasible .&= (read(f["termination_status"]) .== "OPTIMAL") .| (read(f["termination_status"]) .== "LOCALLY_SOLVED")
+            feasible .&= (read(f["primal_status"]) .== "FEASIBLE_POINT")
+            feasible .&= (read(f["dual_status"]) .== "FEASIBLE_POINT")
         end
     end
 
