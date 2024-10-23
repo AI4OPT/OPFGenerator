@@ -12,7 +12,7 @@ function main(config::Dict)
     casename = config["ref"]
     all_h5_files = filter(endswith(".h5"), readdir(joinpath(export_dir, "res_h5"), join=true))
 
-    pop!(config, "slurm")
+    slurm_config = pop!(config, "slurm")
     config_str = JSON.json(config)
 
     # Process each dataset
@@ -74,7 +74,7 @@ function main(config::Dict)
 
     shuffle!(rng, feasible_idx)
 
-    n_train = Int(floor(0.8 * n_feasible))
+    n_train = Int(floor(get(slurm_config, "train_ratio", 0.8) * n_feasible))
     train_idx = sort(feasible_idx[1:n_train])
     test_idx = sort(feasible_idx[n_train+1:end])
 
