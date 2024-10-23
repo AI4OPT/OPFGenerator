@@ -399,6 +399,12 @@ function test_sampler_script()
         @test haskey(h5["data"], "reserve_requirement")
         @test size(h5["data"]["reserve_requirement"]) == (4,)
         @test eltype(h5["data"]["reserve_requirement"]) == Float64
+        @test haskey(h5["data"], "rmin")
+        @test size(h5["data"]["rmin"]) == (5,4)
+        @test eltype(h5["data"]["rmin"]) == Float64
+        @test haskey(h5["data"], "rmax")
+        @test size(h5["data"]["rmax"]) == (5,4)
+        @test eltype(h5["data"]["rmax"]) == Float64
     end
 
     h5_paths = [
