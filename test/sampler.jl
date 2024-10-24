@@ -130,14 +130,14 @@ function test_sampler()
     )
     
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
-    data1 = rand(StableRNG(42), opf_sampler)
+    data1 = rand(MersenneTwister(42), opf_sampler)
 
     # No side-effect checks
     @test data == _data   # initial data should not have been modified
     @test data !== data1  # new data should be a different dictionary
 
     # Same RNG and seed should give the same data
-    data2 = rand(StableRNG(42), opf_sampler)
+    data2 = rand(MersenneTwisterwister(42), opf_sampler)
     @test data2 == data1
 
     return nothing
@@ -159,7 +159,7 @@ function test_nminus1_sampler()
 
     opf_sampler = SimpleOPFSampler(data, sampler_config)
 
-    data1 = rand(StableRNG(42), opf_sampler)
+    data1 = rand(MersenneTwister(42), opf_sampler)
 
     # Exactly one generator or branch should be disabled
     G, E = data.G, data.E
@@ -167,7 +167,7 @@ function test_nminus1_sampler()
     @test sum(data1.gen_status) + sum(data1.branch_status) == (G + E - 1)  # N-1
 
     # Same RNG and seed should give the same data
-    data2 = rand(StableRNG(42), opf_sampler)
+    data2 = rand(MersenneTwister(42), opf_sampler)
     @test data2 == data1
 
     # Unsupporting config should error
@@ -188,7 +188,7 @@ function test_inplace_sampler()
         )
     )
 
-    rng = StableRNG(42)
+    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     rand!(rng, opf_sampler, data)
 
