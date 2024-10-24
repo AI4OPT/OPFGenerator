@@ -89,6 +89,8 @@ function main(config::Dict)
     mkpath(joinpath(export_dir, "test"))
     mkpath(joinpath(export_dir, "infeasible"))
 
+    compression_level = get(slurm_config, "compression_level", 9)
+
     for opf in OPFs
         for file in ["primal", "dual", "meta"]
             h5open(joinpath(export_dir, opf, "$file.h5"), "r") do f
@@ -97,7 +99,7 @@ function main(config::Dict)
                     h5open(joinpath(export_dir, split, opf, "$file.h5"), "w") do g
                         for k in keys(f)
                             val = read(f[k])
-                            g[k] = if k != "config" collect(selectdim(val, ndims(val), idx)) else val end
+                            g[k, compress=compression_level] = if k != "config" collect(selectdim(val, ndims(val), idx)) else val end
                         end
                     end
                 end
@@ -113,13 +115,13 @@ function main(config::Dict)
                 create_group(g, "data")
                 for k in keys(f["data"])
                     val = read(f["data"][k])
-                    g["data"][k] = collect(selectdim(val, ndims(val), idx))
+                    g["data"][k, compress=compression_level] = collect(selectdim(val, ndims(val), idx))
                 end
 
                 create_group(g, "meta")
                 for k in keys(f["meta"])
                     val = read(f["meta"][k])
-                    g["meta"][k] = if k != "config" collect(selectdim(val, ndims(val), idx)) else val end
+                    g["meta"][k, compress=compression_level] = if k != "config" collect(selectdim(val, ndims(val), idx)) else val end
                 end
             end
         end

@@ -18,4 +18,4 @@ include("../exp/sampler.jl")
 d = main(data, config)
 
 mkpath(export_dir)
-OPFGenerator.save_json("$(export_dir)/case.json", d)
+OPFGenerator.save_json("$(export_dir)/case.json.gz", d)
