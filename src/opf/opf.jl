@@ -3,12 +3,8 @@ using SparseArrays
 
 abstract type AbstractFormulation end
 
-mutable struct OPFModel{OPF <: AbstractFormulation}
-    data::Dict{String,Any}
-    model::JuMP.GenericModel
-end
 
-struct OPFData
+mutable struct OPFData
     case::String
     base_mva::Float64
 
@@ -26,12 +22,15 @@ struct OPFData
     vmax::Vector{Float64}
     gs::Vector{Float64}  # shunt
     bs::Vector{Float64}  # shunt
-    pd::Vector{Float64}  # nodal active power load
-    qd::Vector{Float64}  # nodal reactive power load
     bus_arcs_fr::Vector{Vector{Int}}  # indices of branches exiting the bus
     bus_arcs_to::Vector{Vector{Int}}  # indices of branches entering the bus
     bus_gens::Vector{Vector{Int}}  # indices of generators at the bus
+    bus_loads::Vector{Vector{Int}}
     ref_bus::Int  # index of slack bus
+
+    # Load data
+    pd::Vector{Float64}  # active power demand
+    qd::Vector{Float64}  # reactive power demand
 
     # Generator data
     pgmin::Vector{Float64}
@@ -42,6 +41,10 @@ struct OPFData
     c1::Vector{Float64}  # linear cost
     c2::Vector{Float64}  # quadratic cost
     gen_status::Vector{Bool}  # generator status
+    rmin::Vector{Float64}  # reserve lower bound
+    rmax::Vector{Float64}  # reserve upper bound
+
+    reserve_requirement::Float64  # minimum reserve requirement
 
     # Branch data
     bus_fr::Vector{Int}  # from bus
@@ -93,20 +96,23 @@ function OPFData(network::Dict{String,Any})
         bs[i] += shunt["bs"]
     end
 
-    # Aggregate loads at the bus level
-    pd = zeros(Float64, N)
-    qd = zeros(Float64, N)
-    for (_, load) in network["load"]
-        load["status"] == 1 || continue  # skip inactive loads
-        i = load["load_bus"]
-        pd[i] += load["pd"]
-        qd[i] += load["qd"]
-    end
-
     # Reference bus
     ref_buses = [i for i in 1:N if network["bus"]["$i"]["bus_type"] == 3]
     @assert length(ref_buses) == 1 "There must be exactly one reference bus"
     ref_bus = ref_buses[1]
+
+    # Load data
+    pd = zeros(Float64, L)
+    qd = zeros(Float64, L)
+    bus_loads = [Int[] for _ in 1:N]
+    for l in 1:L
+        load = network["load"]["$l"]
+        i = load["load_bus"]
+        push!(bus_loads[i], l)
+        pd[l] = (load["status"] == 1) * load["pd"]
+        qd[l] = (load["status"] == 1) * load["qd"]
+    end
+    sort!.(bus_loads)
 
     # Generator data
     pgmin = zeros(Float64, G)
@@ -121,6 +127,8 @@ function OPFData(network::Dict{String,Any})
     Ag_i = zeros(Int, G)
     Ag_j = zeros(Int, G)
     Ag_v = zeros(Float64, G)
+    rmin = zeros(Float64, G)
+    rmax = zeros(Float64, G)
     for g in 1:G
         gen = network["gen"]["$g"]
 
@@ -136,17 +144,24 @@ function OPFData(network::Dict{String,Any})
         c1[g] = gen["cost"][2]
         c2[g] = gen["cost"][1]
 
-        gen_status[g] = gen["gen_status"] == 1
+        gen_status[g] = (gen["gen_status"] == 1)
 
         # Generator incidence matrix
-        Ag_i[g] = network["gen"]["$g"]["gen_bus"]
+        Ag_i[g] = gen["gen_bus"]
         Ag_j[g] = g
-        Ag_v[g] = network["gen"]["$g"]["gen_status"]
+        Ag_v[g] = gen["gen_status"]
+
+        # Reserve bounds
+        rmin[g] = get(gen, "rmin", 0.0)
+        rmax[g] = get(gen, "rmax", 0.0)
     end
     # sort everything again
     sort!.(bus_gens)
 
     Ag = sparse(Ag_i, Ag_j, Ag_v, N, G)
+
+    # Minimum reserve requirement
+    reserve_requirement = get(network, "reserve_requirement", 0.0)
 
     # Branch data
     bus_fr = zeros(Int, E)
@@ -242,12 +257,14 @@ function OPFData(network::Dict{String,Any})
     return OPFData(
         network["name"], network["baseMVA"],
         N, E, G, L, A, Ag,
-        vnom, vmin, vmax, gs, bs, pd, qd,
-        bus_arcs_fr, bus_arcs_to, bus_gens, ref_bus,
+        vnom, vmin, vmax, gs, bs,
+        bus_arcs_fr, bus_arcs_to, bus_gens, bus_loads, ref_bus,
+        pd, qd,
         pgmin, pgmax,
         qgmin, qgmax,
         c0, c1, c2,
         gen_status,
+        rmin, rmax, reserve_requirement,
         bus_fr, bus_to,
         branch_g, branch_b,
         gff, gft, gtf, gtt,
@@ -272,6 +289,15 @@ function to_dict(data::OPFData)
         end
     end
     return d
+end
+
+# use == instead of === on fields. see julia#4648
+Base.:(==)(a::OPFData, b::OPFData) = all(getfield(a, field) == getfield(b, field) for field in fieldnames(OPFData))
+
+
+mutable struct OPFModel{OPF <: AbstractFormulation}
+    data::OPFData
+    model::JuMP.GenericModel
 end
 
 include("utils.jl")
@@ -300,6 +326,10 @@ const OPF2TYPE = Dict{String,Type{<:AbstractFormulation}}(
     "SOCOPFQuad" => SOCOPFQuad,
     "SOCOPF" => SOCOPF,
 )
+
+function build_opf(OPF::Type{<:AbstractFormulation}, network::Dict, optimizer; kwargs...)
+    return build_opf(OPF, OPFData(network), optimizer; kwargs...)
+end
 
 function solve!(opf::OPFModel{<:AbstractFormulation})
     optimize!(opf.model; _differentiation_backend = MathOptSymbolicAD.DefaultBackend())

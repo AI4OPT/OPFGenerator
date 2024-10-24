@@ -19,16 +19,16 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{OPFGenerator.S
     res = OPFGenerator.extract_result(opf)
 
     # Check that the right problem was indeed solved
-    @test res["opf_model"] == string(OPF)
-    @test res["termination_status"] ∈ [LOCALLY_SOLVED, OPTIMAL]
-    @test res["primal_status"] == FEASIBLE_POINT
-    @test res["dual_status"] == FEASIBLE_POINT
+    @test res["meta"]["formulation"] == string(OPF)
+    @test res["meta"]["termination_status"] ∈ ["LOCALLY_SOLVED", "OPTIMAL"]
+    @test res["meta"]["primal_status"] == "FEASIBLE_POINT"
+    @test res["meta"]["dual_status"] == "FEASIBLE_POINT"
     # ⚠ we do not check against PowerModels' objective value, 
     #   because our SOC formulation is not equivalent
     # Check that primal/dual objectives are matching only for conic form
     #   (Ipopt is not good with dual objective value)
     if OPF == OPFGenerator.SOCOPF
-        @test isapprox(res["objective"], res["objective_lb"], rtol=1e-6)
+        @test isapprox(res["meta"]["primal_objective_value"], res["meta"]["dual_objective_value"], rtol=1e-6)
     end
 
     # Force PM solution into our model, and check that the solution is feasible
@@ -38,8 +38,12 @@ function test_opf_pm(::Type{OPF}, data::Dict) where {OPF <: Union{OPFGenerator.S
     #   so the PowerModels primal solution should be feasible
     sol_pm = res_pm["solution"]
     var2val_pm = Dict(
-        :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
-        :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
+        :pg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "pg", 0) for g in 1:G
+        ],
+        :qg => Float64[
+            get(get(sol_pm["gen"], "$g", Dict()), "qg", 0) for g in 1:G
+        ],
         :w  => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N],
     )
     model = opf.model
@@ -126,31 +130,31 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     end
 
     # Check dual feasibility for select buses and constraints
-    λp  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_active"] for i in 1:N]
-    λq  = [res["solution"]["bus"]["$i"]["lam_kirchhoff_reactive"] for i in 1:N]
-    λpf = [res["solution"]["branch"]["$e"]["lam_ohm_active_fr"] for e in 1:E]
-    λqf = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_fr"] for e in 1:E]
-    λpt = [res["solution"]["branch"]["$e"]["lam_ohm_active_to"] for e in 1:E]
-    λqt = [res["solution"]["branch"]["$e"]["lam_ohm_reactive_to"] for e in 1:E]
+    λp  = [res["dual"]["kcl_p"][i] for i in 1:N]
+    λq  = [res["dual"]["kcl_q"][i] for i in 1:N]
+    λpf = [res["dual"]["ohm_pf"][e] for e in 1:E]
+    λqf = [res["dual"]["ohm_qf"][e] for e in 1:E]
+    λpt = [res["dual"]["ohm_pt"][e] for e in 1:E]
+    λqt = [res["dual"]["ohm_qt"][e] for e in 1:E]
 
-    ωf = [res["solution"]["branch"]["$e"]["nu_jabr"][1] for e in 1:E]
-    ωt = [res["solution"]["branch"]["$e"]["nu_jabr"][2] for e in 1:E]
-    ωr = [res["solution"]["branch"]["$e"]["nu_jabr"][3] for e in 1:E]
-    ωi = [res["solution"]["branch"]["$e"]["nu_jabr"][4] for e in 1:E]
+    ωf = [res["dual"]["jabr"][e, 1] for e in 1:E]
+    ωt = [res["dual"]["jabr"][e, 2] for e in 1:E]
+    ωr = [res["dual"]["jabr"][e, 3] for e in 1:E]
+    ωi = [res["dual"]["jabr"][e, 4] for e in 1:E]
 
-    μθ_lb = [res["solution"]["branch"]["$e"]["mu_va_diff_lb"] for e in 1:E]
-    μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
+    μθ_lb = [res["dual"]["va_diff_lb"][e] for e in 1:E]
+    μθ_ub = [-res["dual"]["va_diff_ub"][e] for e in 1:E]
 
     μ_w = [
-        res["solution"]["bus"]["$i"]["mu_w_lb"] + res["solution"]["bus"]["$i"]["mu_w_ub"]
+        res["dual"]["w_lb"][i] + res["dual"]["w_ub"][i]
         for i in 1:N
     ]
     μ_wr = [
-        res["solution"]["branch"]["$e"]["mu_wr_lb"] + res["solution"]["branch"]["$e"]["mu_wr_ub"]
+        res["dual"]["wr_lb"][e] + res["dual"]["wr_ub"][e]
         for e in 1:E
     ]
     μ_wi = [
-        res["solution"]["branch"]["$e"]["mu_wi_lb"] + res["solution"]["branch"]["$e"]["mu_wi_ub"]
+        res["dual"]["wi_lb"][e] + res["dual"]["wi_ub"][e]
         for e in 1:E
     ]
 
@@ -225,17 +229,11 @@ function _test_socwr_DualSolFormat()
 
     # Check shape of dual solution
     res = OPFGenerator.extract_result(opf)
-    @test size(res["solution"]["branch"]["1"]["nu_jabr"]) == (4,)
-    @test size(res["solution"]["branch"]["1"]["nu_sm_to"]) == (3,)
-    @test size(res["solution"]["branch"]["1"]["nu_sm_fr"]) == (3,)
 
-    # Check conversion to H5 format
-    h5 = OPFGenerator.json2h5(OPFGenerator.SOCOPF, res)
-
-    @test Set(collect(keys(h5))) == Set(["meta", "primal", "dual"])
-    @test size(h5["dual"]["nu_jabr"]) == (E, 4)
-    @test size(h5["dual"]["nu_sm_fr"]) == (E, 3)
-    @test size(h5["dual"]["nu_sm_to"]) == (E, 3)
+    @test Set(collect(keys(res))) == Set(["meta", "primal", "dual"])
+    @test size(res["dual"]["jabr"]) == (E, 4)
+    @test size(res["dual"]["sm_fr"]) == (E, 3)
+    @test size(res["dual"]["sm_to"]) == (E, 3)
     return nothing
 end
 

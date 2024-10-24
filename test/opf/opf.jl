@@ -5,7 +5,23 @@ include("ptdf.jl")
 
 function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::String)
     network = make_basic_network(pglib(casename))
-    test_opf_pm(OPF, network)
+    @testset "Full data" begin test_opf_pm(OPF, network) end
+
+    network_drop = deepcopy(network)
+
+    is_bridge = OPFGenerator.bridges(OPFGenerator.OPFData(network_drop))
+    non_bridge = [network_drop["branch"]["$e"] for (e, b) in enumerate(is_bridge) if !b]
+    drop_branch = argmin(branch->branch["rate_a"], non_bridge)["index"]
+    network_drop["branch"]["$drop_branch"]["br_status"] = 0
+
+    drop_gen = argmin(gen->gen[2]["pmax"], network_drop["gen"])[1]
+    network_drop["gen"]["$drop_gen"]["gen_status"] = 0
+
+    if OPF == OPFGenerator.EconomicDispatch
+        @test_throws ErrorException test_opf_pm(OPF, network_drop) # ED does not yet support branch status
+    else
+        @testset "Branch/Gen Status" begin test_opf_pm(OPF, network_drop) end
+    end
 end
 
 """
@@ -33,13 +49,10 @@ include("ed.jl")
 # other tests
 include("quad_obj.jl")
 
-const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
-
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
         @testset "$(casename)" for casename in PGLIB_CASES
-            network = make_basic_network(pglib(casename))
-            test_opf_pm(OPF, network)
+            test_opf_pm(OPF, casename)
         end
 
         @testset "QuadObj" begin test_quad_obj_warn(OPF) end
@@ -50,7 +63,6 @@ const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
 
     @testset _test_socwr_DualFeasibility()
 end
-
 
 @testset "OPFData" begin
     test_voltage_phasor_bounds_scalar()

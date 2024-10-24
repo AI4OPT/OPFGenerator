@@ -13,6 +13,7 @@ using JuMP
 using Clarabel
 using Ipopt
 using Mosek, MosekTools
+using HiGHS
 
 using HSL_jll
 const LIB_COINHSL = HSL_jll.libhsl_path
@@ -26,6 +27,7 @@ const NAME2OPTIMIZER = Dict(
     "Clarabel" => Clarabel.Optimizer{Float64},
     "Ipopt" => Ipopt.Optimizer,
     "Mosek" => Mosek.Optimizer,
+    "HiGHS" => HiGHS.Optimizer,
 )
 
 # Helper function to use correct arithmetic
@@ -34,56 +36,48 @@ value_type(::Any) = Float64
 value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
 value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
 
-function build_models(data, config)
-    opf_models = Dict{String, Tuple{OPFGenerator.OPFModel{<:OPFGenerator.AbstractFormulation}, Float64}}()
-    for (dataset_name, opf_config) in config["OPF"]
-        OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
-        solver_config = get(opf_config, "solver", Dict())
+function build_and_solve_model(data, config, dataset_name)
+    opf_config = config["OPF"][dataset_name]
+    OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
+    solver_config = get(opf_config, "solver", Dict())
 
-        if solver_config["name"] == "Ipopt"
-            # Make sure we provide an HSL path
-            # The code below does not modify anything if the user provides an HSL path
-            get!(solver_config, "attributes", Dict())
-            get!(solver_config["attributes"], "hsllib", HSL_jll.libhsl_path)
-        end
-
-        solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
-            get(solver_config, "attributes", Dict())...
-        )
-        build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
-
-        tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
-            T=value_type(solver.optimizer_constructor),
-            build_kwargs...
-        )
-
-        set_silent(opf.model)
-        opf_models[dataset_name] = (opf, tbuild)
-        @info "Built $dataset_name in $tbuild seconds"
+    if solver_config["name"] == "Ipopt"
+        # Make sure we provide an HSL path
+        get!(solver_config, "attributes", Dict())
+        get!(solver_config["attributes"], "hsllib", HSL_jll.libhsl_path)
     end
 
-    return opf_models
+    solver = optimizer_with_attributes(NAME2OPTIMIZER[solver_config["name"]],
+        get(solver_config, "attributes", Dict())...
+    )
+    build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
+
+    tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
+        T=value_type(solver.optimizer_constructor),
+        build_kwargs...
+    )
+
+    set_silent(opf.model)
+    
+    OPFGenerator.solve!(opf)
+
+    time_extract = @elapsed res = OPFGenerator.extract_result(opf)
+    
+    res["meta"]["build_time"] = tbuild
+    res["meta"]["extract_time"] = time_extract
+    
+    return res
 end
 
-function main(data, opf_models, config)
+function main(data, config)
     d = Dict{String,Any}()
-    d["meta"] = deepcopy(config)
+    d["config"] = deepcopy(config)
     
     # Keep track of input data
     d["data"] = data
 
-    for dataset_name in keys(opf_models)
-        opf = opf_models[dataset_name][1]
-
-        OPFGenerator.update!(opf, data)
-        OPFGenerator.solve!(opf)
-
-        time_extract = @elapsed res = OPFGenerator.extract_result(opf)
-        
-        res["time_build"] = opf_models[dataset_name][2]
-        res["time_extract"] = time_extract
-        h = OPFGenerator.json2h5(opf.model.ext[:opf_model], res)
-        d[dataset_name] = h
+    for dataset_name in keys(config["OPF"])
+        d[dataset_name] = build_and_solve_model(data, config, dataset_name)
     end
 
     return d
@@ -97,25 +91,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     smax = parse(Int, ARGS[3])
 
     # Dummy run (for pre-compilation)
-    data0 = make_basic_network(pglib("14_ieee"))
+    data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
     rand!(MersenneTwister(1), opf_sampler0, data0)
-    for (opf0, m0) in build_models(data0, config)
-        OPFGenerator.solve!(m0[1])
-        OPFGenerator.extract_result(m0[1])
-    end
+    main(data0, config)
 
     # Load reference data and setup OPF sampler
-    data = make_basic_network(pglib(config["ref"]))
+    data = OPFGenerator.OPFData(make_basic_network(pglib(config["ref"])))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
 
-    opf_models = build_models(data, config)
-
     # Data info
-    N = length(data["bus"])
-    E = length(data["branch"])
-    L = length(data["load"])
-    G = length(data["gen"])
+    N, E, L, G = data.N, data.E, data.L, data.G
 
     OPFs = sort(collect(keys(config["OPF"])))
     caseref = config["ref"]
@@ -127,9 +113,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
     D["input"] = Dict{String,Any}(
         "meta" => Dict{String,Any}("seed" => Int[]),
         "data" => Dict{String,Any}(
+            "reserve_requirement" => Float64[],
+            # Demand data
             "pd" => Vector{Float64}[],
             "qd" => Vector{Float64}[],
-            "br_status" => Vector{Bool}[],
+            # Generator reserves min/max levels
+            "rmin" => Vector{Float64}[],
+            "rmax" => Vector{Float64}[],
+            # Component status
+            "branch_status" => Vector{Bool}[],
+            "gen_status" => Vector{Bool}[],
         )
     )
     for dataset_name in OPFs
@@ -145,14 +138,18 @@ if abspath(PROGRAM_FILE) == @__FILE__
     for s in smin:smax
         rng = MersenneTwister(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
-        tsolve = @elapsed res = main(data_, opf_models, config)
-        res["meta"]["seed"] = s
+        tsolve = @elapsed res = main(data_, config)
+        res["config"]["seed"] = s
 
         # Update input data
         push!(D["input"]["meta"]["seed"], s)
-        push!(D["input"]["data"]["pd"], [data_["load"]["$l"]["pd"] for l in 1:L])
-        push!(D["input"]["data"]["qd"], [data_["load"]["$l"]["qd"] for l in 1:L])
-        push!(D["input"]["data"]["br_status"], [Bool(data_["branch"]["$e"]["br_status"]) for e in 1:E])
+        push!(D["input"]["data"]["pd"], data_.pd)
+        push!(D["input"]["data"]["qd"], data_.qd)
+        push!(D["input"]["data"]["rmin"], data_.rmin)
+        push!(D["input"]["data"]["rmax"], data_.rmax)
+        push!(D["input"]["data"]["reserve_requirement"], data_.reserve_requirement)
+        push!(D["input"]["data"]["branch_status"], data_.branch_status)
+        push!(D["input"]["data"]["gen_status"], data_.gen_status)
 
         # Add output results, one for each OPF dataset
         for dataset_name in OPFs

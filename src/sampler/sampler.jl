@@ -7,13 +7,14 @@ function Random.rand(::AbstractRNG, ::AbstractOPFSampler)
     error("`rand` function not implemented for $(typeof(s)).")
 end
 
-struct SimpleOPFSampler{LS,RS}
-    data::Dict
+struct SimpleOPFSampler{LS,RS,SS}
+    data::OPFData
     load_sampler::LS
     reserve_sampler::RS
+    status_sampler::SS
 end
 
-function SimpleOPFSampler(data::Dict, config::Dict)
+function SimpleOPFSampler(data::OPFData, config::Dict)
     data = deepcopy(data)
 
     # Instantiate load sampler
@@ -23,7 +24,11 @@ function SimpleOPFSampler(data::Dict, config::Dict)
     get!(config, "reserve", Dict())
     reserve_sampler = ReserveScaler(data, config["reserve"])
 
-    return SimpleOPFSampler(data, load_sampler, reserve_sampler)
+    # Instantiate status sampler
+    get!(config, "status", Dict())
+    status_sampler = StatusSampler(data, config["status"])
+
+    return SimpleOPFSampler(data, load_sampler, reserve_sampler, status_sampler)
 end
 
 function Random.rand(rng::AbstractRNG, opf_sampler::SimpleOPFSampler)
@@ -39,45 +44,52 @@ Sample one new OPF instance and modify `data` in-place.
 `data` must be a `Dict` in PowerModels format, representing the same network
     (i.e., same grid components with same indexing) as the one used to create `s`.
 """
-function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::Dict)
+function Random.rand!(rng::AbstractRNG, s::SimpleOPFSampler, data::OPFData)
     pd, qd = rand(rng, s.load_sampler)
     _set_loads!(data, pd, qd)
 
     MRR, rmin, rmax = rand(rng, s.reserve_sampler)
     _set_reserve!(data, MRR, rmin, rmax)
 
+    br_status, gen_status = rand(rng, s.status_sampler)
+    _set_status!(data, br_status, gen_status)
+
     return data
 end
 
 function _set_loads!(data, pd, qd)
-    L = length(data["load"])
+    L = data.L
     length(pd) == L || throw(DimensionMismatch())
     length(qd) == L || throw(DimensionMismatch())
     
-    for i in 1:L
-        ldat = data["load"]["$i"]
-        ldat["pd"] = pd[i]
-        ldat["qd"] = qd[i]
-    end
+    data.pd .= pd
+    data.qd .= qd
 
     return nothing
 end
 
 function _set_reserve!(data, MRR, rmin, rmax)
-    G = length(data["gen"])
+    G = data.G
     length(rmin) == G || throw(DimensionMismatch())
     length(rmax) == G || throw(DimensionMismatch())
 
-    for i in 1:length(data["gen"])
-        gdat = data["gen"]["$i"]
-        gdat["rmin"] = rmin[i]
-        gdat["rmax"] = rmax[i]
-    end
+    data.rmin .= rmin
+    data.rmax .= rmax
+    data.reserve_requirement = MRR
 
-    data["minimum_reserve"] = MRR
+    return nothing
+end
+
+function _set_status!(data, br_status, gen_status)
+    length(br_status) == data.E || throw(DimensionMismatch())
+    length(gen_status) == data.G || throw(DimensionMismatch())
+
+    data.branch_status .= br_status
+    data.gen_status .= gen_status
 
     return nothing
 end
 
 include("load.jl")
 include("reserve.jl")
+include("status.jl")

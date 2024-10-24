@@ -130,7 +130,7 @@ acopf = OPFGenerator.build_opf(ACOPF, data, Ipopt.Optimizer)
 optimize!(acopf.model)
 res = OPFGenerator.extract_result(acopf)
 
-res["objective"]  # should be close to 2178.08041
+res["primal_objective_value"]  # should be close to 2178.08041
 ```
 
 ## Generating datasets
@@ -285,6 +285,7 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
 |   |-- pd
 |   |-- qd
 |   |-- br_status
+|   |-- gen_status
 |-- ACOPF
 |   |-- meta
 |   |   |-- termination_status

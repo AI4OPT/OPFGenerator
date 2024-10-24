@@ -7,6 +7,8 @@ using TOML
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
+opfgenerator_dir = "$(@__DIR__)/../"
+
 case = config["ref"]
 result_dir = config["export_dir"]
 S = config["slurm"]["n_samples"]
@@ -22,40 +24,27 @@ sysimage_memory = get(config["slurm"], "sysimage_memory", "16gb")
 julia_bin = get(config["slurm"], "julia_bin", "julia --sysimage=app/julia.so")
 cpus_per_task = get(config["slurm"], "cpus_per_task", 24)
 env_path = get(config["slurm"], "env_path", joinpath(@__DIR__, "template", "env.sh"))
-
-B, r = divrem(S, J)
-B = B + (r > 0)
+sampler_script = get(config["slurm"], "sampler_script", joinpath(opfgenerator_dir, "exp", "sampler.jl"))
 
 datasetname = splitdir(result_dir)[end]
 
-opfgenerator_dir = "$(@__DIR__)/../"
-sampler_script = joinpath(opfgenerator_dir, "exp", "sampler.jl")
-
 slurm_dir = joinpath(result_dir, "slurm")
-json_dir = joinpath(result_dir, "res_json")
 h5_dir = joinpath(result_dir, "res_h5")
-
 jobs_dir = joinpath(slurm_dir, "jobs")
 logs_dir = joinpath(slurm_dir, "logs")
 
 mkpath(result_dir)
-mkpath(json_dir)
 mkpath(h5_dir)
 mkpath(slurm_dir)
 mkpath(jobs_dir)
 mkpath(logs_dir)
 
 # identify all missing jobs
-h = falses(S)
-@threads for s in 1:S
-    h[s] = isfile(joinpath(json_dir, "$(case)_s$(s).json.gz"))
-end
-@info "Missing $(S - sum(h)) instances"
-missing_seeds = (1:S)[.!h]
-S_ = length(missing_seeds)
-B, r = divrem(S_, J)
+@info "Generating $S samples"
+B, r = divrem(S, J)
 B = B + (r > 0)
-for (j, seed_range) in enumerate(partition(missing_seeds, B))
+jobs = partition(1:S, B)
+for (j, seed_range) in enumerate(jobs)
     # Update job files
     open(joinpath(jobs_dir, "jobs_$j.txt"), "w") do io
         for minibatch in partition(seed_range, b)
@@ -122,7 +111,7 @@ sampler_sbatch = Mustache.render(
         logs_dir=logs_dir,
         jobs_dir=jobs_dir,
         queue=queue,
-        J=J,
+        J=length(jobs),
         opfgenerator_dir=opfgenerator_dir,
         sampler_memory=sampler_memory,
         cpus_per_task=cpus_per_task,

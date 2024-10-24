@@ -1,379 +1,274 @@
 struct ACOPF <: AbstractFormulation end
 
 """
-    build_acopf(data, optimizer)
+    build_opf(ACOPF, data, optimizer)
 
-Build an AC-OPF model.
-
-This implementation is based on the AC-OPF formulation of Rosetta-OPF
-    https://github.com/lanl-ansi/rosetta-opf/blob/38a951326df3156d79dcdc49c8010aa29905b05d/jump.jl
+Build an ACOPF model.
 """
-function build_opf(::Type{ACOPF}, data::Dict{String,Any}, optimizer;
+function build_opf(::Type{ACOPF}, data::OPFData, optimizer;
     T=Float64,    
 )
-    # Cleanup and pre-process data
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
-    # Check that slack bus is unique
-    length(ref[:ref_buses]) == 1 || error("Data has $(length(ref[:ref_buses])) slack buses (expected 1).")
-    i0 = first(keys(ref[:ref_buses]))
-    
     # Grab some data
-    N = length(ref[:bus])
-    G = length(ref[:gen])
-    E = length(data["branch"])
-    L = length(ref[:load])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
+    N, E, G = data.N, data.E, data.G
+    vmin, vmax = data.vmin, data.vmax
+    i0 = data.ref_bus
+    gs, bs = data.gs, data.bs
+    pd, qd = data.pd, data.qd
+    bus_arcs_fr, bus_arcs_to = data.bus_arcs_fr, data.bus_arcs_to
+    bus_gens = data.bus_gens
+    pgmin, pgmax = data.pgmin, data.pgmax
+    qgmin, qgmax = data.qgmin, data.qgmax
+    c0, c1, c2 = data.c0, data.c1, data.c2
+    gen_status = data.gen_status
+    bus_fr, bus_to = data.bus_fr, data.bus_to
+    gff, gft, gtf, gtt = data.gff, data.gft, data.gtf, data.gtt
+    bff, bft, btf, btt = data.bff, data.bft, data.btf, data.btt
+    dvamin, dvamax, smax = data.dvamin, data.dvamax, data.smax
+    branch_status = data.branch_status
 
     model = JuMP.GenericModel{T}(optimizer)
-    model.ext[:opf_model] = ACOPF  # for internal checks
+    model.ext[:opf_model] = ACOPF
 
     #
     #   I. Variables
     #
+    
     # nodal voltage
-    JuMP.@variable(model, va[1:N])
-    JuMP.@variable(model, ref[:bus][i]["vmin"] <= vm[i in 1:N] <= ref[:bus][i]["vmax"], start=1.0)
+    @variable(model, vm[1:N], start=1.0)
+    @variable(model, va[1:N])
+
     # Active and reactive dispatch
-    JuMP.@variable(model, ref[:gen][g]["pmin"] <= pg[g in 1:G] <= ref[:gen][g]["pmax"])
-    JuMP.@variable(model, ref[:gen][g]["qmin"] <= qg[g in 1:G] <= ref[:gen][g]["qmax"])
-    # Bi-directional branch flows
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= pf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
-    JuMP.@variable(model, -ref[:branch][l]["rate_a"] <= qf[(l,i,j) in ref[:arcs]] <= ref[:branch][l]["rate_a"])
+    @variable(model, pg[g in 1:G])
+    @variable(model, qg[g in 1:G])
+
+    # Directional branch flows
+    @variable(model, pf[e in 1:E])
+    @variable(model, qf[e in 1:E])
+    @variable(model, pt[e in 1:E])
+    @variable(model, qt[e in 1:E])
 
     # 
     #   II. Constraints
     #
+
+    # Voltage magnitude bounds
+    set_lower_bound.(vm, vmin)
+    set_upper_bound.(vm, vmax)
+
+    # Active generation bounds (both zero if generator is off)
+    set_lower_bound.(pg, gen_status .* pgmin)
+    set_upper_bound.(pg, gen_status .* pgmax)
+
+    # Reactive generation bounds (both zero if generator is off)
+    set_lower_bound.(qg, gen_status .* qgmin)
+    set_upper_bound.(qg, gen_status .* qgmax)
+
+    # Active flow bounds (both zero if branch is off)
+    set_lower_bound.(pf, branch_status .* -smax)
+    set_upper_bound.(pf, branch_status .* smax)
+    set_lower_bound.(pt, branch_status .* -smax)
+    set_upper_bound.(pt, branch_status .* smax)
+
+    # Reactive flow bounds (both zero if branch is off)
+    set_lower_bound.(qf, branch_status .* -smax)
+    set_upper_bound.(qf, branch_status .* smax)
+    set_lower_bound.(qt, branch_status .* -smax)
+    set_upper_bound.(qt, branch_status .* smax)
+
     # Slack bus
-    JuMP.@constraint(model, slack_bus, va[i0] == 0.0)
+    @constraint(model, slack_bus, va[i0] == 0.0)
 
     # Nodal power balance
-    JuMP.@constraint(model,
-        kirchhoff_active[i in 1:N],
-        sum(pg[g] for g in ref[:bus_gens][i]) 
-        - sum(pf[a] for a in ref[:bus_arcs][i])
-        - sum(shunt["gs"] for shunt in bus_shunts[i])*vm[i]^2
+    @constraint(model,
+        kcl_p[i in 1:N],
+        sum(gen_status[g] * pg[g] for g in bus_gens[i])
+        - sum(branch_status[e] * pf[e] for e in bus_arcs_fr[i])
+        - sum(branch_status[e] * pt[e] for e in bus_arcs_to[i])
+        - gs[i] * vm[i]^2
         == 
-        sum(load["pd"] for load in bus_loads[i])
+        sum(pd[l] for l in data.bus_loads[i])
     )
-    JuMP.@constraint(model,
-        kirchhoff_reactive[i in 1:N],
-        sum(qg[g] for g in ref[:bus_gens][i]) 
-        - sum(qf[a] for a in ref[:bus_arcs][i])
-        + sum(shunt["bs"] for shunt in bus_shunts[i])*vm[i]^2
+    @constraint(model,
+        kcl_q[i in 1:N],
+        sum(gen_status[g] * qg[g] for g in bus_gens[i])
+        - sum(branch_status[e] * qf[e] for e in bus_arcs_fr[i])
+        - sum(branch_status[e] * qt[e] for e in bus_arcs_to[i])
+        + bs[i] * vm[i]^2
         ==
-        sum(load["qd"] for load in bus_loads[i])
+        sum(qd[l] for l in data.bus_loads[i])
     )
 
-    # Branch power flow physics and limit constraints
-    # We pre-allocate constraint containers for simplicity
-    model[:thermal_limit_fr] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:thermal_limit_to] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:voltage_difference_limit] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:ohm_active_fr] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:ohm_active_to] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:ohm_reactive_fr] = Vector{JuMP.ConstraintRef}(undef, E)
-    model[:ohm_reactive_to] = Vector{JuMP.ConstraintRef}(undef, E)
-    for (i,branch) in ref[:branch]
-        data["branch"]["$i"]["br_status"] == 0 && continue  # skip branch
 
-        f_idx = (i, branch["f_bus"], branch["t_bus"])
-        t_idx = (i, branch["t_bus"], branch["f_bus"])
+    # Ohm's law
+    # Some useful expressions first
+    @expression(model, wf[e in 1:E], vm[bus_fr[e]]^2)
+    @expression(model, wt[e in 1:E], vm[bus_to[e]]^2)
+    @expression(model, wr[e in 1:E], vm[bus_fr[e]] * vm[bus_to[e]] * cos(va[bus_fr[e]] - va[bus_to[e]]))
+    @expression(model, wi[e in 1:E], vm[bus_fr[e]] * vm[bus_to[e]] * sin(va[bus_fr[e]] - va[bus_to[e]]))
+    # Actual constraints
+    @constraint(model,
+        ohm_pf[e in 1:E],
+        branch_status[e] * ( gff[e] * wf[e] + gft[e] * wr[e] + bft[e] * wi[e]) - pf[e] == 0
+    )
+    @constraint(model,
+        ohm_qf[e in 1:E],
+        branch_status[e] * (-bff[e] * wf[e] - bft[e] * wr[e] + gft[e] * wi[e]) - qf[e] == 0
+    )
+    @constraint(model,
+        ohm_pt[e in 1:E],
+        branch_status[e] * ( gtt[e] * wt[e] + gtf[e] * wr[e] - btf[e] * wi[e]) - pt[e] == 0
+    )
+    @constraint(model,
+        ohm_qt[e in 1:E],
+        branch_status[e] * (-btt[e] * wt[e] - btf[e] * wr[e] - gtf[e] * wi[e]) - qt[e] == 0
+    )
+    
+    # Thermal limit
+    @constraint(model, sm_fr[e in 1:E], pf[e]^2 + qf[e]^2 ≤ smax[e]^2)
+    @constraint(model, sm_to[e in 1:E], pt[e]^2 + qt[e]^2 ≤ smax[e]^2)
 
-        p_fr = pf[f_idx]
-        q_fr = qf[f_idx]
-        p_to = pf[t_idx]
-        q_to = qf[t_idx]
-
-        vm_fr = vm[branch["f_bus"]]
-        vm_to = vm[branch["t_bus"]]
-        va_fr = va[branch["f_bus"]]
-        va_to = va[branch["t_bus"]]
-
-        g, b = PM.calc_branch_y(branch)
-        tr, ti = PM.calc_branch_t(branch)
-        ttm = tr^2 + ti^2
-        g_fr = branch["g_fr"]
-        b_fr = branch["b_fr"]
-        g_to = branch["g_to"]
-        b_to = branch["b_to"]
-
-        # From side of the branch flow
-        model[:ohm_active_fr][i] = JuMP.@constraint(model, 
-              ((g+g_fr)/ttm) * vm_fr^2
-            + ((-g*tr+b*ti)/ttm) * (vm_fr*vm_to*cos(va_fr-va_to)) 
-            + ((-b*tr-g*ti)/ttm) * (vm_fr*vm_to*sin(va_fr-va_to)) 
-            - p_fr 
-            ==
-            0
-        )
-        model[:ohm_reactive_fr][i] = JuMP.@constraint(model, 
-            - (( b+b_fr)/ttm) * vm_fr^2
-            - ((-b*tr-g*ti)/ttm) * (vm_fr*vm_to*cos(va_fr-va_to))
-            + ((-g*tr+b*ti)/ttm) * (vm_fr*vm_to*sin(va_fr-va_to))
-            - q_fr
-            ==
-            0
-        )
-
-        # To side of the branch flow
-        model[:ohm_active_to][i] = JuMP.@constraint(model,
-              (g+g_to) * vm_to^2 
-            + ((-g*tr-b*ti)/ttm) * (vm_to*vm_fr*cos(va_to-va_fr))
-            + ((-b*tr+g*ti)/ttm) * (vm_to*vm_fr*sin(va_to-va_fr)) 
-            - p_to
-            ==
-            0
-        )
-        model[:ohm_reactive_to][i] = JuMP.@constraint(model,
-            - (b+b_to) * vm_to^2 
-            - ((-b*tr+g*ti)/ttm) * (vm_to*vm_fr*cos(va_to-va_fr)) 
-            + ((-g*tr-b*ti)/ttm) * (vm_to*vm_fr*sin(va_to-va_fr)) 
-            - q_to
-            ==
-            0
-        )
-
-        # Voltage angle difference limit
-        model[:voltage_difference_limit][i] = JuMP.@constraint(model, branch["angmin"] <= va_fr - va_to <= branch["angmax"])
-
-        # Apparent power limit, from side and to side
-        model[:thermal_limit_fr][i] = JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
-        model[:thermal_limit_to][i] = JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)
-    end
+    # Voltage angle difference limit
+    @constraint(model,
+        va_diff[e in 1:E],
+        dvamin[e] ≤ branch_status[e] * (va[bus_fr[e]] - va[bus_to[e]]) ≤ dvamax[e]
+    )
 
     #
     #   III. Objective
     #
-    # check that we don't have quadratic objective coeffs
-    l, u = extrema(gen["cost"][1] for (i, gen) in ref[:gen])
-    (l == u == 0.0) || @warn "Data $(data["name"]) has quadratic cost terms; those terms are being ignored"
-    JuMP.@objective(model, Min, sum(
-        gen["cost"][2]*pg[i] + gen["cost"][3]
-        for (i,gen) in ref[:gen]
-    ))
+    l, u = extrema(c2)
+    (l == u == 0.0) || @warn "Data $(data.case) has quadratic cost terms; those terms are being ignored"
+    @objective(model,
+        Min,
+        sum(c1[g] * pg[g] + c0[g] for g in 1:G if gen_status[g])
+    )
 
     return OPFModel{ACOPF}(data, model)
 end
 
-function update!(opf::OPFModel{ACOPF}, data::Dict{String,Any})
-    PM.standardize_cost_terms!(data, order=2)
-    PM.calc_thermal_limits!(data)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-
-    opf.data = data
-
-    N = length(ref[:bus])
-
-    pd = [sum(ref[:load][l]["pd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    qd = [sum(ref[:load][l]["qd"] for l in ref[:bus_loads][i]; init=0.0) for i in 1:N]
-    
-    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_active], pd)
-    JuMP.set_normalized_rhs.(opf.model[:kirchhoff_reactive], qd)
-
-    return nothing
-end
-
-
-"""
-    _extract_acopf_solution(model, data)
-
-Extract ACOPF solution from optimization model.
-The model must have been solved before.
-"""
-function extract_result(opf::OPFModel{ACOPF})
-    data  = opf.data
+function extract_primal(opf::OPFModel{ACOPF})
     model = opf.model
+    T = JuMP.value_type(typeof(model))
 
-    # Pre-process data
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-    N = length(ref[:bus])
-    G = length(ref[:gen])
-    E = length(data["branch"])
+    data = opf.data
 
-    # Build the solution dictionary
-    res = Dict{String,Any}()
-    res["opf_model"] = string(model.ext[:opf_model])
-    res["objective"] = JuMP.objective_value(model)
-    res["objective_lb"] = try JuMP.dual_objective_value(model) catch; NaN end
-    res["optimizer"] = JuMP.solver_name(model)
-    res["solve_time"] = JuMP.solve_time(model)
-    res["termination_status"] = JuMP.termination_status(model)
-    res["primal_status"] = JuMP.primal_status(model)
-    res["dual_status"] = JuMP.dual_status(model)
-    res["solution"] = sol = Dict{String,Any}()
+    N, E, G = data.N, data.E, data.G
 
-    sol["per_unit"] = get(data, "per_unit", false)
-    sol["baseMVA"]  = get(data, "baseMVA", 100.0)
+    primal_solution = Dict{String,Any}(
+        # bus
+        "vm" => zeros(T, N),
+        "va" => zeros(T, N),
+        # generator
+        "pg" => zeros(T, G),
+        "qg" => zeros(T, G),
+        # branch
+        "pf" => zeros(T, E),
+        "qf" => zeros(T, E),
+        "pt" => zeros(T, E),
+        "qt" => zeros(T, E),
+    )
+    if has_values(model)
+        # bus
+        primal_solution["vm"] = value.(model[:vm])
+        primal_solution["va"] = value.(model[:va])
 
-    ### populate branches, gens, buses ###
+        # generator
+        primal_solution["pg"] = value.(model[:pg])
+        primal_solution["qg"] = value.(model[:qg])
 
-    sol["bus"] = Dict{String,Any}()
-    sol["branch"] = Dict{String,Any}()
-    sol["gen"] = Dict{String,Any}()
-
-    for bus in 1:N
-        sol["bus"]["$bus"] = Dict(
-            "vm" => value(model[:vm][bus]),
-            "va" => value(model[:va][bus]),
-            # dual vars
-            "lam_kirchhoff_active" => dual(model[:kirchhoff_active][bus]),
-            "lam_kirchhoff_reactive" => dual(model[:kirchhoff_reactive][bus]),
-            "mu_vm_lb" => dual(LowerBoundRef(model[:vm][bus])),
-            "mu_vm_ub" => dual(UpperBoundRef(model[:vm][bus]))
-        )
+        # branch
+        primal_solution["pf"] = value.(model[:pf])
+        primal_solution["qf"] = value.(model[:qf])
+        primal_solution["pt"] = value.(model[:pt])
+        primal_solution["qt"] = value.(model[:qt])
     end
 
-    for b in 1:E
-        if data["branch"]["$b"]["br_status"] == 0
-            # branch is under outage --> we set everything to zero
-            sol["branch"]["$b"] = Dict(
-                "pf" => 0.0,
-                "pt" => 0.0,
-                "qf" => 0.0,
-                "qt" => 0.0,
-                # dual vars
-                "mu_sm_to" => 0.0,
-                "mu_sm_fr" => 0.0,
-                "mu_va_diff" => 0.0,
-                "lam_ohm_active_fr" => 0.0,
-                "lam_ohm_active_to" => 0.0,
-                "lam_ohm_reactive_fr" => 0.0,
-                "lam_ohm_reactive_to" => 0.0,
-            )
-        else
-            sol["branch"]["$b"] = Dict(
-                "pf" => value(model[:pf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
-                "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
-                "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                # dual vars
-                "mu_sm_to" => dual(model[:thermal_limit_to][b]),
-                "mu_sm_fr" => dual(model[:thermal_limit_fr][b]),
-                "mu_va_diff" => dual(model[:voltage_difference_limit][b]),
-                "lam_ohm_active_fr" => dual(model[:ohm_active_fr][b]),
-                "lam_ohm_active_to" => dual(model[:ohm_active_to][b]),
-                "lam_ohm_reactive_fr" => dual(model[:ohm_reactive_fr][b]),
-                "lam_ohm_reactive_to" => dual(model[:ohm_reactive_to][b])
-            )
-        end
-    end 
-    
-    for g in 1:G
-        sol["gen"]["$g"] = Dict(
-            "pg" => value(model[:pg][g]),
-            "qg" => value(model[:qg][g]),
-            # dual vars
-            "mu_pg_lb" => dual(LowerBoundRef(model[:pg][g])),
-            "mu_pg_ub" => dual(UpperBoundRef(model[:pg][g])),
-            "mu_qg_lb" => dual(LowerBoundRef(model[:qg][g])),
-            "mu_qg_ub" => dual(UpperBoundRef(model[:qg][g]))
-        )
-    end 
-
-    sol["global"] = Dict(
-        "lam_slack_bus" => dual(model[:slack_bus]),
-    )
-
-    return res
+    return primal_solution
 end
 
-function json2h5(::Type{ACOPF}, res)
-    sol = res["solution"]
-    N = length(sol["bus"])
-    E = length(sol["branch"])
-    G = length(sol["gen"])
+function extract_dual(opf::OPFModel{ACOPF})
+    model = opf.model
+    T = JuMP.value_type(typeof(model))
 
-    res_h5 = Dict{String,Any}(
-        "meta" => Dict{String,Any}(
-            "termination_status" => string(res["termination_status"]),
-            "primal_status" => string(res["primal_status"]),
-            "dual_status" => string(res["dual_status"]),
-            "solve_time" => res["solve_time"],
-            "primal_objective_value" => res["objective"],
-            "dual_objective_value" => res["objective_lb"],
-        ),
+    data = opf.data
+
+    N, E, G = data.N, data.E, data.G
+
+    dual_solution = Dict{String,Any}(
+        # global
+        "slack_bus" => zero(T),
+        # bus
+        "kcl_p"     => zeros(T, N),
+        "kcl_q"     => zeros(T, N),
+        # generator
+        # N/A
+        # branch
+        "ohm_pf"    => zeros(T, E),
+        "ohm_pt"    => zeros(T, E),
+        "ohm_qf"    => zeros(T, E),
+        "ohm_qt"    => zeros(T, E),
+        "sm_fr"     => zeros(T, E),
+        "sm_to"     => zeros(T, E),
+        "va_diff"   => zeros(T, E),
+        # variables lower/upper bounds
+        # bus
+        "vm_lb"     => zeros(T, N),
+        "vm_ub"     => zeros(T, N),
+        # generator
+        "pg_lb"     => zeros(T, G),
+        "pg_ub"     => zeros(T, G),
+        "qg_lb"     => zeros(T, G),
+        "qg_ub"     => zeros(T, G),
+        # branch
+        "pf_lb"      => zeros(T, E),
+        "pf_ub"      => zeros(T, E),
+        "qf_lb"      => zeros(T, E),
+        "qf_ub"      => zeros(T, E),
+        "pt_lb"      => zeros(T, E),
+        "pt_ub"      => zeros(T, E),
+        "qt_lb"      => zeros(T, E),
+        "qt_ub"      => zeros(T, E),
     )
 
-    res_h5["primal"] = pres_h5 = Dict{String,Any}(
-        "vm" => zeros(Float64, N),
-        "va" => zeros(Float64, N),
-        "pg" => zeros(Float64, G),
-        "qg" => zeros(Float64, G),
-        "pf" => zeros(Float64, E),
-        "qf" => zeros(Float64, E),
-        "pt" => zeros(Float64, E),
-        "qt" => zeros(Float64, E),
-    )
-    res_h5["dual"] = dres_h5 = Dict{String,Any}(
-        "mu_vm_lb"               => zeros(Float64, N),
-        "mu_vm_ub"               => zeros(Float64, N),
-        "lam_kirchhoff_active"   => zeros(Float64, N),
-        "lam_kirchhoff_reactive" => zeros(Float64, N),
-        "mu_pg_lb"               => zeros(Float64, G),
-        "mu_pg_ub"               => zeros(Float64, G),
-        "mu_qg_lb"               => zeros(Float64, G),
-        "mu_qg_ub"               => zeros(Float64, G),
-        "mu_sm_fr"               => zeros(Float64, E),
-        "mu_sm_to"               => zeros(Float64, E),
-        "lam_ohm_active_fr"      => zeros(Float64, E),
-        "lam_ohm_active_to"      => zeros(Float64, E),
-        "lam_ohm_reactive_fr"    => zeros(Float64, E),
-        "lam_ohm_reactive_to"    => zeros(Float64, E),
-        "mu_va_diff"             => zeros(Float64, E),
-        "lam_slack_bus"          => 0.0,
-    )
+    if has_duals(model)
+        # global
+        dual_solution["slack_bus"] = dual(model[:slack_bus])
+        # bus
+        dual_solution["kcl_p"] = dual.(model[:kcl_p])
+        dual_solution["kcl_q"] = dual.(model[:kcl_q])
 
-    # extract from ACOPF solution
-    for i in 1:N
-        bsol = sol["bus"]["$i"]
+        # generator
+        # N/A
 
-        pres_h5["vm"][i] = bsol["vm"]
-        pres_h5["va"][i] = bsol["va"]
+        # branch
+        dual_solution["ohm_pf"] = dual.(model[:ohm_pf])
+        dual_solution["ohm_pt"] = dual.(model[:ohm_pt])
+        dual_solution["ohm_qf"] = dual.(model[:ohm_qf])
+        dual_solution["ohm_qt"] = dual.(model[:ohm_qt])
+        dual_solution["sm_fr"] = dual.(model[:sm_fr])
+        dual_solution["sm_to"] = dual.(model[:sm_to])
+        dual_solution["va_diff"] = dual.(model[:va_diff])
 
-        dres_h5["mu_vm_lb"][i] = bsol["mu_vm_lb"]
-        dres_h5["mu_vm_ub"][i] = bsol["mu_vm_ub"]
-        dres_h5["lam_kirchhoff_active"][i] = bsol["lam_kirchhoff_active"]
-        dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_kirchhoff_reactive"]
-    end
-    for g in 1:G
-        gsol = sol["gen"]["$g"]
-
-        pres_h5["pg"][g] = gsol["pg"]
-        pres_h5["qg"][g] = gsol["qg"]
-
-        dres_h5["mu_pg_lb"][g] = gsol["mu_pg_lb"]
-        dres_h5["mu_pg_ub"][g] = gsol["mu_pg_ub"]
-        dres_h5["mu_qg_lb"][g] = gsol["mu_qg_lb"]
-        dres_h5["mu_qg_ub"][g] = gsol["mu_qg_ub"]
-    end
-    for e in 1:E
-        brsol = sol["branch"]["$e"]
-
-        pres_h5["pf"][e] = brsol["pf"]
-        pres_h5["qf"][e] = brsol["qf"]
-        pres_h5["pt"][e] = brsol["pt"]
-        pres_h5["qt"][e] = brsol["qt"]
-        
-        dres_h5["mu_sm_fr"][e] = brsol["mu_sm_fr"]
-        dres_h5["mu_sm_to"][e] = brsol["mu_sm_to"]
-        dres_h5["lam_ohm_active_fr"][e] = brsol["lam_ohm_active_fr"]
-        dres_h5["lam_ohm_active_to"][e] = brsol["lam_ohm_active_to"]
-        dres_h5["lam_ohm_reactive_fr"][e] = brsol["lam_ohm_reactive_fr"]
-        dres_h5["lam_ohm_reactive_to"][e] = brsol["lam_ohm_reactive_to"]
-        dres_h5["mu_va_diff"][e] = brsol["mu_va_diff"]
+        # Variable lower/upper bounds
+        # bus
+        dual_solution["vm_lb"] = dual.(LowerBoundRef.(model[:vm]))
+        dual_solution["vm_ub"] = dual.(UpperBoundRef.(model[:vm]))
+        #    (nodal voltage angles have no lower/upper bounds)
+        # generator
+        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
+        dual_solution["pg_ub"] = dual.(UpperBoundRef.(model[:pg]))
+        dual_solution["qg_lb"] = dual.(LowerBoundRef.(model[:qg]))
+        dual_solution["qg_ub"] = dual.(UpperBoundRef.(model[:qg]))
+        # branch
+        dual_solution["pf_lb"] = dual.(LowerBoundRef.(model[:pf]))
+        dual_solution["pf_ub"] = dual.(UpperBoundRef.(model[:pf]))
+        dual_solution["qf_lb"] = dual.(LowerBoundRef.(model[:qf]))
+        dual_solution["qf_ub"] = dual.(UpperBoundRef.(model[:qf]))
+        dual_solution["pt_lb"] = dual.(LowerBoundRef.(model[:pt]))
+        dual_solution["pt_ub"] = dual.(UpperBoundRef.(model[:pt]))
+        dual_solution["qt_lb"] = dual.(LowerBoundRef.(model[:qt]))
+        dual_solution["qt_ub"] = dual.(UpperBoundRef.(model[:qt]))
     end
 
-    dres_h5["lam_slack_bus"] = sol["global"]["lam_slack_bus"]
-
-    return res_h5
+    return dual_solution
 end

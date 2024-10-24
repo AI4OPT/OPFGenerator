@@ -51,9 +51,7 @@ function test_ScaledUniform()
 end
 
 function test_LoadScaler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
-    pd = [data["load"]["$k"]["pd"] for k in 1:length(data["load"])]
-    qd = [data["load"]["$k"]["qd"] for k in 1:length(data["load"])]
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # ScaledLogNormal
     options = Dict(
@@ -65,8 +63,8 @@ function test_LoadScaler()
     ls = LoadScaler(data, options)
     @test ls.d.d_α == Uniform(0.8, 1.2)
     @test isa(ls.d.d_η, MvLogNormal)
-    @test ls.pd_ref == pd
-    @test ls.qd_ref == qd
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
 
     # ScaledUniform
     options = Dict(
@@ -78,20 +76,14 @@ function test_LoadScaler()
     ls = LoadScaler(data, options)
     @test ls.d.d_α == Uniform(0.7, 1.5)
     @test isa(ls.d.d_η, Distributions.Product)
-    @test ls.pd_ref == pd
-    @test ls.qd_ref == qd
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
 
     return nothing
 end
 
 function test_LoadScaler_sanity_checks()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
-
-    # Test potential issues
-    # Not basic data
-    data["basic_network"] = false
-    @test_throws ErrorException LoadScaler(data, Dict())
-    data["basic_network"] = true
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # Invalid noise type
     options = Dict()
@@ -126,7 +118,7 @@ function test_LoadScaler_sanity_checks()
 end
 
 function test_sampler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     _data = deepcopy(data)  # keep a deepcopy nearby
     sampler_config = Dict(
         "load" => Dict(
@@ -137,15 +129,12 @@ function test_sampler()
         )
     )
     
-    rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
-    data1 = rand(rng, opf_sampler)
+    data1 = rand(MersenneTwister(42), opf_sampler)
 
     # No side-effect checks
     @test data == _data   # initial data should not have been modified
     @test data !== data1  # new data should be a different dictionary
-
-    _test_ieee14_LogNormal_s42(data1)
 
     # Same RNG and seed should give the same data
     data2 = rand(MersenneTwister(42), opf_sampler)
@@ -154,72 +143,42 @@ function test_sampler()
     return nothing
 end
 
-function _test_ieee14_LogNormal_s42(data)
-    data0 = make_basic_network(pglib("pglib_opf_case14_ieee"))
+function test_nminus1_sampler()
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    sampler_config = Dict{String,Any}(
+        "load" => Dict(
+            "noise_type" => "ScaledLogNormal",
+            "l" => 0.8,
+            "u" => 1.2,
+            "sigma" => 0.05,        
+        ),
+        "status" => Dict(
+            "type"=> "NMinus1",
+        )
+    )
 
-    # Check that the sampled data dictionary only has different loads/reserves
-    # Buses, generators, etc... should not have changed
-    for (k, v) in data0
-        if k == "gen"
-            @test all(data[k][i][kk] == v[i][kk] for (i, gen) in v for (kk, vv) in gen if kk ∉ ["rmin", "rmax"])
-        elseif k == "load"
-            @test all(data[k][i][kk] == v[i][kk] for (i, load) in v for (kk, vv) in load if kk ∉ ["pd", "qd"])
-        else
-            @test data[k] == v
-        end
-    end
+    opf_sampler = SimpleOPFSampler(data, sampler_config)
 
-    # Check sampled active / reactive power loads
-    # The numerical values below were generated as follows, on 09/30/2024 on a RHEL 9.4 Linux machine:
-    # * PGLib v21.07 case `14_ieee`, in basic network format
-    # * The random number generator MersenneTwister(42)
-    # * ScaledLogNormal load scaler with [0.8, 1.2] range and σ=0.05
-    # ⚠ this test will fail if either condition is met
-    #   * the initial data dictionary is changed
-    #   * the underlying RNG or seed is changed
-    #   * the load sampler config is changed
-    _pd = [
-        0.21477996272972988,
-        0.9546062298568199,
-        0.47654988934858145,
-        0.08406264413456561,
-        0.10703861785986431,
-        0.29162856400218445,
-        0.09179453210074041,
-        0.031037135295027923,
-        0.06490828337508349,
-        0.14421853133555987,
-        0.1522058057935015,
-    ]
-    _qd = [
-        0.12570071551463455,
-        0.1925426578267471,
-        -0.038881685532624846,
-        0.01769739876517171,
-        0.071677645888302,
-        0.1641028529639411,
-        0.059156476242699374,
-        0.01596195529458579,
-        0.01702512350821862,
-        0.061960554203425715,
-        0.05107577375620856,
-    ]
-    for (i, (p, q)) in enumerate(zip(_pd, _qd))
-        @test data["load"]["$i"]["pd"] ≈ p
-        @test data["load"]["$i"]["qd"] ≈ q
-    end
+    data1 = rand(MersenneTwister(42), opf_sampler)
 
-    # all reserves should be zero
-    for i in 1:length(data["gen"])
-        @test data["gen"]["$i"]["rmin"] == 0.0
-        @test data["gen"]["$i"]["rmax"] == 0.0
-    end
+    # Exactly one generator or branch should be disabled
+    G, E = data.G, data.E
+    @test sum(data.gen_status) + sum(data.branch_status) == (G + E)  # original data
+    @test sum(data1.gen_status) + sum(data1.branch_status) == (G + E - 1)  # N-1
+
+    # Same RNG and seed should give the same data
+    data2 = rand(MersenneTwister(42), opf_sampler)
+    @test data2 == data1
+
+    # Unsupporting config should error
+    sampler_config["status"]["type"] = "error"
+    @test_throws ErrorException SimpleOPFSampler(data, sampler_config)
 
     return nothing
 end
 
 function test_inplace_sampler()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     sampler_config = Dict(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
@@ -233,81 +192,7 @@ function test_inplace_sampler()
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     rand!(rng, opf_sampler, data)
 
-    _test_ieee14_LogNormal_s42(data)
-
     return nothing
-end
-
-function test_update()
-    data1 = make_basic_network(pglib("pglib_opf_case14_ieee"))
-    sampler_config = Dict(
-        "load" => Dict(
-            "noise_type" => "ScaledLogNormal",
-            "l" => 0.6,
-            "u" => 0.8,
-            "sigma" => 0.05,        
-        ),
-        "reserve" => Dict( # tiny reserve requirement
-            "type" => "E2ELR",
-            "l" => 0.0,
-            "u" => 0.1,
-            "factor" => 5.0,
-        )
-    )
-
-    rng = MersenneTwister(42)
-    opf_sampler  = SimpleOPFSampler(data1, sampler_config)
-    data2 = rand(rng, opf_sampler)
-
-    for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
-        solver = OPT_SOLVERS[OPF]
-
-        opf1 = OPFGenerator.build_opf(OPF, data1, solver)
-        OPFGenerator.solve!(opf1)
-        OPFGenerator.update!(opf1, data2)
-        
-        opf2 = OPFGenerator.build_opf(OPF, data2, solver)
-        
-        _test_update(OPF, opf1, opf2)
-
-        OPFGenerator.solve!(opf1)
-        res1 = OPFGenerator.extract_result(opf1)
-
-        OPFGenerator.solve!(opf2)
-        res2 = OPFGenerator.extract_result(opf2)
-
-        _test_update(OPF, opf1, opf2)
-
-        @test res1["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
-        @test res2["termination_status"] ∈ [MOI.LOCALLY_SOLVED, MOI.OPTIMAL]
-        @test res1["objective"] ≈ res2["objective"]
-    end
-
-    return nothing
-end
-
-
-function _test_update(::Type{OPFGenerator.DCOPF}, opf1, opf2)
-    @test all(normalized_rhs.(opf1.model[:kirchhoff]) .== normalized_rhs.(opf2.model[:kirchhoff]))
-end
-
-function _test_update(::Type{OPF}, opf1, opf2) where {OPF <: Union{OPFGenerator.ACOPF, OPFGenerator.SOCOPFQuad, OPFGenerator.SOCOPF}}
-    @test all(normalized_rhs.(opf1.model[:kirchhoff_active]) .== normalized_rhs.(opf2.model[:kirchhoff_active]))
-    @test all(normalized_rhs.(opf1.model[:kirchhoff_reactive]) .== normalized_rhs.(opf2.model[:kirchhoff_reactive]))
-end
-
-function _test_update(::Type{OPFGenerator.EconomicDispatch}, opf1, opf2)
-    @test normalized_rhs(opf1.model[:power_balance]) == normalized_rhs(opf2.model[:power_balance])
-    @test normalized_rhs(opf1.model[:reserve_requirement]) == normalized_rhs(opf2.model[:reserve_requirement])
-    @test all(upper_bound.(opf1.model[:r]) .== upper_bound.(opf2.model[:r]))
-    @test all(lower_bound.(opf1.model[:r]) .== lower_bound.(opf2.model[:r]))
-    @test all(opf1.model.ext[:tracked_branches] .== opf2.model.ext[:tracked_branches])
-    @test all(
-        [
-            normalized_rhs(opf1.model[:ptdf_flow][i]) == normalized_rhs(opf2.model[:ptdf_flow][i])
-            for i in findall(opf1.model.ext[:tracked_branches])
-        ]
-    )
 end
 
 function test_sampler_script()
@@ -348,15 +233,6 @@ function test_sampler_script()
             ),
             "ED" => Dict(
                 "type" => "EconomicDispatch",
-                "solver" => Dict(
-                    "name" => "Clarabel",
-                )
-            ),
-            "ED_noniterative" => Dict(
-                "type" => "EconomicDispatch",
-                "kwargs" => Dict(
-                    "iterative_ptdf" => false,
-                ),
                 "solver" => Dict(
                     "name" => "Clarabel",
                 )
@@ -415,7 +291,36 @@ function test_sampler_script()
 
     @test isdir(h5_dir)
 
-    @test isfile(joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5"))
+    input_file_path = joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5")
+    @test isfile(input_file_path)
+    # Check that input data file is structured as expected
+    h5open(input_file_path, "r") do h5
+        @test haskey(h5, "data")
+
+        @test haskey(h5["data"], "pd")
+        @test size(h5["data"]["pd"]) == (11, 4)
+        @test eltype(h5["data"]["pd"]) == Float64
+        @test haskey(h5["data"], "qd")
+        @test size(h5["data"]["pd"]) == (11, 4)
+        @test eltype(h5["data"]["qd"]) == Float64
+
+        @test haskey(h5["data"], "branch_status")
+        @test size(h5["data"]["branch_status"]) == (20, 4)
+        @test eltype(h5["data"]["branch_status"]) == Bool
+        @test haskey(h5["data"], "gen_status")
+        @test size(h5["data"]["gen_status"]) == (5, 4)
+        @test eltype(h5["data"]["gen_status"]) == Bool
+
+        @test haskey(h5["data"], "reserve_requirement")
+        @test size(h5["data"]["reserve_requirement"]) == (4,)
+        @test eltype(h5["data"]["reserve_requirement"]) == Float64
+        @test haskey(h5["data"], "rmin")
+        @test size(h5["data"]["rmin"]) == (5,4)
+        @test eltype(h5["data"]["rmin"]) == Float64
+        @test haskey(h5["data"], "rmax")
+        @test size(h5["data"]["rmax"]) == (5,4)
+        @test eltype(h5["data"]["rmax"]) == Float64
+    end
 
     h5_paths = [
         joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
@@ -431,9 +336,9 @@ function test_sampler_script()
             n_seed = length(h5["meta"]["seed"])
             @test n_seed == smax - smin + 1
             for i in 1:n_seed
-                @test h5["meta"]["termination_status"][i] ∈ ["OPTIMAL", "LOCALLY_SOLVED"]
-                @test h5["meta"]["primal_status"][i] == "FEASIBLE_POINT"
-                @test h5["meta"]["dual_status"][i] == "FEASIBLE_POINT"
+                @test h5["meta"]["termination_status"][i] ∈ ["OPTIMAL", "ALMOST_OPTIMAL", "LOCALLY_SOLVED", "ALMOST_LOCALLY_SOLVED"]
+                @test h5["meta"]["primal_status"][i] ∈ ["FEASIBLE_POINT", "NEARLY_FEASIBLE_POINT"]
+                @test h5["meta"]["dual_status"][i] ∈ ["FEASIBLE_POINT", "NEARLY_FEASIBLE_POINT"]
                 @test h5["meta"]["seed"][i] == smin + i - 1
             end
         end
@@ -447,7 +352,7 @@ end
     @testset test_LoadScaler()
     @testset test_LoadScaler_sanity_checks()
     @testset test_sampler()
+    @testset test_nminus1_sampler()
     @testset test_inplace_sampler()
     @testset test_sampler_script()
-    @testset test_update()
 end

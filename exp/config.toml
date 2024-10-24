@@ -1,15 +1,15 @@
 # Name of the reference PGLib case. Must be a valid PGLib case name.
-ref = "pglib_opf_case300_ieee"
+ref = "89_pegase"
 # Directory where instance/solution files are exported
 # must be a valid directory
-export_dir = "data/300_ieee"
+export_dir = "data/89_pegase"
 
 [sampler]
 # Sampler options
 [sampler.load]
-noise_type = "ScaledLogNormal"  # Only "ScaledLogNormal" is supported at the moment
-l          = 0.8                # Lower bound of base load factor
-u          = 1.05               # Upper bound of base load factor
+noise_type = "ScaledUniform"
+l          = 0.60               # Lower bound of base load factor
+u          = 1.00               # Upper bound of base load factor
 sigma      = 0.15               # Relative (multiplicative) noise level.
 
 [sampler.reserve]
@@ -18,13 +18,16 @@ l      = 1.0
 u      = 2.0
 factor = 5.0
 
+[sampler.status]
+type = "Full"
+
 
 [OPF]
 # OPF formulations to solve for each sample
 [OPF.DCOPF]
 # Formulation/solver options
 type = "DCOPF"
-solver.name = "Mosek"
+solver.name = "HiGHS"
 
 [OPF.ACOPF]
 type = "ACOPF"
@@ -32,19 +35,27 @@ solver.name = "Ipopt"
 solver.attributes.tol = 1e-6
 solver.attributes.linear_solver = "ma27"
 
-[OPF.ED]
+[OPF.EDSoftThermal]
 type = "EconomicDispatch"
 kwargs.soft_thermal_limit = true
-solver.name = "Mosek"
+solver.name = "HiGHS"
 
 [OPF.SOCOPF]
 type = "SOCOPF"
-solver.name = "Mosek"
-# Loosened tolerances improve Mosek's convergence
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_PFEAS = 1e-6
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_DFEAS = 1e-6
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_MU_RED = 1e-6
-solver.attributes.MSK_DPAR_INTPNT_CO_TOL_REL_GAP = 1e-6
+solver.name = "Clarabel"
+# Tight tolerances
+solver.attributes.tol_gap_abs    = 1e-6
+solver.attributes.tol_gap_rel    = 1e-6
+solver.attributes.tol_feas       = 1e-6
+solver.attributes.tol_infeas_rel = 1e-6
+solver.attributes.tol_ktratio    = 1e-6
+# Reduced accuracy settings
+solver.attributes.reduced_tol_gap_abs    = 1e-6
+solver.attributes.reduced_tol_gap_rel    = 1e-6
+solver.attributes.reduced_tol_feas       = 1e-6
+solver.attributes.reduced_tol_infeas_abs = 1e-6
+solver.attributes.reduced_tol_infeas_rel = 1e-6
+solver.attributes.reduced_tol_ktratio    = 1e-6
 
 [OPF.SOCOPF128]
 # These settings are meant to solve `SOCWRConic` problems to high precision
