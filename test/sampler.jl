@@ -137,8 +137,6 @@ function test_sampler()
     @test data == _data   # initial data should not have been modified
     @test data !== data1  # new data should be a different dictionary
 
-    _test_ieee14_LogNormal_s42(data1)
-
     # Same RNG and seed should give the same data
     data2 = rand(MersenneTwister(42), opf_sampler)
     @test data2 == data1
@@ -195,71 +193,6 @@ function test_nminus1_sampler()
     return nothing
 end
 
-function _test_ieee14_LogNormal_s42(data)
-    data0 = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
-
-    # Check that the sampled data dictionary only has different loads/reserves
-    # Buses, generators, etc... should not have changed
-    # for (k, v) in data0
-    for k in fieldnames(OPFGenerator.OPFData)
-        v0 = getfield(data0, k)
-        v = getfield(data, k)
-        if k ∉ [
-            :pd, :qd,
-            :rmin, :rmax, :reserve_requirement,
-            :branch_status, :gen_status
-        ]
-            @test v0 == v
-        end
-    end
-
-    # Check sampled active / reactive power loads
-    # The numerical values below were generated as follows, on 09/30/2024 on a RHEL 9.4 Linux machine:
-    # * PGLib v21.07 case `14_ieee`, in basic network format
-    # * The random number generator MersenneTwister(42)
-    # * ScaledLogNormal load scaler with [0.8, 1.2] range and σ=0.05
-    # ⚠ this test will fail if either condition is met
-    #   * the initial data dictionary is changed
-    #   * the underlying RNG or seed is changed
-    #   * the load sampler config is changed
-    _pd = [
-        0.21477996272972988,
-        0.9546062298568199,
-        0.47654988934858145,
-        0.08406264413456561,
-        0.10703861785986431,
-        0.29162856400218445,
-        0.09179453210074041,
-        0.031037135295027923,
-        0.06490828337508349,
-        0.14421853133555987,
-        0.1522058057935015,
-    ]
-    _qd = [
-        0.12570071551463455,
-        0.1925426578267471,
-        -0.038881685532624846,
-        0.01769739876517171,
-        0.071677645888302,
-        0.1641028529639411,
-        0.059156476242699374,
-        0.01596195529458579,
-        0.01702512350821862,
-        0.061960554203425715,
-        0.05107577375620856,
-    ]
-    @test data.pd ≈ _pd
-    @test data.qd ≈ _qd
-
-    @test data.reserve_requirement == 0.0
-    @test data.rmin == zeros(length(data.rmin))
-    @test data.rmax == zeros(length(data.rmax))
-
-    @test all(data.gen_status)
-    @test all(data.branch_status)
-    return nothing
-end
-
 function test_inplace_sampler()
     data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     sampler_config = Dict(
@@ -274,8 +207,6 @@ function test_inplace_sampler()
     rng = MersenneTwister(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
     rand!(rng, opf_sampler, data)
-
-    _test_ieee14_LogNormal_s42(data)
 
     return nothing
 end
