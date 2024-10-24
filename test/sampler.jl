@@ -137,7 +137,7 @@ function test_sampler()
     @test data !== data1  # new data should be a different dictionary
 
     # Same RNG and seed should give the same data
-    data2 = rand(MersenneTwisterwister(42), opf_sampler)
+    data2 = rand(MersenneTwister(42), opf_sampler)
     @test data2 == data1
 
     return nothing
