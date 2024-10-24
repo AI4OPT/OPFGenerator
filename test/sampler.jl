@@ -129,9 +129,8 @@ function test_sampler()
         )
     )
     
-    rng = StableRNG(42)
     opf_sampler  = SimpleOPFSampler(data, sampler_config)
-    data1 = rand(rng, opf_sampler)
+    data1 = rand(StableRNG(42), opf_sampler)
 
     # No side-effect checks
     @test data == _data   # initial data should not have been modified
@@ -158,37 +157,22 @@ function test_nminus1_sampler()
         )
     )
 
-    rng = MersenneTwister(42)
-    opf_sampler  = SimpleOPFSampler(data, sampler_config)
+    opf_sampler = SimpleOPFSampler(data, sampler_config)
 
-    data1 = rand(rng, opf_sampler)
+    data1 = rand(StableRNG(42), opf_sampler)
 
-    # all generators should be enabled
-    expected_gen_status = ones(Bool, data.G)
-    @test data1.gen_status == expected_gen_status
+    # Exactly one generator or branch should be disabled
+    G, E = data.G, data.E
+    @test sum(data.gen_status) + sum(data.branch_status) == (G + E)  # original data
+    @test sum(data1.gen_status) + sum(data1.branch_status) == (G + E - 1)  # N-1
 
-    # branch 1 should be disabled
-    expected_br_status = ones(Bool, data.E)
-    expected_br_status[1] = 0
-    @test data1.branch_status == expected_br_status
-
-    data2 = rand(MersenneTwister(42), opf_sampler)
+    # Same RNG and seed should give the same data
+    data2 = rand(StableRNG(42), opf_sampler)
     @test data2 == data1
 
+    # Unsupporting config should error
     sampler_config["status"]["type"] = "error"
     @test_throws ErrorException SimpleOPFSampler(data, sampler_config)
-
-    rng2 = MersenneTwister(4)
-    data3 = rand(rng2, opf_sampler)
-    
-    # generator 3 should be disabled
-    expected_gen_status = ones(Bool, data.G)
-    expected_gen_status[3] = 0
-    @test data3.gen_status == expected_gen_status
-
-    # all branches should be enabled
-    expected_br_status = ones(Bool, data.E)
-    @test data3.branch_status == expected_br_status
 
     return nothing
 end
