@@ -72,7 +72,7 @@ end
 
 function main(data, config)
     d = Dict{String,Any}()
-    d["meta"] = deepcopy(config)
+    d["config"] = deepcopy(config)
     
     # Keep track of input data
     d["data"] = data
@@ -140,7 +140,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         rng = StableRNG(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
         tsolve = @elapsed res = main(data_, config)
-        res["meta"]["seed"] = s
+        res["config"]["seed"] = s
 
         # Update input data
         push!(D["input"]["meta"]["seed"], s)
