@@ -1,4 +1,5 @@
 using Random
+using StableRNGs
 using Test
 
 using HDF5
