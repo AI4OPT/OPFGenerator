@@ -3,7 +3,6 @@ using Test
 
 using HDF5
 using Quadmath
-using StableRNGs
 
 using Clarabel
 using Ipopt

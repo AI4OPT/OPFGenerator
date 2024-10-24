@@ -5,7 +5,6 @@ create_sysimage(
     [
         "OPFGenerator",
         "Random",
-        "StableRNGs",
         "Distributions",
         "PowerModels",
         "PGLib",

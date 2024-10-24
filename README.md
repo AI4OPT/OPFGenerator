@@ -79,8 +79,7 @@ using Random, PGLib, PowerModels
 using OPFGenerator
 PowerModels.silence()
 
-using StableRNGs
-rng = StableRNG(42)
+rng = MersenneTwister(42)
 
 old_data = make_basic_network(pglib("3_lmbd"))
 

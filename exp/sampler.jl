@@ -1,6 +1,5 @@
 using Random
 using LinearAlgebra
-using StableRNGs
 using TOML
 using Quadmath  # for Float128 arithmetic
 
@@ -94,7 +93,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Dummy run (for pre-compilation)
     data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
-    rand!(StableRNG(1), opf_sampler0, data0)
+    rand!(MersenneTwister(1), opf_sampler0, data0)
     main(data0, config)
 
     # Load reference data and setup OPF sampler
@@ -137,7 +136,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Data generation
     @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]\nDatasets: $OPFs"
     for s in smin:smax
-        rng = StableRNG(s)
+        rng = MersenneTwister(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
         tsolve = @elapsed res = main(data_, config)
         res["config"]["seed"] = s
