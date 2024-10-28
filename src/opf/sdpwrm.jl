@@ -245,6 +245,8 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
                 "pt" => 0.0,
                 "qf" => 0.0,
                 "qt" => 0.0,
+                "wr" => 0.0,
+                "wi" => 0.0,
                 # dual vars
                 "mu_va_diff_ub" => 0.0,
                 "mu_va_diff_lb" => 0.0,
