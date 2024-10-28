@@ -35,7 +35,7 @@ function test_opf_pm(::Type{PM.SDPWRMPowerModel}, data::Dict)
         :pg => Float64[sol_pm["gen"]["$g"]["pg"] for g in 1:G],
         :qg => Float64[sol_pm["gen"]["$g"]["qg"] for g in 1:G],
         # The diagonal elements of sol_pm["WR"]. Note that the rows and columns of sol_pm["WR"] are ordered in the order of ref[:bus].
-        :wm => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N]
+        :w => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N]
     )
     model = opf.model
     for varname in [:pg, :qg]
@@ -43,7 +43,7 @@ function test_opf_pm(::Type{PM.SDPWRMPowerModel}, data::Dict)
         v = var2val_pm[varname]
         fix.(x, v; force=true)
     end
-    fix.(diag(model[:WR]), var2val_pm[:wm]; force=true)
+    fix.(diag(model[:WR]), var2val_pm[:w]; force=true)
 
     optimize!(model)
     @test termination_status(model) ∈ [OPTIMAL, SLOW_PROGRESS, ALMOST_OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
@@ -127,7 +127,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     μθ_ub = [-res["solution"]["branch"]["$e"]["mu_va_diff_ub"] for e in 1:E]
 
     μ_w = [
-        res["solution"]["bus"]["$i"]["mu_wm_lb"] + res["solution"]["bus"]["$i"]["mu_wm_ub"]
+        res["solution"]["bus"]["$i"]["mu_w_lb"] + res["solution"]["bus"]["$i"]["mu_w_ub"]
         for i in 1:N
     ]
     

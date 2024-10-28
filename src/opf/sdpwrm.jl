@@ -225,12 +225,12 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
 
     for bus in 1:N
         sol["bus"]["$bus"] = Dict(
-            "wm" => value(model[:WR][bus, bus]),
+            "w" => value(model[:WR][bus, bus]),
             # dual vars
             "lam_kirchhoff_active" => dual(model[:kirchhoff_active][bus]),
             "lam_kirchhoff_reactive" => dual(model[:kirchhoff_reactive][bus]),
-            "mu_wm_lb" => dual(LowerBoundRef(model[:WR][bus, bus])),
-            "mu_wm_ub" => dual(UpperBoundRef(model[:WR][bus, bus])),
+            "mu_w_lb" => dual(LowerBoundRef(model[:WR][bus, bus])),
+            "mu_w_ub" => dual(UpperBoundRef(model[:WR][bus, bus])),
             "sm" => value(dual(model[:S])[bus, bus])  # upper left block diagonal
         )
     end
@@ -319,7 +319,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
     )
 
     res_h5["primal"] = pres_h5 = Dict{String,Any}(
-        "wm" => zeros(Float64, N),
+        "w" => zeros(Float64, N),
         "pg" => zeros(Float64, G),
         "qg" => zeros(Float64, G),
         "pf" => zeros(Float64, E),
@@ -330,8 +330,8 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         "wi" => zeros(Float64, E),
     )
     res_h5["dual"] = dres_h5 = Dict{String,Any}(
-        "mu_wm_lb"               => zeros(Float64, N),
-        "mu_wm_ub"               => zeros(Float64, N),
+        "mu_w_lb"               => zeros(Float64, N),
+        "mu_w_ub"               => zeros(Float64, N),
         "lam_kirchhoff_active"   => zeros(Float64, N),
         "lam_kirchhoff_reactive" => zeros(Float64, N),
         "mu_pg_lb"               => zeros(Float64, G),
@@ -358,10 +358,10 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
     for i in 1:N
         bsol = sol["bus"]["$i"]
 
-        pres_h5["wm"][i] = bsol["wm"]
+        pres_h5["w"][i] = bsol["w"]
 
-        dres_h5["mu_wm_lb"][i] = bsol["mu_wm_lb"]
-        dres_h5["mu_wm_ub"][i] = bsol["mu_wm_ub"]
+        dres_h5["mu_w_lb"][i] = bsol["mu_w_lb"]
+        dres_h5["mu_w_ub"][i] = bsol["mu_w_ub"]
         dres_h5["lam_kirchhoff_active"][i] = bsol["lam_kirchhoff_active"]
         dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_kirchhoff_reactive"]
         dres_h5["sm"][i] = bsol["sm"]
