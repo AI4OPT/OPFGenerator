@@ -131,14 +131,14 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         for i in 1:N
     ]
     
-    sm = [res["solution"]["bus"]["$i"]["sm"] for i in 1:N]
+    s = [res["solution"]["bus"]["$i"]["s"] for i in 1:N]
     sr = [res["solution"]["branch"]["$e"]["sr"] for e in 1:E]
     si = [res["solution"]["branch"]["$e"]["si"] for e in 1:E]
     S = Symmetric(sparse(
         vcat([1:N;], [N+1 : 2*N;], br_i_array, br_j_array, br_i_array .+ N, br_j_array .+ N, br_i_array, br_j_array),
         vcat([1:N;], [N+1 : 2*N;], br_j_array, br_i_array, br_j_array .+ N, br_i_array .+ N, br_j_array .+ N, br_i_array .+ N),
         # repeat sr since there may be branches where f_bus > t_bus (entry is below the diagonal)
-        vcat(sm, sm, sr, sr, sr, sr, si, -si),
+        vcat(s, s, sr, sr, sr, sr, si, -si),
         2*N, 2*N,
         # ignore duplicate values at the same position
         (x, y) -> x

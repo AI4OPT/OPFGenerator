@@ -231,7 +231,7 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
             "lam_kirchhoff_reactive" => dual(model[:kirchhoff_reactive][bus]),
             "mu_w_lb" => dual(LowerBoundRef(model[:WR][bus, bus])),
             "mu_w_ub" => dual(UpperBoundRef(model[:WR][bus, bus])),
-            "sm" => value(dual(model[:S])[bus, bus])  # upper left block diagonal
+            "s" => value(dual(model[:S])[bus, bus])  # upper left block diagonal
         )
     end
 
@@ -351,7 +351,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         "nu_sm_to"               => zeros(Float64, E, 3),
         "nu_sm_fr"               => zeros(Float64, E, 3),
         # sparse SDP duals
-        "sm"                     => zeros(Float64, N),
+        "s"                      => zeros(Float64, N),
         "sr"                     => zeros(Float64, E),
         "si"                     => zeros(Float64, E),
     )
@@ -366,7 +366,7 @@ function json2h5(::Type{PM.SDPWRMPowerModel}, res)
         dres_h5["mu_w_ub"][i] = bsol["mu_w_ub"]
         dres_h5["lam_kirchhoff_active"][i] = bsol["lam_kirchhoff_active"]
         dres_h5["lam_kirchhoff_reactive"][i] = bsol["lam_kirchhoff_reactive"]
-        dres_h5["sm"][i] = bsol["sm"]
+        dres_h5["s"][i] = bsol["s"]
     end
     for g in 1:G
         gsol = sol["gen"]["$g"]
