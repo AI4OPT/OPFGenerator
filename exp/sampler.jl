@@ -97,6 +97,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     main(data0, config)
 
     # Load reference data and setup OPF sampler
+    case_name = get(config, "case_name", "case")
     case_file = config["case_file"]
     isfile(case_file) || error("Reference case file not found: $(case_file)")
     data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
@@ -106,7 +107,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     N, E, L, G = data.N, data.E, data.L, data.G
 
     OPFs = sort(collect(keys(config["OPF"])))
-    case_name = data.case == "" ? "case" : data.case
     
     # Place-holder for results. 
     # For each OPF configutation, we keep a Vector of individual h5 outputs
