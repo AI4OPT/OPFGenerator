@@ -1,16 +1,19 @@
 using Base.Iterators
 using Base.Threads
 using Mustache
+using Pkg
 using TOML
+
+using OPFGenerator
 
 
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
-opfgenerator_dir = "$(@__DIR__)/../"
+opfgenerator_dir = normpath(joinpath(dirname(pathof(OPFGenerator)), ".."))
 
-case_file = config["case_file"]
-case_name = config["case_name"]
+case_file, case_name = OPFGenerator._get_case_info(config)
+isfile(case_file) || error("Reference case file not found: $(case_file)")
 result_dir = config["export_dir"]
 S = config["slurm"]["n_samples"]
 J = config["slurm"]["n_jobs"]

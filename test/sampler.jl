@@ -199,7 +199,7 @@ function test_sampler_script()
     sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
     temp_dir = mktempdir()
     config = Dict(
-        "ref" => "pglib_opf_case14_ieee",
+        "pglib_case" => "pglib_opf_case14_ieee",
         "export_dir" => temp_dir,
         "sampler" => Dict(
             "load" => Dict(
