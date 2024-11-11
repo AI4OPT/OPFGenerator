@@ -9,7 +9,7 @@ main(fconfig::AbstractString) = main(TOML.parsefile(fconfig))
 
 function main(config::Dict)
     export_dir = pop!(config, "export_dir")
-    case_name = config["case_name"]
+    case_file, case_name = OPFGenerator._get_case_info(config)
     all_h5_files = filter(endswith(".h5"), readdir(joinpath(export_dir, "res_h5"), join=true))
 
     slurm_config = pop!(config, "slurm")
