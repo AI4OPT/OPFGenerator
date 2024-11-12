@@ -34,9 +34,6 @@ function _get_case_info(config)
 
     case_name = if haskey(config, "case_name")
         config["case_name"]
-    elseif haskey(config, "pglib_case") && !haskey(config, "case_file")
-        # Use PGLib case name only if no case file was provided
-        config["pglib_case"]
     else
         splitext(basename(case_file))[1]
     end
