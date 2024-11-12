@@ -32,7 +32,7 @@ function _get_case_info(config)
         error("Invalid config: must provide either \"case_file\" or \"pglib_case\".")
     end
 
-    case_name = if haskey(config, "case_name")
+    case_name = if get(config, "case_name", "") != ""
         config["case_name"]
     else
         splitext(basename(case_file))[1]
