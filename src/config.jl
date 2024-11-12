@@ -38,7 +38,7 @@ function _get_case_info(config)
         # Use PGLib case name only if no case file was provided
         config["pglib_case"]
     else
-        "case"
+        splitext(basename(case_file))[1]
     end
     return case_file, case_name
 end
