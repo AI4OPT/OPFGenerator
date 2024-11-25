@@ -38,6 +38,7 @@ function test_ScaledLogNormal()
     d = ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3))
 
     @test length(d) == 3
+    @test eltype(d) == Float64
 
     @test isa(d, OPFGenerator.Glocal)
     @test d.d_α == Uniform(0.8, 1.2)
@@ -54,6 +55,7 @@ function test_ScaledUniform()
     d = ScaledUniform(0.8, 1.2, 0.05 .* ones(5))
 
     @test length(d) == 5
+    @test eltype(d) == Float64
 
     @test isa(d, OPFGenerator.Glocal)
     @test d.d_α == Uniform(0.8, 1.2)
@@ -70,6 +72,7 @@ function test_ScaledLogNormalPQ()
     d = OPFGenerator.GlocalPQ(ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3)))
 
     @test length(d) == 3
+    @test eltype(d) == Float64
 
     @test isa(d, OPFGenerator.GlocalPQ)
     @test d.d_α == Uniform(0.8, 1.2)
@@ -86,6 +89,7 @@ function test_ScaledUniformPQ()
     d = OPFGenerator.GlocalPQ(ScaledUniform(0.8, 1.2, 0.05 .* ones(5)))
 
     @test length(d) == 5
+    @test eltype(d) == Float64
 
     @test isa(d, OPFGenerator.GlocalPQ)
     @test d.d_α == Uniform(0.8, 1.2)
@@ -203,17 +207,20 @@ function test_sampler()
         )
     )
     
-    opf_sampler  = SimpleOPFSampler(data, sampler_config)
-    data1 = rand(MersenneTwister(42), opf_sampler)
+    for noise_type in ["ScaledLogNormal", "ScaledUniformPQ"]
+        sampler_config["load"]["noise_type"] = noise_type
+        
+        opf_sampler  = SimpleOPFSampler(data, sampler_config)
+        data1 = rand(MersenneTwister(42), opf_sampler)
 
-    # No side-effect checks
-    @test data == _data   # initial data should not have been modified
-    @test data !== data1  # new data should be a different dictionary
+        # No side-effect checks
+        @test data == _data   # initial data should not have been modified
+        @test data !== data1  # new data should be a different dictionary
 
-    # Same RNG and seed should give the same data
-    data2 = rand(MersenneTwister(42), opf_sampler)
-    @test data2 == data1
-
+        # Same RNG and seed should give the same data
+        data2 = rand(MersenneTwister(42), opf_sampler)
+        @test data2 == data1
+    end
     return nothing
 end
 
