@@ -18,6 +18,22 @@ function test_glocal()
     return nothing
 end
 
+function test_glocalpq()
+    d = OPFGenerator.GlocalPQ(
+        Uniform(0.0, 1.0),
+        Distributions.MvNormal(zeros(4), Diagonal(ones(4)))
+    )
+
+    @test eltype(d) == Float64
+    @test length(d) == 4
+
+    @test size.(rand(d)) == ((4,), (4,))
+    @test size.(rand(d, 1)) == ((4, 1), (4, 1))
+    @test size.(rand(d, 2)) == ((4, 2), (4, 2))
+
+    return nothing
+end
+
 function test_ScaledLogNormal()
     d = ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3))
 
@@ -50,6 +66,38 @@ function test_ScaledUniform()
     return nothing
 end
 
+function test_ScaledLogNormalPQ()
+    d = OPFGenerator.GlocalPQ(ScaledLogNormal(0.8, 1.2, 0.05 .* ones(3)))
+
+    @test length(d) == 3
+
+    @test isa(d, OPFGenerator.GlocalPQ)
+    @test d.d_α == Uniform(0.8, 1.2)
+    @test isa(d.d_η, Distributions.MvLogNormal)
+
+    # Sanity checks
+    @test_throws ErrorException ScaledLogNormal(0.8, 0.7, ones(3))   # l > u
+    @test_throws ErrorException ScaledLogNormal(0.8, 1.2, -ones(3))  # σ < 0
+
+    return nothing
+end
+
+function test_ScaledUniformPQ()
+    d = OPFGenerator.GlocalPQ(ScaledUniform(0.8, 1.2, 0.05 .* ones(5)))
+
+    @test length(d) == 5
+
+    @test isa(d, OPFGenerator.GlocalPQ)
+    @test d.d_α == Uniform(0.8, 1.2)
+    @test isa(d.d_η, Distributions.Product)
+
+    # Sanity checks
+    @test_throws ErrorException ScaledUniform(0.8, 0.7, ones(3))   # l > u
+    @test_throws ErrorException ScaledUniform(0.8, 1.2, -ones(3))  # σ < 0
+
+    return nothing
+end
+
 function test_LoadScaler()
     data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
@@ -69,6 +117,32 @@ function test_LoadScaler()
     # ScaledUniform
     options = Dict(
         "noise_type" => "ScaledUniform",
+        "l" => 0.7,
+        "u" => 1.5,
+        "sigma" => 0.05,
+    )
+    ls = LoadScaler(data, options)
+    @test ls.d.d_α == Uniform(0.7, 1.5)
+    @test isa(ls.d.d_η, Distributions.Product)
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
+
+    # ScaledLogNormalPQ
+    options = Dict(
+        "noise_type" => "ScaledLogNormalPQ",
+        "l" => 0.8,
+        "u" => 1.2,
+        "sigma" => 0.05,
+    )
+    ls = LoadScaler(data, options)
+    @test ls.d.d_α == Uniform(0.8, 1.2)
+    @test isa(ls.d.d_η, MvLogNormal)
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
+
+    # ScaledUniformPQ
+    options = Dict(
+        "noise_type" => "ScaledUniformPQ",
         "l" => 0.7,
         "u" => 1.5,
         "sigma" => 0.05,
@@ -347,8 +421,11 @@ end
 
 @testset "Sampler" begin
     @testset test_glocal()
+    @testset test_glocalpq()
     @testset test_ScaledLogNormal()
     @testset test_ScaledUniform()
+    @testset test_ScaledLogNormalPQ()
+    @testset test_ScaledUniformPQ()
     @testset test_LoadScaler()
     @testset test_LoadScaler_sanity_checks()
     @testset test_sampler()
