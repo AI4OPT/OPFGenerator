@@ -42,7 +42,7 @@ function LoadScaler(data::OPFData, options::Dict)
     # Noise distribution
     # TODO: modularize this
     noise_type = get(options, "noise_type", "")
-    if noise_type ∉ ["ScaledLogNormal", "ScaledUniform"]
+    if noise_type ∉ ["ScaledLogNormal", "ScaledUniform", "ScaledLogNormalPQ", "ScaledUniformPQ"]
         error("""Invalid noise type for load: $(noise_type). Supported values are:
         * \"ScaledLogNormal\"
         * \"ScaledUniform\"""")
@@ -77,6 +77,10 @@ function LoadScaler(data::OPFData, options::Dict)
         ScaledLogNormal(l, u, σs)
     elseif noise_type == "ScaledUniform"
         ScaledUniform(l, u, σs)
+    elseif noise_type == "ScaledLogNormalPQ"
+        GlocalPQ(ScaledLogNormal(l, u, σs))
+    elseif noise_type == "ScaledUniformPQ"
+        GlocalPQ(ScaledUniform(l, u, σs))
     end
 
     return LoadScaler(d, pd, qd)
