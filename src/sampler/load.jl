@@ -16,11 +16,20 @@ struct LoadScaler{D} <: AbstractLoadSampler
     qd_ref::Vector{Float64}
 end
 
-function Random.rand(rng::AbstractRNG, ls::LoadScaler)
+function Random.rand(rng::AbstractRNG, ls::LoadScaler{T}) where T <: Glocal
     ϵ = rand(rng, ls.d)  # sample multiplicative noise
 
     pd = ϵ .* ls.pd_ref
     qd = ϵ .* ls.qd_ref
+
+    return pd, qd
+end
+
+function Random.rand(rng::AbstractRNG, ls::LoadScaler{T}) where T <: GlocalPQ
+    ϵ₁, ϵ₂ = rand(rng, ls.d)
+
+    pd = ϵ₁ .* ls.pd_ref
+    qd = ϵ₂ .* ls.qd_ref
 
     return pd, qd
 end
