@@ -1,15 +1,19 @@
 using Base.Iterators
 using Base.Threads
 using Mustache
+using Pkg
 using TOML
+
+using OPFGenerator
 
 
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
-opfgenerator_dir = "$(@__DIR__)/../"
+opfgenerator_dir = normpath(joinpath(dirname(pathof(OPFGenerator)), ".."))
 
-case = config["ref"]
+case_file, case_name = OPFGenerator._get_case_info(config)
+isfile(case_file) || error("Reference case file not found: $(case_file)")
 result_dir = config["export_dir"]
 S = config["slurm"]["n_samples"]
 J = config["slurm"]["n_jobs"]
@@ -49,7 +53,7 @@ for (j, seed_range) in enumerate(jobs)
     open(joinpath(jobs_dir, "jobs_$j.txt"), "w") do io
         for minibatch in partition(seed_range, b)
             smin, smax = extrema(minibatch)
-            println(io, "$(julia_bin) --project=. -t1 $(sampler_script) $(config_file) $(smin) $(smax) > $(logs_dir)/$(case)_$(smin)-$(smax).log 2>&1")
+            println(io, "$(julia_bin) --project=. -t1 $(sampler_script) $(config_file) $(smin) $(smax) > $(logs_dir)/$(case_name)_$(smin)-$(smax).log 2>&1")
         end
     end
 end

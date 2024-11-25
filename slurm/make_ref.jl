@@ -7,11 +7,11 @@ using OPFGenerator
 
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
-casename = config["ref"]
+case_file, case_name = OPFGenerator._get_case_info(config)
 export_dir = pop!(config, "export_dir")
 pop!(config, "slurm")
 
-data = OPFGenerator.OPFData(make_basic_network(pglib(casename)))
+data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
 
 include("../exp/sampler.jl")
 

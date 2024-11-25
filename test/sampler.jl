@@ -199,7 +199,7 @@ function test_sampler_script()
     sampler_script = joinpath(@__DIR__, "..", "exp", "sampler.jl")
     temp_dir = mktempdir()
     config = Dict(
-        "ref" => "pglib_opf_case14_ieee",
+        "pglib_case" => "pglib_opf_case14_ieee",
         "export_dir" => temp_dir,
         "sampler" => Dict(
             "load" => Dict(
@@ -279,7 +279,7 @@ function test_sampler_script()
         TOML.print(io, config)
     end
 
-    caseref = config["ref"]
+    case_file, case_name = OPFGenerator._get_case_info(config)
     smin, smax = 1, 4
     proc = run(setenv(`$(joinpath(Sys.BINDIR, "julia")) --project=. $sampler_script $config_file $smin $smax`, dir=joinpath(@__DIR__, "..")))
 
@@ -291,7 +291,7 @@ function test_sampler_script()
 
     @test isdir(h5_dir)
 
-    input_file_path = joinpath(h5_dir, "$(caseref)_input_s$smin-s$smax.h5")
+    input_file_path = joinpath(h5_dir, "$(case_name)_input_s$smin-s$smax.h5")
     @test isfile(input_file_path)
     # Check that input data file is structured as expected
     h5open(input_file_path, "r") do h5
@@ -323,7 +323,7 @@ function test_sampler_script()
     end
 
     h5_paths = [
-        joinpath(h5_dir, "$(caseref)_$(opf)_s$smin-s$smax.h5")
+        joinpath(h5_dir, "$(case_name)_$(opf)_s$smin-s$smax.h5")
         for opf in OPFs
     ]
     @test all(isfile.(h5_paths))

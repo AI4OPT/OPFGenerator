@@ -9,7 +9,7 @@ main(fconfig::AbstractString) = main(TOML.parsefile(fconfig))
 
 function main(config::Dict)
     export_dir = pop!(config, "export_dir")
-    casename = config["ref"]
+    case_file, case_name = OPFGenerator._get_case_info(config)
     all_h5_files = filter(endswith(".h5"), readdir(joinpath(export_dir, "res_h5"), join=true))
 
     slurm_config = pop!(config, "slurm")
@@ -18,7 +18,7 @@ function main(config::Dict)
     # Process each dataset
     OPFs = sort(collect(keys(config["OPF"])))
     for dataset_name in ["input"; OPFs]
-        rgx = Regex("$(casename)_$(dataset_name)_s\\d+-s\\d+.h5")
+        rgx = Regex("$(case_name)_$(dataset_name)_s\\d+-s\\d+.h5")
         res_files = filter(s -> startswith(basename(s), rgx), all_h5_files)
         nfiles = length(res_files)
         Ds = Vector{Dict{String,Any}}(undef, nfiles)

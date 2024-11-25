@@ -97,14 +97,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
     main(data0, config)
 
     # Load reference data and setup OPF sampler
-    data = OPFGenerator.OPFData(make_basic_network(pglib(config["ref"])))
+    case_file, case_name = OPFGenerator._get_case_info(config)
+    isfile(case_file) || error("Reference case file not found: $(case_file)")
+    data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
     opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
 
     # Data info
     N, E, L, G = data.N, data.E, data.L, data.G
 
     OPFs = sort(collect(keys(config["OPF"])))
-    caseref = config["ref"]
     
     # Place-holder for results. 
     # For each OPF configutation, we keep a Vector of individual h5 outputs
@@ -134,7 +135,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     end
 
     # Data generation
-    @info "Generating instances for case $caseref\nSeed range: [$smin, $smax]\nDatasets: $OPFs"
+    @info "Generating instances for case $(case_name)\nSeed range: [$smin, $smax]\nDatasets: $OPFs"
     for s in smin:smax
         rng = MersenneTwister(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
@@ -182,7 +183,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     # Save to disk in separate h5 files
     for (k, v) in D
-        filepath = joinpath(config["export_dir"], "res_h5", "$(caseref)_$(k)_s$(smin)-s$(smax).h5")
+        filepath = joinpath(config["export_dir"], "res_h5", "$(case_name)_$(k)_s$(smin)-s$(smax).h5")
         mkpath(dirname(filepath))
         th5write = @elapsed OPFGenerator.save_h5(filepath, v)
     end
