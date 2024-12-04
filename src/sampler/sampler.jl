@@ -1,5 +1,6 @@
 # common distributions
 include("glocal.jl")
+include("glocalpq.jl")
 
 abstract type AbstractOPFSampler end
 
