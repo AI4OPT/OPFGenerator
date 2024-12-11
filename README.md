@@ -72,7 +72,29 @@ solver.attributes.linear_solver = "ma27"
 
 ## Quick start
 
-### Generating random instances
+### Building and solving an OPF problem
+
+```julia
+using PGLib, PowerModels
+using OPFGenerator
+using Ipopt
+
+# Load data
+pm_network = PowerModels.make_basic_network(pglib("14_ieee"))
+data = OPFGenerator.OPFData(pm_network)
+
+# Build OPF optimization model
+# To switch formulations, replace ACOPF with, e.g., DCOPF or SOCOPF
+opf = OPFGenerator.build_opf(OPFGenerator.ACOPF, data, Ipopt.Optimizer)
+
+# Solve and extract result
+OPFGenerator.solve!(opf)
+res = OPFGenerator.extract_result(opf)
+```
+
+
+
+### Generating random OPF instances
 
 ```julia
 using Random, PGLib, PowerModels
@@ -110,27 +132,6 @@ dataset = [
     OPFGenerator.rand(rng, opf_sampler)
     for i in 1:100
 ]
-```
-
-### Building and solving OPF problems
-
-`OPFGenerator` supports multiple OPF formulations, based on [PowerModels](https://lanl-ansi.github.io/PowerModels.jl/stable/).
-
-```julia
-using PowerModels
-using PGLib
-
-using JuMP
-using Ipopt
-
-using OPFGenerator
-
-data = make_basic_network(pglib("14_ieee"))
-acopf = OPFGenerator.build_opf(ACOPF, data, Ipopt.Optimizer)
-optimize!(acopf.model)
-res = OPFGenerator.extract_result(acopf)
-
-res["primal_objective_value"]  # should be close to 2178.08041
 ```
 
 ## Generating datasets
