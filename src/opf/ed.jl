@@ -280,6 +280,8 @@ function extract_dual(opf::OPFModel{EconomicDispatch})
 
     dual_solution = Dict{String,Any}(
         # global
+        "power_balance" => zero(T),
+        "reserve_requirement" => zero(T),
         # generator
         # branch
         "ptdf_flow" => zeros(T, E),
