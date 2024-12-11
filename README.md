@@ -79,7 +79,7 @@ using PGLib, PowerModels
 using OPFGenerator
 using Ipopt
 
-# Load data
+# Load data from PGLib case
 pm_network = PowerModels.make_basic_network(pglib("14_ieee"))
 data = OPFGenerator.OPFData(pm_network)
 
@@ -93,37 +93,37 @@ res = OPFGenerator.extract_result(opf)
 ```
 
 
-
 ### Generating random OPF instances
 
 ```julia
-using Random, PGLib, PowerModels
+using Random 
+using PGLib, PowerModels
 using OPFGenerator
-PowerModels.silence()
 
-rng = MersenneTwister(42)
-
-old_data = make_basic_network(pglib("3_lmbd"))
+# Load data from PGLib case
+pm_network = PowerModels.make_basic_network(pglib("14_ieee"))
+data = OPFGenerator.OPFData(pm_network)
 
 # Load scaler using global scaling + uncorrelated LogNormal noise
 config = Dict(
     "load" => Dict(
-        "noise_type" => "ScaledLogNormal",
+        "noise_type" => "ScaledUniform",
         "l" => 0.8,
         "u" => 1.2,
-        "sigma" => 0.05,        
+        "sigma" => 0.10,       
     )
 )
-opf_sampler  = SimpleOPFSampler(old_data, config)
+opf_sampler = SimpleOPFSampler(data, config)
 
 # Generate a new instance
+rng = MersenneTwister(42)
 new_data = rand(rng, opf_sampler)
 
-old_data["load"]["1"]["pd"]  # old 
-1.1
+data.pd[1] # old 
+0.217
 
-new_data["load"]["1"]["pd"]  # new
-1.1596456429775048
+new_data.pd[1]  # new
+0.21480423013573954
 ```
 
 To generate multiple instances, run the above code in a loop
