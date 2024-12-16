@@ -85,7 +85,7 @@ The ACOPF model considered in OPFGenerator is presented below.
         && \forall i \in \mathcal{G}
         && [\mu^{pg}]\\
     & \label{eq:ACOPF:qg_bounds}
-        \underline{q}^{g}_{i} \leq p^{q}_{i} \leq \bar{q}^{g}_{i},
+        \underline{q}^{g}_{i} \leq \mathbf{q}^{\text{g}}_{i} \leq \bar{q}^{g}_{i},
         && \forall i \in \mathcal{G}
         && [\mu^{qg}]\\
     & \label{eq:ACOPF:pf_bounds}
