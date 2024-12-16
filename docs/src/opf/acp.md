@@ -186,9 +186,9 @@ The objective function ``\eqref{eq:ACOPF:objective}`` minimizes the cost of acti
 | ``\eqref{eq:ACOPF:qg_bounds}`` (upper) | `qg_ub` | ``G`` | Reactive power generation upper bound
 | ``\eqref{eq:ACOPF:pf_bounds}`` (lower) | `pf_lb` | ``E`` | Active power flow (from) lower bound
 | ``\eqref{eq:ACOPF:pf_bounds}`` (upper) | `pf_ub` | ``E`` | Active power flow (from) upper bound
-| ``\eqref{eq:ACOPF:pf_bounds}`` (lower) | `qf_lb` | ``E`` | Reactive power flow (from) lower bound
-| ``\eqref{eq:ACOPF:pf_bounds}`` (upper) | `qf_ub` | ``E`` | Reactive power flow (from) upper bound
-| ``\eqref{eq:ACOPF:pf_bounds}`` (lower) | `pt_lb` | ``E`` | Active power flow (to) lower bound
-| ``\eqref{eq:ACOPF:pf_bounds}`` (upper) | `pt_ub` | ``E`` | Active power flow (to) upper bound
-| ``\eqref{eq:ACOPF:pf_bounds}`` (lower) | `qt_lb` | ``E`` | Reactive power flow (to) lower bound
-| ``\eqref{eq:ACOPF:pf_bounds}`` (upper) | `qt_ub` | ``E`` | Reactive power flow (to) upper bound
+| ``\eqref{eq:ACOPF:qf_bounds}`` (lower) | `qf_lb` | ``E`` | Reactive power flow (from) lower bound
+| ``\eqref{eq:ACOPF:qf_bounds}`` (upper) | `qf_ub` | ``E`` | Reactive power flow (from) upper bound
+| ``\eqref{eq:ACOPF:pt_bounds}`` (lower) | `pt_lb` | ``E`` | Active power flow (to) lower bound
+| ``\eqref{eq:ACOPF:pt_bounds}`` (upper) | `pt_ub` | ``E`` | Active power flow (to) upper bound
+| ``\eqref{eq:ACOPF:qt_bounds}`` (lower) | `qt_lb` | ``E`` | Reactive power flow (to) lower bound
+| ``\eqref{eq:ACOPF:qt_bounds}`` (upper) | `qt_ub` | ``E`` | Reactive power flow (to) upper bound
