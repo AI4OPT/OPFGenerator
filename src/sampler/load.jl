@@ -5,22 +5,28 @@ abstract type AbstractLoadSampler end
 """
     LoadScaler{D}
 
-Scales loads with multiplicative noise sample from `d::D`.
+Scales loads with multiplicative noise sampled from `d::D`.
 
-Scaling retains power factors, i.e., each load's active 
-    and reactive demand is scaled by the same number.
+The distribution `d::D` is a `2*L`-dimensional distribution.
+    The sample active/reactive demand for load ``i`` is denoted by `\\tilde{p}_{i}, \\tilde{q}_{i}`` and has the form
+    ``\\tilde{p}_{i} = \\epsilon_{i} \\bar{p}_{i}``,
+    ``\\tilde{q}_{i} = \\epsilon_{i+L} \\bar{q}_{i}``,
+    where
+    * ``\\bar{p}_{i}, \\bar{q}_{i}`` are the reference active/reactive demand for load ``i``
+    * ``\\epsilon \\in \\mathbb{R}^{2L}`` is multiplicative noise sampled from distribution `d::D`.
 """
 struct LoadScaler{D} <: AbstractLoadSampler
-    d::D
-    pd_ref::Vector{Float64}
-    qd_ref::Vector{Float64}
+    d::D    # distribution of multiplicative noise
+    pd_ref::Vector{Float64}  # reference active load
+    qd_ref::Vector{Float64}  # reference reactive load
 end
 
 function Random.rand(rng::AbstractRNG, ls::LoadScaler)
+    L = length(ls.pd_ref)
     ϵ = rand(rng, ls.d)  # sample multiplicative noise
 
-    pd = ϵ .* ls.pd_ref
-    qd = ϵ .* ls.qd_ref
+    pd = ϵ[1:L] .* ls.pd_ref
+    qd = ϵ[(L+1):(2*L)] .* ls.qd_ref
 
     return pd, qd
 end
@@ -38,7 +44,7 @@ function LoadScaler(data::OPFData, options::Dict)
         * \"ScaledLogNormal\"
         * \"ScaledUniform\"""")
     end
-    
+
     # Grab noise parameters, and perform sanity checks
     l = get(options, "l", NaN)
     u = get(options, "u", NaN)
@@ -52,11 +58,13 @@ function LoadScaler(data::OPFData, options::Dict)
         error("Invalid global scaling parameters: [$l, $u]")
     end
 
-    σs = zeros(Float64, L)
+    σs = zeros(Float64, 2*L)
     σ = get(options, "sigma", NaN)
     if isa(σ, AbstractVector{<:Real})
         length(σ) == L || error("Invalid sigma length")
-        σs .= σ
+        # We use the same noise level for active/reactive load
+        σs[1:L] .= σ
+        σs[(L+1):(2*L)] .= σ
     elseif isa(σ, Real) && isfinite(σ)
         σs .= σ
     else

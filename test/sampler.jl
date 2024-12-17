@@ -63,6 +63,7 @@ function test_LoadScaler()
     ls = LoadScaler(data, options)
     @test ls.d.d_α == Uniform(0.8, 1.2)
     @test isa(ls.d.d_η, MvLogNormal)
+    @test length(ls.d.d_η) == 2*data.L
     @test ls.pd_ref == data.pd
     @test ls.qd_ref == data.qd
 
@@ -76,6 +77,26 @@ function test_LoadScaler()
     ls = LoadScaler(data, options)
     @test ls.d.d_α == Uniform(0.7, 1.5)
     @test isa(ls.d.d_η, Distributions.Product)
+    @test length(ls.d.d_η) == 2*data.L
+    @test ls.pd_ref == data.pd
+    @test ls.qd_ref == data.qd
+
+    # Different noise level for buses
+    options = Dict(
+        "noise_type" => "ScaledUniform",
+        "l" => 0.8,
+        "u" => 1.2,
+        "sigma" => [i/100 for i in 1:data.L],
+    )
+    ls = LoadScaler(data, options)
+    @test ls.d.d_α == Uniform(0.8, 1.2)
+    @test isa(ls.d.d_η, Distributions.Product)
+    @test length(ls.d.d_η) == 2*data.L
+    # check local distributions
+    @test Distributions.mean(ls.d.d_η) ≈ ones(2*data.L)
+    V = Distributions.var(ls.d.d_η)
+    @test V[1:data.L] ≈ [(2*i/100)^2 / 12 for i in 1:data.L]
+    @test V[(data.L+1):(2*data.L)] ≈ [(2*i/100)^2 / 12 for i in 1:data.L]
     @test ls.pd_ref == data.pd
     @test ls.qd_ref == data.qd
 
