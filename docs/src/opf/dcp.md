@@ -20,10 +20,10 @@ The DCOPF model considered in OPFGenerator is presented below.
         & \forall e = (i, j) &\in \EDGES
     \label{model:dcopf:angledifference} \\
     & \VA_\text{ref} = 0 \label{model:dcopf:slackbus} \\
-    & \underline{\PG_i} \leq \PG_i \leq \overline{\PG_i}
+    & \pgmin_{i} \leq \PG_i \leq \pgmax_{i}
         & \forall i &\in \GENERATORS
     \label{model:dcopf:pgbound} \\
-    & {-}\overline{S_{e}} \leq  \PF_{e} \leq \overline{S_{e}}
+    & {-}\overline{S}_{e} \leq  \PF_{e} \leq \overline{S}_{e}
         & \forall e &\in \EDGES
     \label{model:dcopf:thrmbound:from}
 \end{align}

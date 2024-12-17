@@ -45,19 +45,19 @@ The ACOPF model considered in OPFGenerator is presented below.
     & \qgmin_{i} \leq \QG_i \leq \qgmax_{i}
         & \forall i &\in \GENERATORS
         \label{model:acopf:qgbound} \\
-    & \underline{\VM_i} \leq \VM_i \leq \overline{\VM_i}
+    & \vmmin_{i} \leq \VM_i \leq \vmmax_{i}
         & \forall i &\in \NODES
         \label{model:acopf:vmbound} \\
-    & {-}\overline{S_{e}} \leq  \PF_{e} \leq \overline{S_{e}}
+    & {-}\overline{S}_{e} \leq  \PF_{e} \leq \overline{S}_{e}
         & \forall e &\in \EDGES
         \label{model:acopf:pfbound} \\
-    & {-}\overline{S_{e}} \leq  \QF_{e} \leq \overline{S_{e}}
+    & {-}\overline{S}_{e} \leq  \QF_{e} \leq \overline{S}_{e}
         & \forall e &\in \EDGES
         \label{model:acopf:qfbound} \\
-    & {-}\overline{S_{e}} \leq  \PT_{e} \leq \overline{S_{e}}
+    & {-}\overline{S}_{e} \leq  \PT_{e} \leq \overline{S}_{e}
         & \forall e &\in \EDGES
         \label{model:acopf:ptbound} \\
-    & {-}\overline{S_{e}} \leq  \QT_{e} \leq \overline{S_{e}}
+    & {-}\overline{S}_{e} \leq  \QT_{e} \leq \overline{S}_{e}
         & \forall e &\in \EDGES
         \label{model:acopf:qtbound}
 \end{align}
