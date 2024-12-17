@@ -130,132 +130,9 @@ where
 * `<seed_min>` and `<seed_max>` are minimum and maximum values for the random seed. Must be integer values.
     The script will generate instances for values `smin, smin+1, ..., smax-1, smax`.
 
-## Solution format
-
-
-Individual solutions are stored in a dictionary that follows the [PowerModels result data format](https://lanl-ansi.github.io/PowerModels.jl/stable/result-data/).
-As a convention, dual variables of equality constraints are named `lam_<constraint_ref>`, dual variables of (scalar) inequality constraints are named `mu_<constraint_ref>`, and dual variables of conic constraints are named `nu_<constraint_ref>_<i>` where `i` denotes the coordinate index.
-
-Collections of instances & solutions are stored in a compact, array-based HDF5 file (see [Datasets/Format](#format) below.)
-
-### ACOPF
-
-See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.ACPPowerModel).
-
-Primal variables
-
-| Component | Key | Description |
-|:---------:|:----|:------------|
-| bus       | `"vm"` | Nodal voltage magnitude
-|           | `"va"` | Nodal voltage angle
-| generator | `"pg"` | Active power generation
-|           | `"qg"` | Reactive power generation
-| branch    | `"pf"` | Branch active power flow (fr)
-|           | `"pt"` | Branch active power flow (to)
-|           | `"qf"` | Branch reactive power flow (fr)
-|           | `"qt"` | Branch reactive power flow (to)
-
-Dual variables
-
-| Component | Key                        | Constraint |
-|:---------:|:---------------------------|:------------|
-| bus       | `"mu_vm_lb"`               | Nodal voltage magnitude lower bound
-|           | `"mu_vm_ub"`               | Nodal voltage magnitude upper bound
-|           | `"lam_kirchhoff_active"`   | Nodal active power balance
-|           | `"lam_kirchhoff_reactive"` | Nodal reactive power balance
-| generator | `"mu_pg_lb"`               | Active power generation lower bound
-|           | `"mu_pg_ub"`               | Active power generation upper bound
-|           | `"mu_qg_lb"`               | Reactive power generation lower bound
-|           | `"mu_qg_ub"`               | Reactive power generation upper bound
-| branch    | `"mu_sm_fr"`               | Thermal limit (fr)
-|           | `"mu_sm_to"`               | Thermal limit (to)
-|           | `"lam_ohm_active_fr"`      | Ohm's law; active power (fr)
-|           | `"lam_ohm_active_to"`      | Ohm's law; active power (to)
-|           | `"lam_ohm_reactive_fr"`    | Ohm's law; reactive power (fr)
-|           | `"lam_ohm_reactive_to"`    | Ohm's law; reactive power (to)
-|           | `"mu_va_diff"`             | Voltage angle difference
-
-### DCOPF
-
-See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.DCPPowerModel).
-
-Primal variables
-
-| Component | Key | Description |
-|:---------:|:----|:------------|
-| bus       | `"va"` | Voltage angle
-| generator | `"pg"` | Power generation
-| branch    | `"pf"` | Power flow
-
-Dual variables
-
-| Component | Key               | Constraint  |
-|:---------:|:------------------|:------------|
-| bus       | `"lam_kirchhoff"` | Power balance
-| generator | `"mu_pg_lb"`      | Power generation lower bound
-|           | `"mu_pg_ub"`      | Power generation upper bound
-| branch    | `"lam_ohm"`       | Ohm's law
-|           | `"mu_sm_lb"`      | Thermal limit (lower bound)
-|           | `"mu_sm_ub"`      | Thermal limit (upper bound)
-|           | `"mu_va_diff"`    | Voltage angle difference
-
-### SOCWRPowerModel
-
-See [PowerModels documentation](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.SOCWRPowerModel).
-
-Primal variables
-
-| Component | Key | Description |
-|:---------:|:----|:------------|
-| bus       | `"w"`  | Squared voltage magnitude
-| generator | `"pg"` | Active power generation
-|           | `"qg"` | Reactive power generation
-| branch    | `"pf"` | Branch active power flow (fr)
-|           | `"pt"` | Branch active power flow (to)
-|           | `"qf"` | Branch reactive power flow (fr)
-|           | `"qt"` | Branch reactive power flow (to)
-|           | `"wr"` | Real part of voltage product
-|           | `"wi"` | Imaginary part of voltage product
-
-Dual variables depend on whether a quadratic (`SOCOPFQuad`) or conic (`SOCOPF`) formulation is considered.
-The former are identified with `(quad)`, the latter with `(cone)` in the table below.
-Only the dual variables of quadratic constraints are affected by this distinction.
-Note that conic dual are high-dimensional variables, and separate coordinates are stored separately.
-
-| Component | Key                        | Constraint |
-|:---------:|:---------------------------|:------------|
-| bus       | `"mu_vm_lb"`               | Nodal voltage magnitude lower bound
-|           | `"mu_vm_ub"`               | Nodal voltage magnitude upper bound
-|           | `"lam_kirchhoff_active"`   | Nodal active power balance
-|           | `"lam_kirchhoff_reactive"` | Nodal reactive power balance
-| generator | `"mu_pg_lb"`               | Active power generation lower bound
-|           | `"mu_pg_ub"`               | Active power generation upper bound
-|           | `"mu_qg_lb"`               | Reactive power generation lower bound
-|           | `"mu_qg_ub"`               | Reactive power generation upper bound
-| branch    | `"lam_ohm_active_fr"`      | Ohm's law; active power (fr)
-|           | `"lam_ohm_active_to"`      | Ohm's law; active power (to)
-|           | `"lam_ohm_reactive_fr"`    | Ohm's law; reactive power (fr)
-|           | `"lam_ohm_reactive_to"`    | Ohm's law; reactive power (to)
-|           | `"mu_va_diff_lb"`          | Voltage angle difference lower bound
-|           | `"mu_va_diff_ub"`          | Voltage angle difference upper bound
-|           | `"mu_sm_fr"`               | (quad) Thermal limit (fr)
-|           | `"mu_sm_to"`               | (quad) Thermal limit (to)
-|           | `"mu_voltage_prod_quad"`   | (quad) Voltage product relaxation (Jabr)
-|           | `"nu_voltage_prod_soc_1"`  | (cone) Voltage product relaxation (Jabr)
-|           | `"nu_voltage_prod_soc_2"`  | (cone) Voltage product relaxation (Jabr)
-|           | `"nu_voltage_prod_soc_3"`  | (cone) Voltage product relaxation (Jabr)
-|           | `"nu_voltage_prod_soc_4"`  | (cone) Voltage product relaxation (Jabr)
-|           | `"nu_sm_fr_1"`             | (cone) Thermal limit (fr)
-|           | `"nu_sm_fr_2"`             | (cone) Thermal limit (fr)
-|           | `"nu_sm_fr_3"`             | (cone) Thermal limit (fr)
-|           | `"nu_sm_to_1"`             | (cone) Thermal limit (to)
-|           | `"nu_sm_to_2"`             | (cone) Thermal limit (to)
-|           | `"nu_sm_to_3"`             | (cone) Thermal limit (to)
-
-
 ## Datasets
 
-### Format
+### File structure
 
 Each dataset is stored in an `.h5` file, organized as follows.
 See [Solution format](#solution-format) for a list of each formulation's primal and dual variables.
@@ -293,6 +170,8 @@ See [Solution format](#solution-format) for a list of each formulation's primal 
     |-- primal
     |-- dual
 ```
+
+See each formulation's documentation for details on the format of each `.h5` file.
 
 ### Loading from julia
 
