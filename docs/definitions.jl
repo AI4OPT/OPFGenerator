@@ -1,5 +1,5 @@
 """ 
-    convert_latex_to_mathjax(s::String)
+    convert_newcommand_to_pair(s::AbstractString)
 
 Converts a string of LaTeX to a pair, e.g. \\newcommand{\\RR}{\\mathbb{R}} to :RR => "\\mathbb{R}".
 """
