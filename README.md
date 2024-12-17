@@ -11,23 +11,6 @@ Copyright Georgia Tech 2022-2024
 # OPFGenerator
 Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
 
-- [OPFGenerator](#opfgenerator)
-  - [Installation instructions](#installation-instructions)
-    - [Using HSL solvers (ma27, ma57)](#using-hsl-solvers-ma27-ma57)
-  - [Quick start](#quick-start)
-    - [Generating random instances](#generating-random-instances)
-    - [Building and solving OPF problems](#building-and-solving-opf-problems)
-  - [Generating datasets](#generating-datasets)
-  - [Solution format](#solution-format)
-    - [ACOPF](#ACOPF)
-    - [DCOPF](#DCOPF)
-    - [SOCWRPowerModel](#socwrpowermodel)
-  - [Datasets](#datasets)
-    - [Format](#format)
-    - [Loading from julia](#loading-from-julia)
-    - [Loading from python](#loading-from-python)
-  - [Loading and saving JSON files](#loading-and-saving-json-files)
-
 ## Installation instructions
 
 This repository is a non-registered Julia package.
