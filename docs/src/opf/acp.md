@@ -121,29 +121,29 @@ The objective function ``\eqref{model:acopf:obj}`` minimizes the cost of active 
 
 ### Dual solution
 
-| Constraint                                   | Data         | Size  | Domain 
-|:---------------------------------------------|:-------------|:------|:----------------------------------|
-| ``\eqref{model:acopf:kirchhoff:active}``     | `kcl_p`      | ``N`` | Nodal voltage angle
-| ``\eqref{model:acopf:kirchhoff:reactive}``   | `kcl_q`      | ``N`` | Active power generation
-| ``\eqref{model:acopf:ohm:active:from}``      | `ohm_pf`     | ``E`` | Reactive power generation
-| ``\eqref{model:acopf:ohm:reactive:from}``    | `ohm_qf`     | ``E`` | Active power flow (to)
-| ``\eqref{model:acopf:ohm:active:to}``        | `ohm_pt`     | ``E`` | Active power flow (from)
-| ``\eqref{model:acopf:ohm:reactive:to}``      | `ohm_qt`     | ``E`` | Reactive power flow (from)
-| ``\eqref{model:acopf:thrmbound:from}``       | `sm_fr`      | ``E`` | Reactive power flow (to)
-| ``\eqref{model:acopf:thrmbound:to}``         | `sm_to`      | ``E`` | Reactive power flow (to)
-| ``\eqref{model:acopf:angledifference}``      | `va_diff`    | ``E`` | Reactive power flow (to)
-| ``\eqref{model:acopf:slackbus}``             | `slack_bus`  | ``N`` | Nodal voltage magnitude
-| ``\eqref{model:acopf:pgbound}`` (lower)      | `pg_lb`      | ``G`` | Active power generation lower bound
-| ``\eqref{model:acopf:pgbound}`` (upper)      | `pg_ub`      | ``G`` | Active power generation upper bound
-| ``\eqref{model:acopf:qgbound}`` (lower)      | `qg_lb`      | ``G`` | Reactive power generation lower bound
-| ``\eqref{model:acopf:qgbound}`` (upper)      | `qg_ub`      | ``G`` | Reactive power generation upper bound
-| ``\eqref{model:acopf:vmbound}`` (lower)      | `vm_lb`      | ``N`` | Voltage magnitude lower bounds
-| ``\eqref{model:acopf:vmbound}`` (upper)      | `vm_ub`      | ``N`` | Voltage magnitude upper bounds
-| ``\eqref{model:acopf:pfbound}`` (lower)      | `pf_lb`      | ``E`` | Active power flow (from) lower bound
-| ``\eqref{model:acopf:pfbound}`` (upper)      | `pf_ub`      | ``E`` | Active power flow (from) upper bound
-| ``\eqref{model:acopf:qfbound}`` (lower)      | `qf_lb`      | ``E`` | Reactive power flow (from) lower bound
-| ``\eqref{model:acopf:qfbound}`` (upper)      | `qf_ub`      | ``E`` | Reactive power flow (from) upper bound
-| ``\eqref{model:acopf:ptbound}`` (lower)      | `pt_lb`      | ``E`` | Active power flow (to) lower bound
-| ``\eqref{model:acopf:ptbound}`` (upper)      | `pt_ub`      | ``E`` | Active power flow (to) upper bound
-| ``\eqref{model:acopf:qtbound}`` (lower)      | `qt_lb`      | ``E`` | Reactive power flow (to) lower bound
-| ``\eqref{model:acopf:qtbound}`` (upper)      | `qt_ub`      | ``E`` | Reactive power flow (to) upper bound
+| Constraint                                   | Data         | Size  |
+|:---------------------------------------------|:-------------|:------|
+| ``\eqref{model:acopf:kirchhoff:active}``     | `kcl_p`      | ``N`` |
+| ``\eqref{model:acopf:kirchhoff:reactive}``   | `kcl_q`      | ``N`` |
+| ``\eqref{model:acopf:ohm:active:from}``      | `ohm_pf`     | ``E`` |
+| ``\eqref{model:acopf:ohm:reactive:from}``    | `ohm_qf`     | ``E`` |
+| ``\eqref{model:acopf:ohm:active:to}``        | `ohm_pt`     | ``E`` |
+| ``\eqref{model:acopf:ohm:reactive:to}``      | `ohm_qt`     | ``E`` |
+| ``\eqref{model:acopf:thrmbound:from}``       | `sm_fr`      | ``E`` |
+| ``\eqref{model:acopf:thrmbound:to}``         | `sm_to`      | ``E`` |
+| ``\eqref{model:acopf:angledifference}``      | `va_diff`    | ``E`` |
+| ``\eqref{model:acopf:slackbus}``             | `slack_bus`  | ``N`` |
+| ``\eqref{model:acopf:pgbound}`` (lower)      | `pg_lb`      | ``G`` |
+| ``\eqref{model:acopf:pgbound}`` (upper)      | `pg_ub`      | ``G`` |
+| ``\eqref{model:acopf:qgbound}`` (lower)      | `qg_lb`      | ``G`` |
+| ``\eqref{model:acopf:qgbound}`` (upper)      | `qg_ub`      | ``G`` |
+| ``\eqref{model:acopf:vmbound}`` (lower)      | `vm_lb`      | ``N`` |
+| ``\eqref{model:acopf:vmbound}`` (upper)      | `vm_ub`      | ``N`` |
+| ``\eqref{model:acopf:pfbound}`` (lower)      | `pf_lb`      | ``E`` |
+| ``\eqref{model:acopf:pfbound}`` (upper)      | `pf_ub`      | ``E`` |
+| ``\eqref{model:acopf:qfbound}`` (lower)      | `qf_lb`      | ``E`` |
+| ``\eqref{model:acopf:qfbound}`` (upper)      | `qf_ub`      | ``E`` |
+| ``\eqref{model:acopf:ptbound}`` (lower)      | `pt_lb`      | ``E`` |
+| ``\eqref{model:acopf:ptbound}`` (upper)      | `pt_ub`      | ``E`` |
+| ``\eqref{model:acopf:qtbound}`` (lower)      | `qt_lb`      | ``E`` |
+| ``\eqref{model:acopf:qtbound}`` (upper)      | `qt_ub`      | ``E`` |
