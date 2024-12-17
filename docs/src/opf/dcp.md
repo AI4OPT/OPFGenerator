@@ -1,53 +1,31 @@
 # DC-OPF
 
-See [`DCPPowerModel`](https://lanl-ansi.github.io/PowerModels.jl/stable/formulation-details/#PowerModels.DCPPowerModel) formulation in [`PowerModels.jl`](https://lanl-ansi.github.io/PowerModels.jl/stable/).
-
 ## Mathematical formulation
 
 The primal problem reads
 
 ```math
 \begin{align}
-    \min_{\mathbf{p}^{\text{g}}, \mathbf{pf}, \boldsymbol{\theta}} \quad 
-    & \label{eq:DCP:objective}
-        \sum_{g \in \mathcal{G}} c_{g} \mathbf{p}^{\text{g}}_{g} + c^{0}_{g}
-        \\
+    \min_{\PG, \PF, \VA} &\quad
+        \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j \label{model:dcopf:obj} \\
     \text{s.t.} \quad
-    & \label{eq:DCP:slack_bus}
-        \boldsymbol{\theta}_{\text{slack}} = 0
-        &
-        &&& [\lambda^{\text{slack}}]\\
-    & \label{eq:DCP:kirchhoff}
-        \sum_{g \in \mathcal{G}_{i}} \mathbf{p}^{\text{g}}_{g} 
-        - \sum_{e \in \mathcal{E}^{+}_{i}} \mathbf{pf}_{e}
-        + \sum_{e \in \mathcal{E}^{-}_{i}} \mathbf{pf}_{e}
-        = 
-        \sum_{l \in \mathcal{L}_{i}} p^{d}_{l}
-        + \sum_{s \in \mathcal{S}_{i}} g^{s}_{s}
-        & \forall i \in \mathcal{N}
-        &&& [\lambda^{\text{kcl}}]\\
-    & \label{eq:DCP:ohm}
-        \mathbf{pf}_{e}
-        =
-        b_{e} (\boldsymbol{\theta}_{t(e)} - \boldsymbol{\theta}_{s(e)})
-        & \forall e \in \mathcal{E}
-        &&& [\lambda^{\text{ohm}}]\\
-    & \label{eq:DCP:va_diff}
-        \underline{\Delta \boldsymbol{\theta}}_{e}
-        \leq
-        \boldsymbol{\theta}_{t(e)} - \boldsymbol{\theta}_{s(e)}
-        \leq 
-        \overline{\Delta \boldsymbol{\theta}}_{e}
-        & \forall e \in \mathcal{E}
-        &&& [\mu^{\Delta \boldsymbol{\theta}}]\\
-    & \label{eq:DCP:thermal}
-        -\overline{f}_{e} \leq \mathbf{pf}_{e} \leq \overline{f}_{e}
-        & \forall e \in \mathcal{E}
-        &&& [\mu^{f}]\\
-    & \label{eq:DCP:pg_bounds}
-        \underline{p}^{g}_{g} \leq \mathbf{p}^{\text{g}}_{g} \leq \overline{p}^{g}_{g}
-        & \forall g \in \mathcal{G}
-        &&& [\mu^{pg}]
+    & \sum_{j\in\GENERATORS_i}\PG_j - \sum_{e \in \mathcal{E}_{i}}  \PF_{e} + \sum_{e \in \mathcal{E}^R_{i}} \PF_{e}
+    = \sum_{j\in\LOADS_i}\PD_j + \GS_i 
+        & \forall i &\in \NODES
+    \label{model:dcopf:kirchhoff} \\
+    & {-}b_{e}(\VA_{i} - \VA_{j}) - \PF_{e} = 0
+        & \forall e = (i, j) &\in \EDGES
+    \label{model:dcopf:ohm} \\
+& \dvamin_{e} \leq \VA_i - \VA_j \leq \dvamax_{e}
+        & \forall e = (i, j) &\in \EDGES
+    \label{model:dcopf:angledifference} \\
+    & \VA_\text{ref} = 0 \label{model:dcopf:slackbus} \\
+    & \underline{\PG_i} \leq \PG_i \leq \overline{\PG_i}
+        & \forall i &\in \GENERATORS
+    \label{model:dcopf:pgbound} \\
+    & {-}\overline{S_{e}} \leq  \PF_{e} \leq \overline{S_{e}}
+        & \forall e &\in \EDGES
+    \label{model:dcopf:thrmbound:from}
 \end{align}
 ```
 
@@ -57,19 +35,19 @@ The primal problem reads
 
 | Symbol | Data | Size | Description 
 |:-------|:-----|:-----|:------------|
-| ``\mathbf{p}^{\text{g}}`` | `pg` | ``G`` | Active power dispatch
-| ``\boldsymbol{\theta}`` | `va` | ``N`` | Nodal voltage angle
-| ``\mathbf{pf}`` | `pf` | ``E`` | Active power flow
+| ``\PG`` | `pg` | ``G`` | Active power dispatch
+| ``\VA`` | `va` | ``N`` | Nodal voltage angle
+| ``\PF`` | `pf` | ``E`` | Active power flow
 
 ### Dual variables
 
-| Symbol | Data | Size | Associated constraint 
-|:-------|:-----|:-----|:------------|
-| ``\lambda^{\text{kcl}}`` | `lam_kirchhoff` | ``N`` | Nodal power balance ``\eqref{eq:DCP:kirchhoff}``
-| ``\lambda^{\text{ohm}}`` | `lam_ohm` | ``E`` | Ohm's law ``\eqref{eq:DCP:ohm}``
-| ``\mu^{\Delta \boldsymbol{\theta}}`` | `mu_va_diff` | ``E`` | Angle difference limit ``\eqref{eq:DCP:va_diff}``
-| ``\mu^{pf}`` | `mu_sm` | ``E`` | Thermal limit ``\eqref{eq:DCP:thermal}``
-| ``\mu^{pg}`` | `mu_pg` | ``G`` | Generation min/max limits ``\eqref{eq:DCP:pg_bounds}``
-| ``\lambda^{\text{slack}}`` | -- | ``1`` | Slack bus voltage angle ``\eqref{eq:DCP:slack_bus}``
-
-Dual variable ``\lambda^{\text{slack}}`` is always zero at the optimum, hence it is not exported.
+| Associated constraint                             | Data         | Size  |
+|:--------------------------------------------------|:-------------|:------|
+| ``\eqref{model:dcopf:slackbus}``                  | `slack_bus`  | ``1`` |
+| ``\eqref{model:dcopf:kirchhoff}``                 | `kcl_p`      | ``N`` |
+| ``\eqref{model:dcopf:ohm}``                       | `ohm`        | ``E`` |
+| ``\eqref{model:dcopf:angledifference}``           | `va_diff`    | ``E`` |
+| ``\eqref{model:dcopf:pgbound}`` (lower)           | `pg_min`     | ``G`` |
+| ``\eqref{model:dcopf:pgbound}`` (upper)           | `pg_max`     | ``G`` |
+| ``\eqref{model:dcopf:thrmbound:from}`` (lower)    | `pf_min`     | ``E`` |
+| ``\eqref{model:dcopf:thrmbound:from}`` (upper)    | `pf_max`     | ``E`` |
