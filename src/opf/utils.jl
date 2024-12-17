@@ -74,7 +74,7 @@ function extract_metadata(opf::OPFModel{<:AbstractFormulation})
     # * it's a point (i.e. not a ray, not a reduction certificate)
     OK_STATUSES = [MOI.FEASIBLE_POINT, MOI.NEARLY_FEASIBLE_POINT, MOI.INFEASIBLE_POINT]
 
-    z_primal = if has_values(model) && pst ∈ OK_STATUSES
+    z_primal = if pst ∈ OK_STATUSES
         objective_value(model)
     else
         NaN
