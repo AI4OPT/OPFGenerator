@@ -1,8 +1,8 @@
 # DC-OPF
 
-## Mathematical formulation
+## Mathematical Formulation
 
-The primal problem reads
+The DCOPF model considered in OPFGenerator is presented below.
 
 ```math
 \begin{align}
@@ -29,7 +29,34 @@ The primal problem reads
 \end{align}
 ```
 
-## Nomenclature
+
+### Variables
+
+* ``\PG \in \mathbb{R}^{G}``: active power dispatch
+* ``\PF \in \mathbb{R}^{E}``: active power flow "from"
+* ``\VA \in \mathbb{R}^{N}``: nodal voltage angle
+
+### Objective
+
+The objective function ``\eqref{model:dcopf:obj}`` minimizes the cost of active power generation.
+
+!!! todo
+    OPFGenerator currently supports only linear cost functions.
+    Support for quadratic functions is planned for a later stage; please open an issue if 
+    you would like to request this feature.
+
+### Constraints
+
+* ``\eqref{model:dcopf:kirchhoff}``: Kirchhoff's current law.
+* ``\eqref{model:dcopf:ohm}``: Ohm's law expressing power flows as a function of nodal voltages.
+* ``\eqref{model:dcopf:thrmbound:from}``: Thermal limits.
+* ``\eqref{model:dcopf:angledifference}``: Voltage angle deviation constraints.
+* ``\eqref{model:dcopf:slackbus}``: this constraint fixes the voltage angle of the reference (slack) bus to zero.
+* ``\eqref{model:dcopf:pgbound}``: Active generation limits.
+
+
+
+## Data Format
 
 ### Primal variables
 
