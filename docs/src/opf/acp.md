@@ -8,7 +8,7 @@ The ACOPF model considered in OPFGenerator is presented below.
 ```math
 \begin{align}
     \min_{\PG, \QG, \PF, \QF, \PT, \QT, \VM, \VA} \quad
-    & \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j \label{model:acopf:obj} \\
+    & \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j + c_0 \label{model:acopf:obj} \\
     \text{s.t.} \quad \quad \quad
     & \sum_{j\in\GENERATORS_i}\PG_j - \sum_{j\in\LOADS_i}\PD_j - \GS_i \VM_i^2 = \sum_{e \in \mathcal{E}_{i}}  \PF_{e} + \sum_{e \in \mathcal{E}^R_{i}} \PT_{e}
         & \forall i &\in \NODES
