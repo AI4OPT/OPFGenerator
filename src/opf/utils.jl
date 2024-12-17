@@ -79,7 +79,7 @@ function extract_metadata(opf::OPFModel{<:AbstractFormulation})
     else
         NaN
     end
-    z_dual = if has_duals(model) && dst ∈ OK_STATUSES
+    z_dual = if dst ∈ OK_STATUSES
         dual_objective_value(model) 
     else
         NaN
