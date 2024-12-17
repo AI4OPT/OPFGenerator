@@ -106,7 +106,7 @@ data.pd[1] # old
 0.217
 
 new_data.pd[1]  # new
-0.21480423013573954
+0.21480423013573954  # ⚠️exact value depends on Julia version)
 ```
 
 To generate multiple instances, run the above code in a loop
