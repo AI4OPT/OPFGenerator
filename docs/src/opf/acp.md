@@ -28,10 +28,10 @@ The ACOPF model considered in OPFGenerator is presented below.
     & \QT_{e} = -\btt_{e} \VM_j^2 - \btf_{e}\VM_i \VM_j \cos(\VA_i-\VA_j) - \gtf_{e} \VM_i \VM_j \sin(\VA_i-\VA_j)
         & \forall e = (i,j) &\in \EDGES
         \label{model:acopf:ohm:reactive:to} \\
-    & (\PF_{e})^2 + (\QF_{e})^2 \leq \overline{S_{e}}^2
+    & (\PF_{e})^2 + (\QF_{e})^2 \leq \overline{S}_{e}^2
         & \forall e &\in \EDGES
         \label{model:acopf:thrmbound:from} \\
-    & (\PT_{e})^2 + (\QT_{e})^2 \leq \overline{S_{e}}^2
+    & (\PT_{e})^2 + (\QT_{e})^2 \leq \overline{S}_{e}^2
         & \forall e &\in \EDGES
         \label{model:acopf:thrmbound:to} \\
     & \dvamin_{e} \leq \VA_i - \VA_j \leq \dvamax_{e}
