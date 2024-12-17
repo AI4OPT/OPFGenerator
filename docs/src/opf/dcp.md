@@ -9,7 +9,7 @@ The DCOPF model considered in OPFGenerator is presented below.
     \min_{\PG, \PF, \VA} &\quad
         \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j + c_0 \label{model:dcopf:obj} \\
     \text{s.t.} \quad
-    & \sum_{j\in\GENERATORS_i}\PG_j - \sum_{e \in \mathcal{E}_{i}}  \PF_{e} + \sum_{e \in \mathcal{E}^R_{i}} \PF_{e}
+    & \sum_{j\in\GENERATORS_i}\PG_j - \sum_{e \in \mathcal{E}^{+}_{i}}  \PF_{e} + \sum_{e \in \mathcal{E}^{-}_{i}} \PF_{e}
     = \sum_{j\in\LOADS_i}\PD_j + \GS_i 
         & \forall i &\in \NODES
     \label{model:dcopf:kirchhoff} \\

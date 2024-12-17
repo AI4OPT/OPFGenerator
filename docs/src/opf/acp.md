@@ -10,10 +10,10 @@ The ACOPF model considered in OPFGenerator is presented below.
     \min_{\PG, \QG, \PF, \QF, \PT, \QT, \VM, \VA} \quad
     & \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j + c_0 \label{model:acopf:obj} \\
     \text{s.t.} \quad \quad \quad
-    & \sum_{j\in\GENERATORS_i}\PG_j - \sum_{j\in\LOADS_i}\PD_j - \GS_i \VM_i^2 = \sum_{e \in \mathcal{E}_{i}}  \PF_{e} + \sum_{e \in \mathcal{E}^R_{i}} \PT_{e}
+    & \sum_{j\in\GENERATORS_i}\PG_j - \sum_{j\in\LOADS_i}\PD_j - \GS_i \VM_i^2 = \sum_{e \in \mathcal{E}^{+}_{i}}  \PF_{e} + \sum_{e \in \mathcal{E}^{-}_{i}} \PT_{e}
         & \forall i &\in \NODES
         \label{model:acopf:kirchhoff:active} \\
-    & \sum_{j\in\GENERATORS_i}\QG_j - \sum_{j\in\LOADS_i}\QD_j + \BS_i \VM_i^2 = \sum_{e \in \mathcal{E}_{i}} \QF_{e} + \sum_{e \in \mathcal{E}^R_{i}} \QT_{e}
+    & \sum_{j\in\GENERATORS_i}\QG_j - \sum_{j\in\LOADS_i}\QD_j + \BS_i \VM_i^2 = \sum_{e \in \mathcal{E}^{+}_{i}} \QF_{e} + \sum_{e \in \mathcal{E}^{-}_{i}} \QT_{e}
         & \forall i &\in \NODES
         \label{model:acopf:kirchhoff:reactive} \\
     & \PF_{e} = \gff_{e}\VM_i^2 + \gft_{e} \VM_i \VM_j \cos(\VA_i-\VA_j) + \bft_{e} \VM_i \VM_j \sin(\VA_i-\VA_j)
