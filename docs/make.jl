@@ -8,6 +8,7 @@ makedocs(
     modules=[OPFGenerator],
     sitename = "OPFGenerator",
     format = Documenter.HTML(;
+        assets = ["assets/wider.css"],
         mathengine = Documenter.MathJax3(Dict(
             :tex => Dict(
                 "macros" => make_macros_dict("docs/src/assets/definitions.tex"),
