@@ -12,7 +12,7 @@ Copyright Georgia Tech 2022-2024
 [docs-dev-url]: https://ai4opt.github.io/OPFGenerator/dev/
 
 # OPFGenerator
-Instance generator for various OPF problems (ACOPF & DCOPF currently supported)
+Instance generator for various OPF problems.
 
 ## Installation instructions
 
