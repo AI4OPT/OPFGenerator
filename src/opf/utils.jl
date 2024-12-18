@@ -65,14 +65,34 @@ end
 function extract_metadata(opf::OPFModel{<:AbstractFormulation})
     model = opf.model
 
+    tst = termination_status(model)
+    pst = primal_status(model)
+    dst = dual_status(model)
+
+    # Query primal/dual objective value only if 
+    # * a primal/dual solution exists
+    # * it's a point (i.e. not a ray, not a reduction certificate)
+    OK_STATUSES = [MOI.FEASIBLE_POINT, MOI.NEARLY_FEASIBLE_POINT, MOI.INFEASIBLE_POINT]
+
+    z_primal = if pst ∈ OK_STATUSES
+        objective_value(model)
+    else
+        NaN
+    end
+    z_dual = if dst ∈ OK_STATUSES
+        dual_objective_value(model) 
+    else
+        NaN
+    end
+
     return Dict{String,Any}(
         "formulation" => string(model.ext[:opf_model]),
-        "termination_status" => string(termination_status(model)),
-        "primal_status" => string(primal_status(model)),
-        "dual_status" => string(dual_status(model)),
+        "termination_status" => string(tst),
+        "primal_status" => string(pst),
+        "dual_status" => string(dst),
         "solve_time" => solve_time(model),
-        "primal_objective_value" => if has_values(model) objective_value(model) else Inf end,
-        "dual_objective_value" => if has_duals(model) dual_objective_value(model) else -Inf end,
+        "primal_objective_value" => z_primal,
+        "dual_objective_value" => z_dual,
     )
 end
 
