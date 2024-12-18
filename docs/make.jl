@@ -1,11 +1,21 @@
 using Documenter
 using OPFGenerator
 
+
+include("definitions.jl")
+
 makedocs(
     modules=[OPFGenerator],
     sitename = "OPFGenerator",
     format = Documenter.HTML(;
-        mathengine = Documenter.MathJax(),
+        assets = ["assets/wider.css"],
+        mathengine = Documenter.MathJax3(Dict(
+            :tex => Dict(
+                "macros" => make_macros_dict("docs/src/assets/definitions.tex"),
+                "inlineMath" => [["\$","\$"], ["\\(","\\)"]],
+                "tags" => "ams",
+            ),
+        )),
     ),
     pages = [
         "Home" => "index.md",
