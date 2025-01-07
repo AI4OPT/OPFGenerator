@@ -27,162 +27,173 @@ The SOC-OPF formulation in OPFGenerator is the Jabr relaxation of AC-OPF.
 The formulation is obtained through the change of variable
 ```math
 \begin{align*}
-\mathbf{w}_{i} &= \mathbf{v}_{i}^{2} 
+\wm_{i} &= \VM_{i}^{2} 
     && \forall i \in \mathcal{N}\\
-\mathbf{w}^{\text{r}}_{e} &= \mathbf{v}_{i} \mathbf{v}_{j} \cos (\Delta \theta_{e}) 
-    && \forall e = (i, j) \in \mathcal{E}\\
-\mathbf{w}^{\text{i}}_{e} &= \mathbf{v}_{i} \mathbf{v}_{j} \sin (\Delta \theta_{e}) 
-    && \forall e = (i, j) \in \mathcal{E}
+\wr_{e} &= \VM_{i} \VM_{j} \cos (\theta_{i} - \theta_{j}) 
+    && \forall e = (i, j) \in \EDGES\\
+\wi_{e} &= \VM_{i} \VM_{j} \sin (\theta_{i} - \theta_{j}) 
+    && \forall e = (i, j) \in \EDGES
 \end{align*}
 ```
-where ``\Delta \theta_{e} = \theta_{i} - \theta_{j}``.
-Note that ``\mathbf{w}^{\text{r}}_{e}`` and ``\mathbf{w}^{\text{i}}_{e}`` correspond to 
+Note that ``\wr_{e}`` and ``\wi_{e}`` correspond to 
 the real and imaginary parts of the complex voltage product ``V_{i}V_{j}^{*}``, respectively.
 This transformation implies the non-convex equality
 ```math
-(\mathbf{w}^{\text{r}})^{2} + (\mathbf{w}^{\text{i}})^{2} = \mathbf{v}_{i}^{2} \times \mathbf{v}_{j}^{2} = \mathbf{w}_{i} \times \mathbf{w}_{j}
+(\wr)^{2} + (\wi)^{2} = \VM_{i}^{2} \times \VM_{j}^{2} = \wm_{i} \times \wm_{j}
 ```
 The Jabr relaxation is obtained by relaxing this into the convex constraint
 ```math
-(\mathbf{w}^{\text{r}})^{2} + (\mathbf{w}^{\text{i}})^{2} \leq \mathbf{w}_{i} \times \mathbf{w}_{j}
+(\wr)^{2} + (\wi)^{2} \leq \wm_{i} \times \wm_{j}
 ```
 
-The resulting SOC-OPF problem has the form
+The result SOC-OPF model is presented below.
 ```math
 \begin{align}
     \min \quad 
     & \label{eq:SOCOPF:objective}
-        \sum_{g \in \mathcal{G}} c_{g} \mathbf{p}^{\text{g}}_{g} + c^{0}_{g}\\
+        \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j + c_0\\
     \text{s.t.} \quad
     & \label{eq:SOCOPF:kcl_p}
-        \sum_{g \in \mathcal{G}_{i}} \mathbf{p}^{\text{g}}_{g}
-        - \sum_{e \in \mathcal{E}^{+}_{i}} \mathbf{p}^{\text{f}}_{e}
-        - \sum_{e \in \mathcal{E}^{-}_{i}} \mathbf{p}^{\text{t}}_{e}
-        - g^{s}_{i} \mathbf{w}_{i}
-        =
-        \sum_{l \in \mathcal{L}_{i}} p^{d}_{l}
-        && \forall i \in \mathcal{N}
-        && [\lambda^{p}]\\
+        \sum_{j\in\GENERATORS_i}\PG_j 
+        - \sum_{e \in \EDGES^{+}_{i}} \PF_{e}
+        - \sum_{e \in \EDGES^{-}_{i}} \PT_{e}
+        - \GS_i \wm_{i}
+        = \sum_{j\in\LOADS_i} \PD_j
+        & \forall i & \in \NODES
+        % && [\lambda^{p}]
+        \\
     & \label{eq:SOCOPF:kcl_q}
-        \sum_{g \in \mathcal{G}_{i}} \mathbf{q}^{\text{g}}_{g}
-        - \sum_{e \in \mathcal{E}^{+}_{i}} \mathbf{q}^{\text{f}}_{e}
-        - \sum_{e \in \mathcal{E}^{-}_{i}} \mathbf{q}^{\text{t}}_{e}
-        + b^{s}_{i} \mathbf{w}_{i}
-        =
-        \sum_{l \in \mathcal{L}_{i}} q^{d}_{l}
-        && \forall i \in \mathcal{N}
-        && [\lambda^{q}]\\
+        \sum_{g \in \mathcal{G}_{i}} \QG_{g}
+        - \sum_{e \in \EDGES^{+}_{i}} \QF_{e}
+        - \sum_{e \in \EDGES^{-}_{i}} \QT_{e}
+        + \BS_{i} \wm_{i}
+        = \sum_{j\in\LOADS_i} \QD_j
+        & \forall i & \in \mathcal{N}
+        % && [\lambda^{q}]
+        \\
     % Ohm's law
     & \label{eq:SOCOPF:ohm_pf}
-        g^{ff}_{e} \mathbf{w}_{i}
-        + g^{ft}_{e} \mathbf{w}^{\text{r}}_{e}
-        + b^{ft}_{e} \mathbf{w}^{\text{i}}_{e}
-        - \mathbf{p}^{\text{f}}_{e} = 0
-        && \forall e \in \mathcal{E}
-        && [\lambda^{pf}]\\
+        \gff_{e} \wm_{i}
+        + \gft_{e} \wr_{e}
+        + \bft_{e} \wi_{e}
+        - \PF_{e} = 0
+        & \forall e & \in \EDGES
+        % && [\lambda^{pf}]
+        \\
     & \label{eq:SOCOPF:ohm_qf}
-        -b^{ff}_{e} \mathbf{w}_{i}
-        - b^{ft}_{e} \mathbf{w}^{\text{r}}_{e}
-        + g^{ft}_{e} \mathbf{w}^{\text{i}}_{e}
-        - \mathbf{q}^{\text{f}}_{e} = 0
-        && \forall e \in \mathcal{E}
-        && [\lambda^{qf}]\\
+        -\bff_{e} \wm_{i}
+        - \bft_{e} \wr_{e}
+        + \gft_{e} \wi_{e}
+        - \QF_{e} = 0
+        & \forall e & \in \EDGES
+        % && [\lambda^{qf}]
+        \\
     & \label{eq:SOCOPF:ohm_pt}
-        g^{tt}_{e} \mathbf{w}_{j}
-        + g^{tf}_{e} \mathbf{w}^{\text{r}}_{e}
-        - b^{tf}_{e} \mathbf{w}^{\text{i}}_{e}
-        - \mathbf{p}^{\text{t}}_{e} = 0
-        && \forall e \in \mathcal{E}
-        && [\lambda^{pt}]\\
+        \gtt_{e} \wm_{j}
+        + \gtf_{e} \wr_{e}
+        - \btf_{e} \wi_{e}
+        - \PT_{e} = 0
+        & \forall e & \in \EDGES
+        % && [\lambda^{pt}]
+        \\
     & \label{eq:SOCOPF:ohm_qt}
-        -b^{tt}_{e} \mathbf{w}_{j}
-        - b^{tf}_{e} \mathbf{w}^{\text{r}}_{e}
-        - g^{tf}_{e} \mathbf{w}^{\text{i}}_{e}
-        - \mathbf{q}^{\text{t}}_{e} = 0
-        && \forall e \in \mathcal{E}
-        && [\lambda^{qt}]\\
+        -\btt_{e} \wm_{j}
+        - \btf_{e} \wr_{e}
+        - \gtf_{e} \wi_{e}
+        - \QT_{e} = 0
+        & \forall e & \in \EDGES
+        % && [\lambda^{qt}]
+        \\
     % Jabr constraints
     & \label{eq:SOCOPF:jabr}
         \left(
-            \frac{\mathbf{w}_{i}}{\sqrt{2}},
-            \frac{\mathbf{w}_{j}}{\sqrt{2}},
-            \mathbf{w}^{\text{r}}_{e},
-            \mathbf{w}^{\text{i}}_{e}
+            \frac{\wm_{i}}{\sqrt{2}},
+            \frac{\wm_{j}}{\sqrt{2}},
+            \wr_{e},
+            \wi_{e}
         \right)
         \in \mathcal{Q}_{r}^{4}
-        && \forall e \in \mathcal{E}
-        && [\omega]\\
+        & \forall e = (i,j) & \in \EDGES
+        % && [\omega]
+        \\
     % Thermal limits
     & \label{eq:SOCOPF:sm_f}
-        (\bar{s}_{e}, \mathbf{p}^{\text{f}}_{e}, \mathbf{q}^{\text{f}}_{e})
+        (\overline{S}_{e}, \PF_{e}, \QF_{e})
         \in \mathcal{Q}^{3}
-        && \forall e \in \mathcal{E}
-        && [\nu^{f}]\\
+        & \forall e & \in \EDGES
+        % && [\nu^{f}]
+        \\
     & \label{eq:SOCOPF:sm_t}
-        (\bar{s}_{e}, \mathbf{p}^{\text{t}}_{e}, \mathbf{q}^{\text{t}}_{e})
+        (\overline{S}_{e}, \PT_{e}, \QT_{e})
         \in \mathcal{Q}^{3}
-        && \forall e \in \mathcal{E}
-        && [\nu^{t}]\\
+        & \forall e & \in \EDGES
+        % && [\nu^{t}]
+        \\
     % Voltage angle deviation
     & \label{eq:SOCOPF:va_diff}
-        \underline{\Delta} \theta_{e} \leq \Delta \theta_{e}
-        \leq \bar{\Delta} \theta_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{\Delta \theta}]\\
+        \tan(\dvamin_{e}) \wr_{e} \leq \wi_{e} \leq \tan(\dvamax_{e}) \wr_{e}
+        & \forall e & \in \EDGES
+        % && [\mu^{\Delta \theta}]
+        \\
     % Variable bounds
-    & \label{eq:SOCOPF:wm_bounds}
-        \underline{v}_{i}^{2} \leq \mathbf{w}_{i} \leq \bar{v}_{i}^{2}, 
-        && \forall i \in \mathcal{N}
-        && [\mu^{w}]\\ 
     & \label{eq:SOCOPF:pg_bounds}
-        \underline{p}^{g}_{i} \leq \mathbf{p}^{\text{g}}_{i} \leq \bar{p}^{g}_{i}, 
-        && \forall i \in \mathcal{G}
-        && [\mu^{pg}]\\
+        \pgmin_{i} \leq \PG_{i} \leq \pgmax_{i}, 
+        & \forall i & \in \mathcal{G}
+        % && [\mu^{pg}]
+        \\
     & \label{eq:SOCOPF:qg_bounds}
-        \underline{q}^{g}_{i} \leq \mathbf{q}^{\text{g}}_{i} \leq \bar{q}^{g}_{i},
-        && \forall i \in \mathcal{G}
-        && [\mu^{qg}]\\
+        \qgmin_{i} \leq \QG_{i} \leq \qgmax_{i},
+        & \forall i & \in \mathcal{G}
+        % && [\mu^{qg}]
+        \\
+    & \label{eq:SOCOPF:wm_bounds}
+        \vmmin_{i}^{2} \leq \wm_{i} \leq \vmmax_{i}^{2}, 
+        & \forall i & \in \mathcal{N}
+        % && [\mu^{w}]
+        \\ 
     & \label{eq:SOCOPF:wr_bounds}
-        \underline{w}^{\text{r}}_{e} \leq \mathbf{w}^{\text{r}}_{e} \leq \bar{w}^{\text{r}}_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{wr}]\\
+        \wrmin_{e} \leq \wr_{e} \leq \wrmax_{e}
+        & \forall e & \in \EDGES
+        % && [\mu^{wr}]
+        \\
     & \label{eq:SOCOPF:wi_bounds}
-        \underline{w}^{\text{i}}_{e} \leq \mathbf{w}^{\text{i}}_{e} \leq \bar{w}^{\text{i}}_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{wi}]\\
+        \wimin_{e} \leq \wi_{e} \leq \wimax_{e}
+        & \forall e & \in \EDGES
+        % && [\mu^{wi}]
+        \\
     & \label{eq:SOCOPF:pf_bounds}
-        -\bar{s}_{e} \leq \mathbf{p}^{\text{f}}_{e} \leq \bar{s}_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{pf}]\\
+        {-}\overline{S}_{e} \leq \PF_{e} \leq \overline{S}_{e}
+        & \forall e & \in \EDGES
+        % && [\mu^{pf}]
+        \\
     & \label{eq:SOCOPF:qf_bounds}
-        -\bar{s}_{e} \leq \mathbf{q}^{\text{f}}_{e} \leq \bar{s}_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{qf}]\\
+        {-}\overline{S}_{e} \leq \QF_{e} \leq \overline{S}_{e}
+        & \forall e & \in \EDGES
+        % && [\mu^{qf}]
+        \\
     & \label{eq:SOCOPF:pt_bounds}
-        -\bar{s}_{e} \leq \mathbf{p}^{\text{t}}_{e} \leq \bar{s}_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{pt}]\\
+        {-}\overline{S}_{e} \leq \PT_{e} \leq \overline{S}_{e}
+        & \forall e & \in \EDGES
+        % % && [\mu^{pt}]
+        \\
     & \label{eq:SOCOPF:qt_bounds}
-        -\bar{s}_{e} \leq \mathbf{q}^{\text{t}}_{e} \leq \bar{s}_{e}
-        && \forall e \in \mathcal{E}
-        && [\mu^{qt}]
+        {-}\overline{S}_{e} \leq \QT_{e} \leq \overline{S}_{e}
+        & \forall e & \in \EDGES
+        % && [\mu^{qt}]
 \end{align}
 ```
-where ``\Delta \theta_{e} = \theta_{i} - \theta_{j}`` for branch ``e = (i, j) \in \mathcal{E}``.
-Similarly, in constraints ``\eqref{eq:SOCOPF:ohm_pf}-\eqref{eq:SOCOPF:jabr}``,
-indices ``i`` and ``j`` denote the source and destination of branch ``e \in \mathcal{E}``, respectively.
 
 ### Variables
 
-* ``\mathbf{w} \in \mathbb{R}^{N}``: squared nodal voltage magnitude
-* ``\mathbf{p}^{\text{g}} \in \mathbb{R}^{G}``: active power dispatch
-* ``\mathbf{q}^{\text{g}} \in \mathbb{R}^{G}``: reactive power dispatch
-* ``\mathbf{w}^{\text{r}} \in \mathbb{R}^{E}``: real part of voltage product
-* ``\mathbf{w}^{\text{i}} \in \mathbb{R}^{E}``: imaginary part of voltage product
-* ``\mathbf{p}^{\text{f}} \in \mathbb{R}^{E}``: active power flow "from"
-* ``\mathbf{q}^{\text{f}} \in \mathbb{R}^{E}``: reactive power flow "from"
-* ``\mathbf{p}^{\text{t}} \in \mathbb{R}^{E}``: active power flow "to"
-* ``\mathbf{q}^{\text{t}} \in \mathbb{R}^{E}``: reactive power flow "to"
+* ``\wm \in \mathbb{R}^{N}``: squared nodal voltage magnitude
+* ``\PG \in \mathbb{R}^{G}``: active power dispatch
+* ``\QG \in \mathbb{R}^{G}``: reactive power dispatch
+* ``\wr \in \mathbb{R}^{E}``: real part of voltage product
+* ``\wi \in \mathbb{R}^{E}``: imaginary part of voltage product
+* ``\PF \in \mathbb{R}^{E}``: active power flow "from"
+* ``\QF \in \mathbb{R}^{E}``: reactive power flow "from"
+* ``\PT \in \mathbb{R}^{E}``: active power flow "to"
+* ``\QT \in \mathbb{R}^{E}``: reactive power flow "to"
 
 ### Objective
 
@@ -197,8 +208,8 @@ The objective function minimizes the cost of active power generation.
 * ``\eqref{eq:SOCOPF:jabr}``: Jabr constraint
 * ``\eqref{eq:SOCOPF:sm_f}-\eqref{eq:SOCOPF:sm_t}``: Thermal limits
 * ``\eqref{eq:SOCOPF:va_diff}``: voltage angle deviation constraints.
-* ``\eqref{eq:SOCOPF:wm_bounds}``: nodal voltage angle limits
 * ``\eqref{eq:SOCOPF:pg_bounds}-\eqref{eq:SOCOPF:qg_bounds}``: active/reactive generation limits
+* ``\eqref{eq:SOCOPF:wm_bounds}``: nodal voltage angle limits
 * ``\eqref{eq:SOCOPF:wr_bounds}-\eqref{eq:SOCOPF:wi_bounds}``: bounds on voltage product variables
 * ``\eqref{eq:SOCOPF:pf_bounds}-\eqref{eq:SOCOPF:qt_bounds}``: power flow bounds, derived from thermal limits
 
@@ -211,6 +222,8 @@ The objective function minimizes the cost of active power generation.
     When using the `SOCOPF` formulation, all convex quadratic are passed to the solver in conic form.
     To use quadratic form, e.g., when using a solver that doesn't support conic constraints,
     use `SOCOPFQuad`.
+    !!! warning
+        The `SOCOPFQuad` formulation does not support conic duality.
 
 ## Data format
 
@@ -219,45 +232,45 @@ The objective function minimizes the cost of active power generation.
 | Variable                  | Data | Size  | Description 
 |:--------------------------|:-----|:------|:----------------------------------|
 | ``\mathbf{w}``            | `w`  | ``N`` | Squared nodal voltage magnitude
-| ``\mathbf{p}^{\text{g}}`` | `pg` | ``G`` | Active power generation
-| ``\mathbf{q}^{\text{g}}`` | `pg` | ``G`` | Reactive power generation
-| ``\mathbf{w}^{\text{r}}`` | `wr` | ``E`` | Voltage product variable (real part)
-| ``\mathbf{w}^{\text{i}}`` | `wi` | ``E`` | Voltage product variable (imaginary part)
-| ``\mathbf{p}^{\text{f}}`` | `pf` | ``E`` | Active power flow (from)
-| ``\mathbf{p}^{\text{t}}`` | `pt` | ``E`` | Active power flow (to)
-| ``\mathbf{q}^{\text{f}}`` | `qf` | ``E`` | Reactive power flow (from)
-| ``\mathbf{q}^{\text{t}}`` | `qt` | ``E`` | Reactive power flow (to)
+| ``\PG`` | `pg` | ``G`` | Active power generation
+| ``\QG`` | `pg` | ``G`` | Reactive power generation
+| ``\wr`` | `wr` | ``E`` | Voltage product variable (real part)
+| ``\wi`` | `wi` | ``E`` | Voltage product variable (imaginary part)
+| ``\PF`` | `pf` | ``E`` | Active power flow (from)
+| ``\PT`` | `pt` | ``E`` | Active power flow (to)
+| ``\QF`` | `qf` | ``E`` | Reactive power flow (from)
+| ``\QT`` | `qt` | ``E`` | Reactive power flow (to)
 
 ### Dual solution
 
 
-| Constraint                      | Data         | Size  | Domain 
-|:--------------------------------|:-------------|:------|:----------------------------------|
-| ``\eqref{eq:SOCOPF:kcl_p}``     | `kcl_p`      | ``N`` | Kirchhoff's current law (active power)
-| ``\eqref{eq:SOCOPF:kcl_q}``     | `kcl_q`      | ``N`` | Kirchhoff's current law (reactive power)
-| ``\eqref{eq:SOCOPF:ohm_pf}``    | `ohm_pf`     | ``E`` | Ohm's law, active power flow (from)
-| ``\eqref{eq:SOCOPF:ohm_qf}``    | `ohm_qf`     | ``E`` | Ohm's law, reactive power flow (from)
-| ``\eqref{eq:SOCOPF:ohm_pt}``    | `ohm_pt`     | ``E`` | Ohm's law, active power flow (to)
-| ``\eqref{eq:SOCOPF:ohm_qt}``    | `ohm_qt`     | ``E`` | Ohm's law, reactive power flow (to)
-| ``\eqref{eq:SOCOPF:jabr}``      | `jabr `      | ``E \times 4`` | Jabr constraint
-| ``\eqref{eq:SOCOPF:sm_f}``      | `sm_fr`      | ``E \times 3`` | Thermal limit (from)
-| ``\eqref{eq:SOCOPF:sm_t}``      | `sm_to`      | ``E \times 3`` | Thermal limit (to)
-| ``\eqref{eq:SOCOPF:va_diff}``   | `va_diff`    | ``E`` | Voltage angle deviation
-| ``\eqref{eq:SOCOPF:wm_bounds}`` (lower) | `w_lb` | ``N`` | Squared voltage magnitude lower bounds
-| ``\eqref{eq:SOCOPF:wm_bounds}`` (upper) | `w_ub` | ``N`` | Squared voltage magnitude upper bounds
-| ``\eqref{eq:SOCOPF:pg_bounds}`` (lower) | `pg_lb` | ``G`` | Active power generation lower bound
-| ``\eqref{eq:SOCOPF:pg_bounds}`` (upper) | `pg_ub` | ``G`` | Active power generation upper bound
-| ``\eqref{eq:SOCOPF:qg_bounds}`` (lower) | `qg_lb` | ``G`` | Reactive power generation lower bound
-| ``\eqref{eq:SOCOPF:qg_bounds}`` (upper) | `qg_ub` | ``G`` | Reactive power generation upper bound
-| ``\eqref{eq:SOCOPF:wr_bounds}`` (lower) | `wr_lb` | ``E`` | Voltage product (real part) lower bound
-| ``\eqref{eq:SOCOPF:wr_bounds}`` (upper) | `wr_ub` | ``E`` | Voltage product (real part) upper bound
-| ``\eqref{eq:SOCOPF:wi_bounds}`` (lower) | `wi_lb` | ``E`` | Voltage product (imaginary part) lower bound
-| ``\eqref{eq:SOCOPF:wi_bounds}`` (upper) | `wi_ub` | ``E`` | Voltage product (imaginary part) upper bound
-| ``\eqref{eq:SOCOPF:pf_bounds}`` (lower) | `pf_lb` | ``E`` | Active power flow (from) lower bound
-| ``\eqref{eq:SOCOPF:pf_bounds}`` (upper) | `pf_ub` | ``E`` | Active power flow (from) upper bound
-| ``\eqref{eq:SOCOPF:qf_bounds}`` (lower) | `qf_lb` | ``E`` | Reactive power flow (from) lower bound
-| ``\eqref{eq:SOCOPF:qf_bounds}`` (upper) | `qf_ub` | ``E`` | Reactive power flow (from) upper bound
-| ``\eqref{eq:SOCOPF:pt_bounds}`` (lower) | `pt_lb` | ``E`` | Active power flow (to) lower bound
-| ``\eqref{eq:SOCOPF:pt_bounds}`` (upper) | `pt_ub` | ``E`` | Active power flow (to) upper bound
-| ``\eqref{eq:SOCOPF:qt_bounds}`` (lower) | `qt_lb` | ``E`` | Reactive power flow (to) lower bound
-| ``\eqref{eq:SOCOPF:qt_bounds}`` (upper) | `qt_ub` | ``E`` | Reactive power flow (to) upper bound
+| Constraint                              | Data         | Size           | 
+|:----------------------------------------|:-------------|:---------------|
+| ``\eqref{eq:SOCOPF:kcl_p}``             | `kcl_p`      | ``N``          |
+| ``\eqref{eq:SOCOPF:kcl_q}``             | `kcl_q`      | ``N``          |
+| ``\eqref{eq:SOCOPF:ohm_pf}``            | `ohm_pf`     | ``E``          |
+| ``\eqref{eq:SOCOPF:ohm_qf}``            | `ohm_qf`     | ``E``          |
+| ``\eqref{eq:SOCOPF:ohm_pt}``            | `ohm_pt`     | ``E``          |
+| ``\eqref{eq:SOCOPF:ohm_qt}``            | `ohm_qt`     | ``E``          |
+| ``\eqref{eq:SOCOPF:jabr}``              | `jabr `      | ``E \times 4`` |
+| ``\eqref{eq:SOCOPF:sm_f}``              | `sm_fr`      | ``E \times 3`` |
+| ``\eqref{eq:SOCOPF:sm_t}``              | `sm_to`      | ``E \times 3`` |
+| ``\eqref{eq:SOCOPF:va_diff}``           | `va_diff`    | ``E``          |
+| ``\eqref{eq:SOCOPF:pg_bounds}`` (lower) | `pg_lb`      | ``G``          |
+| ``\eqref{eq:SOCOPF:pg_bounds}`` (upper) | `pg_ub`      | ``G``          | 
+| ``\eqref{eq:SOCOPF:qg_bounds}`` (lower) | `qg_lb`      | ``G``          | 
+| ``\eqref{eq:SOCOPF:qg_bounds}`` (upper) | `qg_ub`      | ``G``          |
+| ``\eqref{eq:SOCOPF:wm_bounds}`` (lower) | `w_lb`       | ``N``          |
+| ``\eqref{eq:SOCOPF:wm_bounds}`` (upper) | `w_ub`       | ``N``          |
+| ``\eqref{eq:SOCOPF:wr_bounds}`` (lower) | `wr_lb`      | ``E``          |
+| ``\eqref{eq:SOCOPF:wr_bounds}`` (upper) | `wr_ub`      | ``E``          |
+| ``\eqref{eq:SOCOPF:wi_bounds}`` (lower) | `wi_lb`      | ``E``          |
+| ``\eqref{eq:SOCOPF:wi_bounds}`` (upper) | `wi_ub`      | ``E``          |
+| ``\eqref{eq:SOCOPF:pf_bounds}`` (lower) | `pf_lb`      | ``E``          |
+| ``\eqref{eq:SOCOPF:pf_bounds}`` (upper) | `pf_ub`      | ``E``          |
+| ``\eqref{eq:SOCOPF:qf_bounds}`` (lower) | `qf_lb`      | ``E``          |
+| ``\eqref{eq:SOCOPF:qf_bounds}`` (upper) | `qf_ub`      | ``E``          |
+| ``\eqref{eq:SOCOPF:pt_bounds}`` (lower) | `pt_lb`      | ``E``          |
+| ``\eqref{eq:SOCOPF:pt_bounds}`` (upper) | `pt_ub`      | ``E``          |
+| ``\eqref{eq:SOCOPF:qt_bounds}`` (lower) | `qt_lb`      | ``E``          |
+| ``\eqref{eq:SOCOPF:qt_bounds}`` (upper) | `qt_ub`      | ``E``          |
