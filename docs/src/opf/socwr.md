@@ -197,7 +197,7 @@ The result SOC-OPF model is presented below.
 
 ### Objective
 
-The objective function ``\eqref{eq:socopf:obj}`` minimizes the cost of active power generation.
+The objective function ``\eqref{eq:socopf:objective}`` minimizes the cost of active power generation.
 
 !!! todo
     OPFGenerator currently supports only linear cost functions.
