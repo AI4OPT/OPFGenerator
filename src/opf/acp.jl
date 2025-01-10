@@ -242,7 +242,12 @@ function extract_dual(opf::OPFModel{ACOPF})
         dual_solution["sm_to"] = dual.(model[:sm_to])
         dual_solution["va_diff"] = dual.(model[:va_diff])
 
-        # Variable lower/upper bounds
+        # Duals of variable lower/upper bounds
+        # We store λ = λₗ + λᵤ, where λₗ, λᵤ are the dual variables associated to
+        #   lower and upper bounds, respectively.
+        # Recall that, in JuMP's convention, we have λₗ ≥ 0, λᵤ ≤ 0, hence
+        #   λₗ = max(λ, 0) and λᵤ = min(λ, 0).
+
         # bus
         dual_solution["vm"] = dual.(LowerBoundRef.(model[:vm])) + dual.(UpperBoundRef.(model[:vm]))
         #    (nodal voltage angles have no lower/upper bounds)
