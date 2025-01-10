@@ -139,11 +139,9 @@ function extract_dual(opf::OPFModel{DCOPF})
         # bus
         # N/A
         # generator
-        "pg_lb"     => zeros(T, G),
-        "pg_ub"     => zeros(T, G),
+        "pg" => zeros(T, G),
         # branch
-        "pf_lb"     => zeros(T, E),
-        "pf_ub"     => zeros(T, E),
+        "pf" => zeros(T, E),
     )
     if has_duals(model)
         dual_solution["slack_bus"] = dual(model[:slack_bus])
@@ -159,14 +157,18 @@ function extract_dual(opf::OPFModel{DCOPF})
         dual_solution["va_diff"] = dual.(model[:va_diff])
 
         # Duals of variable lower/upper bounds
-        # bus
-        # N/A
+        # We store λ = λₗ + λᵤ, where λₗ, λᵤ are the dual variables associated to
+        #   lower and upper bounds, respectively.
+        # Recall that, in JuMP's convention, we have λₗ ≥ 0, λᵤ ≤ 0, hence
+        #   λₗ = max(λ, 0) and λᵤ = min(λ, 0).
+
+        # (no bounded bus-level variables)
         # generator
-        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
-        dual_solution["pg_ub"] = dual.(UpperBoundRef.(model[:pg]))
+        dual_solution["pg"] .+= dual.(LowerBoundRef.(model[:pg]))
+        dual_solution["pg"] .+= dual.(UpperBoundRef.(model[:pg]))
         # branch
-        dual_solution["pf_lb"] = dual.(LowerBoundRef.(model[:pf]))
-        dual_solution["pf_ub"] = dual.(UpperBoundRef.(model[:pf]))
+        dual_solution["pf"] .+= dual.(LowerBoundRef.(model[:pf]))
+        dual_solution["pf"] .+= dual.(UpperBoundRef.(model[:pf]))
     end
 
     return dual_solution
