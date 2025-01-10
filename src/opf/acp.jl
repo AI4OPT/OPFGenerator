@@ -212,22 +212,15 @@ function extract_dual(opf::OPFModel{ACOPF})
         "va_diff"   => zeros(T, E),
         # variables lower/upper bounds
         # bus
-        "vm_lb"     => zeros(T, N),
-        "vm_ub"     => zeros(T, N),
+        "vm"        => zeros(T, N),
         # generator
-        "pg_lb"     => zeros(T, G),
-        "pg_ub"     => zeros(T, G),
-        "qg_lb"     => zeros(T, G),
-        "qg_ub"     => zeros(T, G),
+        "pg"        => zeros(T, G),
+        "qg"        => zeros(T, G),
         # branch
-        "pf_lb"      => zeros(T, E),
-        "pf_ub"      => zeros(T, E),
-        "qf_lb"      => zeros(T, E),
-        "qf_ub"      => zeros(T, E),
-        "pt_lb"      => zeros(T, E),
-        "pt_ub"      => zeros(T, E),
-        "qt_lb"      => zeros(T, E),
-        "qt_ub"      => zeros(T, E),
+        "pf"        => zeros(T, E),
+        "qf"        => zeros(T, E),
+        "pt"        => zeros(T, E),
+        "qt"        => zeros(T, E),
     )
 
     if has_duals(model)
@@ -251,23 +244,16 @@ function extract_dual(opf::OPFModel{ACOPF})
 
         # Variable lower/upper bounds
         # bus
-        dual_solution["vm_lb"] = dual.(LowerBoundRef.(model[:vm]))
-        dual_solution["vm_ub"] = dual.(UpperBoundRef.(model[:vm]))
+        dual_solution["vm"] = dual.(LowerBoundRef.(model[:vm])) + dual.(UpperBoundRef.(model[:vm]))
         #    (nodal voltage angles have no lower/upper bounds)
         # generator
-        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
-        dual_solution["pg_ub"] = dual.(UpperBoundRef.(model[:pg]))
-        dual_solution["qg_lb"] = dual.(LowerBoundRef.(model[:qg]))
-        dual_solution["qg_ub"] = dual.(UpperBoundRef.(model[:qg]))
+        dual_solution["pg"] = dual.(LowerBoundRef.(model[:pg])) + dual.(UpperBoundRef.(model[:pg]))
+        dual_solution["qg"] = dual.(LowerBoundRef.(model[:qg])) + dual.(UpperBoundRef.(model[:qg]))
         # branch
-        dual_solution["pf_lb"] = dual.(LowerBoundRef.(model[:pf]))
-        dual_solution["pf_ub"] = dual.(UpperBoundRef.(model[:pf]))
-        dual_solution["qf_lb"] = dual.(LowerBoundRef.(model[:qf]))
-        dual_solution["qf_ub"] = dual.(UpperBoundRef.(model[:qf]))
-        dual_solution["pt_lb"] = dual.(LowerBoundRef.(model[:pt]))
-        dual_solution["pt_ub"] = dual.(UpperBoundRef.(model[:pt]))
-        dual_solution["qt_lb"] = dual.(LowerBoundRef.(model[:qt]))
-        dual_solution["qt_ub"] = dual.(UpperBoundRef.(model[:qt]))
+        dual_solution["pf"] = dual.(LowerBoundRef.(model[:pf])) + dual.(UpperBoundRef.(model[:pf]))
+        dual_solution["qf"] = dual.(LowerBoundRef.(model[:qf])) + dual.(UpperBoundRef.(model[:qf]))
+        dual_solution["pt"] = dual.(LowerBoundRef.(model[:pt])) + dual.(UpperBoundRef.(model[:pt]))
+        dual_solution["qt"] = dual.(LowerBoundRef.(model[:qt])) + dual.(UpperBoundRef.(model[:qt]))
     end
 
     return dual_solution
