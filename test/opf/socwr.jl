@@ -130,33 +130,24 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     end
 
     # Check dual feasibility for select buses and constraints
-    λp  = [res["dual"]["kcl_p"][i] for i in 1:N]
-    λq  = [res["dual"]["kcl_q"][i] for i in 1:N]
-    λpf = [res["dual"]["ohm_pf"][e] for e in 1:E]
-    λqf = [res["dual"]["ohm_qf"][e] for e in 1:E]
-    λpt = [res["dual"]["ohm_pt"][e] for e in 1:E]
-    λqt = [res["dual"]["ohm_qt"][e] for e in 1:E]
+    λp  = res["dual"]["kcl_p"]
+    λq  = res["dual"]["kcl_q"]
+    λpf = res["dual"]["ohm_pf"]
+    λqf = res["dual"]["ohm_qf"]
+    λpt = res["dual"]["ohm_pt"]
+    λqt = res["dual"]["ohm_qt"]
 
-    ωf = [res["dual"]["jabr"][e, 1] for e in 1:E]
-    ωt = [res["dual"]["jabr"][e, 2] for e in 1:E]
-    ωr = [res["dual"]["jabr"][e, 3] for e in 1:E]
-    ωi = [res["dual"]["jabr"][e, 4] for e in 1:E]
+    ωf = res["dual"]["jabr"][:, 1]
+    ωt = res["dual"]["jabr"][:, 2]
+    ωr = res["dual"]["jabr"][:, 3]
+    ωi = res["dual"]["jabr"][:, 4]
 
-    μθ_lb = [res["dual"]["va_diff_lb"][e] for e in 1:E]
-    μθ_ub = [-res["dual"]["va_diff_ub"][e] for e in 1:E]
+    μθ_lb = max.(0, res["dual"]["va_diff"])
+    μθ_ub = min.(0, res["dual"]["va_diff"])
 
-    μ_w = [
-        res["dual"]["w_lb"][i] + res["dual"]["w_ub"][i]
-        for i in 1:N
-    ]
-    μ_wr = [
-        res["dual"]["wr_lb"][e] + res["dual"]["wr_ub"][e]
-        for e in 1:E
-    ]
-    μ_wi = [
-        res["dual"]["wi_lb"][e] + res["dual"]["wi_ub"][e]
-        for e in 1:E
-    ]
+    μ_w = res["dual"]["w"]
+    μ_wr = res["dual"]["wr"]
+    μ_wi = res["dual"]["wi"]
 
     # Check dual constraint corresponding to `w` variables
     δw = [
