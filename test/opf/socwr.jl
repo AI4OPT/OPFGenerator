@@ -71,7 +71,7 @@ This test is executed on the 118 bus system.
 """
 function _test_socwr_DualFeasibility()
     T = Float128
-    data = make_basic_network(pglib("pglib_opf_case118_ieee"))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case118_ieee")))
     solver = JuMP.optimizer_with_attributes(Clarabel.Optimizer{T},
         "verbose" => true,
         "equilibrate_enable" => false,
@@ -91,43 +91,29 @@ function _test_socwr_DualFeasibility()
     return nothing
 end
 
-function _test_socwr_DualFeasibility(data, res; atol=1e-6)
-    ref = PM.build_ref(data)[:it][:pm][:nw][0]
-    N = length(ref[:bus])
-    E = length(ref[:branch])
-    bus_loads = [
-        [ref[:load][l] for l in ref[:bus_loads][i]]
-        for i in 1:N
-    ]
-    # Bus-level data
-    bus_shunts = [
-        [ref[:shunt][s] for s in ref[:bus_shunts][i]]
-        for i in 1:N
-    ]
-    gs = [sum(shunt["gs"] for shunt in bus_shunts[i]; init=0.0) for i in 1:N]
-    bs = [sum(shunt["bs"] for shunt in bus_shunts[i]; init=0.0) for i in 1:N]
 
-    # Extract branch-level data
-    g = [PM.calc_branch_y(ref[:branch][e])[1] for e in 1:E]
-    b = [PM.calc_branch_y(ref[:branch][e])[2] for e in 1:E]
-    tr = [PM.calc_branch_t(ref[:branch][e])[1] for e in 1:E]
-    ti = [PM.calc_branch_t(ref[:branch][e])[2] for e in 1:E]
-    ttm  = abs2.(tr) + abs2.(ti)
-    g_fr = [ref[:branch][e]["g_fr"] for e in 1:E]
-    g_to = [ref[:branch][e]["g_to"] for e in 1:E]
-    b_fr = [ref[:branch][e]["b_fr"] for e in 1:E]
-    b_to = [ref[:branch][e]["b_to"] for e in 1:E]
-    δθmin = [ref[:branch][e]["angmin"] for e in 1:E]
-    δθmax = [ref[:branch][e]["angmax"] for e in 1:E]
-    # Identifying entering / exiting branches
-    br_in  = [Tuple{Int,Int,Int}[] for _ in 1:N]  # entering branches
-    br_out = [Tuple{Int,Int,Int}[] for _ in 1:N]  # existing branches
-    for (e, br) in ref[:branch]
-        i = br["f_bus"]
-        j = br["t_bus"]
-        push!(br_out[i], (e, i, j))
-        push!(br_in[j], (e, i, j))
-    end
+"""
+    _test_socwr_DualFeasibility(data, res; atol=1e-6)
+
+Test the dual feasibility of the Second-Order Cone Relaxation (SOCWR) solution.
+
+Tests feasibility for dual constraints associated to `w`, `wr`, and `wi` variables.
+
+# Arguments
+- `data::OPFData`: OPF instance data
+- `res`: Result dictionary of the SOCWR optimization
+- `atol=1e-6`: The absolute tolerance for feasibility checks (default is 1e-6).
+"""
+function _test_socwr_DualFeasibility(data::OPFGenerator.OPFData, res; atol=1e-6)
+    # Grab problem data
+    N = data.N
+    E = data.E
+    br_out = data.bus_arcs_fr
+    br_in = data.bus_arcs_to
+    gs, bs = data.gs, data.bs
+    gff, gft, gtf, gtt = data.gff, data.gft, data.gtf, data.gtt
+    bff, bft, btf, btt = data.bff, data.bft, data.btf, data.btt
+    δθmin, δθmax = data.dvamin, data.dvamax
 
     # Check dual feasibility for select buses and constraints
     λp  = res["dual"]["kcl_p"]
@@ -155,17 +141,13 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
             -gs[i] * λp[i]
             + bs[i] * λq[i]
             + sum(
-                (+(g[e]+g_fr[e])/ttm[e]) * λpf[e]
-                + (-(b[e]+b_fr[e])/ttm[e]) * λqf[e]
-                + ωf[e] / sqrt(2)
-                for (e, _, _) in br_out[i];
+                (gff[e] * λpf[e] - bff[e] * λqf[e] + ωf[e] / sqrt(2))
+                for e in br_out[i];
                 init=0
             )
             + sum(
-                (g[e]+g_to[e]) * λpt[e] 
-                + (-(b[e]+b_to[e])) * λqt[e] 
-                + ωt[e] / sqrt(2)
-                for (e, _, _) in br_in[i];
+                (gtt[e] * λpt[e] - btt[e] * λqt[e] + ωt[e] / sqrt(2))
+                for e in br_in[i];
                 init=0
             )
             + μ_w[i]
@@ -177,10 +159,10 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     # Check dual constraint corresponding to `wr` variables
     δwr = [
         (
-            ((-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]) * λpf[e] 
-            + ((-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]) * λpt[e]
-            - ((-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]) * λqf[e] 
-            - ((-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]) * λqt[e]
+            gft[e] * λpf[e] 
+            + gtf[e] * λpt[e]
+            - bft[e] * λqf[e] 
+            - btf[e] * λqt[e]
             - tan(δθmin[e]) * μθ_lb[e]
             + tan(δθmax[e]) * μθ_ub[e]
             + ωr[e]
@@ -193,10 +175,10 @@ function _test_socwr_DualFeasibility(data, res; atol=1e-6)
     # Check dual constraint corresponding to `wi` variables
     δwi = [
         (
-            ((-b[e]*tr[e]-g[e]*ti[e]) / ttm[e]) * λpf[e] 
-            - ((-b[e]*tr[e]+g[e]*ti[e]) / ttm[e]) * λpt[e]
-            + ((-g[e]*tr[e]+b[e]*ti[e]) / ttm[e]) * λqf[e] 
-            - ((-g[e]*tr[e]-b[e]*ti[e]) / ttm[e]) * λqt[e]
+            bft[e] * λpf[e] 
+            - btf[e] * λpt[e]
+            + gft[e] * λqf[e] 
+            - gtf[e] * λqt[e]
             + μθ_lb[e]
             - μθ_ub[e]
             + ωi[e]
