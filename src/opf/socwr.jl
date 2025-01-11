@@ -262,7 +262,7 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
         dual_solution["ohm_pt"] = dual.(model[:ohm_pt])
         dual_solution["ohm_qf"] = dual.(model[:ohm_qf])
         dual_solution["ohm_qt"] = dual.(model[:ohm_qt])
-        dual_solution["va_diff"] = dual.(model[:va_diff_lb]) + dual.(model[:va_diff_ub])  # ame as bound constraints
+        dual_solution["va_diff"] = dual.(model[:va_diff_lb]) + dual.(model[:va_diff_ub])  # same as bound constraints
         dual_solution["sm_fr"] = dual.(model[:sm_fr])
         dual_solution["sm_to"] = dual.(model[:sm_to])
         dual_solution["jabr"] = dual.(model[:jabr])
