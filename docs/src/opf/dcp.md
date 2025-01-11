@@ -74,7 +74,5 @@ The objective function ``\eqref{model:dcopf:obj}`` minimizes the cost of active 
 | ``\eqref{model:dcopf:kirchhoff}``                 | `kcl_p`      | ``N`` |
 | ``\eqref{model:dcopf:ohm}``                       | `ohm`        | ``E`` |
 | ``\eqref{model:dcopf:angledifference}``           | `va_diff`    | ``E`` |
-| ``\eqref{model:dcopf:pgbound}`` (lower)           | `pg_min`     | ``G`` |
-| ``\eqref{model:dcopf:pgbound}`` (upper)           | `pg_max`     | ``G`` |
-| ``\eqref{model:dcopf:thrmbound:from}`` (lower)    | `pf_min`     | ``E`` |
-| ``\eqref{model:dcopf:thrmbound:from}`` (upper)    | `pf_max`     | ``E`` |
+| ``\eqref{model:dcopf:pgbound}``                   | `pg`         | ``G`` |
+| ``\eqref{model:dcopf:thrmbound:from}``            | `pf`         | ``E`` |

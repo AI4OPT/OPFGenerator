@@ -133,17 +133,10 @@ The objective function ``\eqref{model:acopf:obj}`` minimizes the cost of active 
 | ``\eqref{model:acopf:thrmbound:to}``         | `sm_to`      | ``E`` |
 | ``\eqref{model:acopf:angledifference}``      | `va_diff`    | ``E`` |
 | ``\eqref{model:acopf:slackbus}``             | `slack_bus`  | ``N`` |
-| ``\eqref{model:acopf:pgbound}`` (lower)      | `pg_lb`      | ``G`` |
-| ``\eqref{model:acopf:pgbound}`` (upper)      | `pg_ub`      | ``G`` |
-| ``\eqref{model:acopf:qgbound}`` (lower)      | `qg_lb`      | ``G`` |
-| ``\eqref{model:acopf:qgbound}`` (upper)      | `qg_ub`      | ``G`` |
-| ``\eqref{model:acopf:vmbound}`` (lower)      | `vm_lb`      | ``N`` |
-| ``\eqref{model:acopf:vmbound}`` (upper)      | `vm_ub`      | ``N`` |
-| ``\eqref{model:acopf:pfbound}`` (lower)      | `pf_lb`      | ``E`` |
-| ``\eqref{model:acopf:pfbound}`` (upper)      | `pf_ub`      | ``E`` |
-| ``\eqref{model:acopf:qfbound}`` (lower)      | `qf_lb`      | ``E`` |
-| ``\eqref{model:acopf:qfbound}`` (upper)      | `qf_ub`      | ``E`` |
-| ``\eqref{model:acopf:ptbound}`` (lower)      | `pt_lb`      | ``E`` |
-| ``\eqref{model:acopf:ptbound}`` (upper)      | `pt_ub`      | ``E`` |
-| ``\eqref{model:acopf:qtbound}`` (lower)      | `qt_lb`      | ``E`` |
-| ``\eqref{model:acopf:qtbound}`` (upper)      | `qt_ub`      | ``E`` |
+| ``\eqref{model:acopf:pgbound}``              | `pg`         | ``G`` |
+| ``\eqref{model:acopf:qgbound}``              | `qg`         | ``G`` |
+| ``\eqref{model:acopf:vmbound}``              | `vm`         | ``N`` |
+| ``\eqref{model:acopf:pfbound}``              | `pf`         | ``E`` |
+| ``\eqref{model:acopf:qfbound}``              | `qf`         | ``E`` |
+| ``\eqref{model:acopf:ptbound}``              | `pt`         | ``E`` |
+| ``\eqref{model:acopf:qtbound}``              | `qt`         | ``E`` |
