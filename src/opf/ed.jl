@@ -305,7 +305,11 @@ function extract_dual(opf::OPFModel{EconomicDispatch})
             for e in 1:E
         ]
 
-        # Variable lower/upper bound
+        # Duals of variable lower/upper bounds
+        # We store λ = λₗ + λᵤ, where λₗ, λᵤ are the dual variables associated to
+        #   lower and upper bounds, respectively.
+        # Recall that, in JuMP's convention, we have λₗ ≥ 0, λᵤ ≤ 0, hence
+        #   λₗ = max(λ, 0) and λᵤ = min(λ, 0).
         # generator
         dual_solution["pg"] = dual.(LowerBoundRef.(model[:pg])) + dual.(model[:gen_max_output])
         dual_solution["r"] = dual.(LowerBoundRef.(model[:r])) + dual.(UpperBoundRef.(model[:r]))
