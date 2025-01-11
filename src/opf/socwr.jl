@@ -223,30 +223,20 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
         "ohm_pt"     => zeros(T, E),
         "ohm_qf"     => zeros(T, E),
         "ohm_qt"     => zeros(T, E),
-        "va_diff_lb" => zeros(T, E),
-        "va_diff_ub" => zeros(T, E),
+        "va_diff"    => zeros(T, E),
         # variables lower/upper bounds
         # bus
-        "w_lb"       => zeros(T, N),
-        "w_ub"       => zeros(T, N),
+        "w"          => zeros(T, N),
         # generator
-        "pg_lb"      => zeros(T, G),
-        "pg_ub"      => zeros(T, G),
-        "qg_lb"      => zeros(T, G),
-        "qg_ub"      => zeros(T, G),
+        "pg"         => zeros(T, G),
+        "qg"         => zeros(T, G),
         # branch
-        "wr_lb"      => zeros(T, E),
-        "wr_ub"      => zeros(T, E),
-        "wi_lb"      => zeros(T, E),
-        "wi_ub"      => zeros(T, E),
-        "pf_lb"      => zeros(T, E),
-        "pf_ub"      => zeros(T, E),
-        "qf_lb"      => zeros(T, E),
-        "qf_ub"      => zeros(T, E),
-        "pt_lb"      => zeros(T, E),
-        "pt_ub"      => zeros(T, E),
-        "qt_lb"      => zeros(T, E),
-        "qt_ub"      => zeros(T, E),
+        "wr"         => zeros(T, E),
+        "wi"         => zeros(T, E),
+        "pf"         => zeros(T, E),
+        "qf"         => zeros(T, E),
+        "pt"         => zeros(T, E),
+        "qt"         => zeros(T, E),
     )
 
     if OPF == SOCOPFQuad
@@ -272,8 +262,7 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
         dual_solution["ohm_pt"] = dual.(model[:ohm_pt])
         dual_solution["ohm_qf"] = dual.(model[:ohm_qf])
         dual_solution["ohm_qt"] = dual.(model[:ohm_qt])
-        dual_solution["va_diff_lb"] = dual.(model[:va_diff_lb])
-        dual_solution["va_diff_ub"] = dual.(model[:va_diff_ub])
+        dual_solution["va_diff"] = dual.(model[:va_diff_lb]) + dual.(model[:va_diff_ub])  # same as bound constraints
         dual_solution["sm_fr"] = dual.(model[:sm_fr])
         dual_solution["sm_to"] = dual.(model[:sm_to])
         dual_solution["jabr"] = dual.(model[:jabr])
@@ -287,27 +276,23 @@ function extract_dual(opf::OPFModel{OPF}) where {OPF <: Union{SOCOPFQuad,SOCOPF}
         end
 
         # Duals of variable lower/upper bounds
+        # We store λ = λₗ + λᵤ, where λₗ, λᵤ are the dual variables associated to
+        #   lower and upper bounds, respectively.
+        # Recall that, in JuMP's convention, we have λₗ ≥ 0, λᵤ ≤ 0, hence
+        #   λₗ = max(λ, 0) and λᵤ = min(λ, 0).
+
         # bus
-        dual_solution["w_lb"] = dual.(LowerBoundRef.(model[:w]))
-        dual_solution["w_ub"] = dual.(UpperBoundRef.(model[:w]))
+        dual_solution["w"]  = dual.(LowerBoundRef.(model[:w])) + dual.(UpperBoundRef.(model[:w]))
         # generator
-        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
-        dual_solution["pg_ub"] = dual.(UpperBoundRef.(model[:pg]))
-        dual_solution["qg_lb"] = dual.(LowerBoundRef.(model[:qg]))
-        dual_solution["qg_ub"] = dual.(UpperBoundRef.(model[:qg]))
+        dual_solution["pg"] = dual.(LowerBoundRef.(model[:pg])) + dual.(UpperBoundRef.(model[:pg]))
+        dual_solution["qg"] = dual.(LowerBoundRef.(model[:qg])) + dual.(UpperBoundRef.(model[:qg]))
         # branch
-        dual_solution["wr_lb"] = dual.(LowerBoundRef.(model[:wr]))
-        dual_solution["wr_ub"] = dual.(UpperBoundRef.(model[:wr]))
-        dual_solution["wi_lb"] = dual.(LowerBoundRef.(model[:wi]))
-        dual_solution["wi_ub"] = dual.(UpperBoundRef.(model[:wi]))
-        dual_solution["pf_lb"] = dual.(LowerBoundRef.(model[:pf]))
-        dual_solution["pf_ub"] = dual.(UpperBoundRef.(model[:pf]))
-        dual_solution["qf_lb"] = dual.(LowerBoundRef.(model[:qf]))
-        dual_solution["qf_ub"] = dual.(UpperBoundRef.(model[:qf]))
-        dual_solution["pt_lb"] = dual.(LowerBoundRef.(model[:pt]))
-        dual_solution["pt_ub"] = dual.(UpperBoundRef.(model[:pt]))
-        dual_solution["qt_lb"] = dual.(LowerBoundRef.(model[:qt]))
-        dual_solution["qt_ub"] = dual.(UpperBoundRef.(model[:qt]))
+        dual_solution["wr"] = dual.(LowerBoundRef.(model[:wr])) + dual.(UpperBoundRef.(model[:wr]))
+        dual_solution["wi"] = dual.(LowerBoundRef.(model[:wi])) + dual.(UpperBoundRef.(model[:wi]))
+        dual_solution["pf"] = dual.(LowerBoundRef.(model[:pf])) + dual.(UpperBoundRef.(model[:pf]))
+        dual_solution["qf"] = dual.(LowerBoundRef.(model[:qf])) + dual.(UpperBoundRef.(model[:qf]))
+        dual_solution["pt"] = dual.(LowerBoundRef.(model[:pt])) + dual.(UpperBoundRef.(model[:pt]))
+        dual_solution["qt"] = dual.(LowerBoundRef.(model[:qt])) + dual.(UpperBoundRef.(model[:qt]))
     end
 
     return dual_solution

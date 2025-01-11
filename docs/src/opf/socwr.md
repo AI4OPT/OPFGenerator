@@ -261,21 +261,12 @@ The objective function ``\eqref{eq:SOCOPF:objective}`` minimizes the cost of act
 | ``\eqref{eq:SOCOPF:sm_f}``              | `sm_fr`      | ``E \times 3`` |
 | ``\eqref{eq:SOCOPF:sm_t}``              | `sm_to`      | ``E \times 3`` |
 | ``\eqref{eq:SOCOPF:va_diff}``           | `va_diff`    | ``E``          |
-| ``\eqref{eq:SOCOPF:pg_bounds}`` (lower) | `pg_lb`      | ``G``          |
-| ``\eqref{eq:SOCOPF:pg_bounds}`` (upper) | `pg_ub`      | ``G``          | 
-| ``\eqref{eq:SOCOPF:qg_bounds}`` (lower) | `qg_lb`      | ``G``          | 
-| ``\eqref{eq:SOCOPF:qg_bounds}`` (upper) | `qg_ub`      | ``G``          |
-| ``\eqref{eq:SOCOPF:wm_bounds}`` (lower) | `w_lb`       | ``N``          |
-| ``\eqref{eq:SOCOPF:wm_bounds}`` (upper) | `w_ub`       | ``N``          |
-| ``\eqref{eq:SOCOPF:wr_bounds}`` (lower) | `wr_lb`      | ``E``          |
-| ``\eqref{eq:SOCOPF:wr_bounds}`` (upper) | `wr_ub`      | ``E``          |
-| ``\eqref{eq:SOCOPF:wi_bounds}`` (lower) | `wi_lb`      | ``E``          |
-| ``\eqref{eq:SOCOPF:wi_bounds}`` (upper) | `wi_ub`      | ``E``          |
-| ``\eqref{eq:SOCOPF:pf_bounds}`` (lower) | `pf_lb`      | ``E``          |
-| ``\eqref{eq:SOCOPF:pf_bounds}`` (upper) | `pf_ub`      | ``E``          |
-| ``\eqref{eq:SOCOPF:qf_bounds}`` (lower) | `qf_lb`      | ``E``          |
-| ``\eqref{eq:SOCOPF:qf_bounds}`` (upper) | `qf_ub`      | ``E``          |
-| ``\eqref{eq:SOCOPF:pt_bounds}`` (lower) | `pt_lb`      | ``E``          |
-| ``\eqref{eq:SOCOPF:pt_bounds}`` (upper) | `pt_ub`      | ``E``          |
-| ``\eqref{eq:SOCOPF:qt_bounds}`` (lower) | `qt_lb`      | ``E``          |
-| ``\eqref{eq:SOCOPF:qt_bounds}`` (upper) | `qt_ub`      | ``E``          |
+| ``\eqref{eq:SOCOPF:pg_bounds}``         | `pg`         | ``G``          |
+| ``\eqref{eq:SOCOPF:qg_bounds}``         | `qg`         | ``G``          | 
+| ``\eqref{eq:SOCOPF:wm_bounds}``         | `w`          | ``N``          |
+| ``\eqref{eq:SOCOPF:wr_bounds}``         | `wr`         | ``E``          |
+| ``\eqref{eq:SOCOPF:wi_bounds}``         | `wi`         | ``E``          |
+| ``\eqref{eq:SOCOPF:pf_bounds}``         | `pf`         | ``E``          |
+| ``\eqref{eq:SOCOPF:qf_bounds}``         | `qf`         | ``E``          |
+| ``\eqref{eq:SOCOPF:pt_bounds}``         | `pt`         | ``E``          |
+| ``\eqref{eq:SOCOPF:qt_bounds}``         | `qt`         | ``E``          |

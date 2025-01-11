@@ -286,13 +286,10 @@ function extract_dual(opf::OPFModel{EconomicDispatch})
         # branch
         "ptdf_flow" => zeros(T, E),
         # Variable lower/upper bound
-        "pg_lb"     => zeros(T, G),
-        "pg_ub"     => zeros(T, G),
-        "r_lb"      => zeros(T, G),
-        "r_ub"      => zeros(T, G),
-        "pf_lb"     => zeros(T, E),
-        "pf_ub"     => zeros(T, E),
-        "δf_lb"     => zeros(T, E),
+        "pg"     => zeros(T, G),
+        "r"      => zeros(T, G),
+        "pf"     => zeros(T, E),
+        "δf"     => zeros(T, E),
     )
 
 
@@ -308,16 +305,17 @@ function extract_dual(opf::OPFModel{EconomicDispatch})
             for e in 1:E
         ]
 
-        # Variable lower/upper bound
+        # Duals of variable lower/upper bounds
+        # We store λ = λₗ + λᵤ, where λₗ, λᵤ are the dual variables associated to
+        #   lower and upper bounds, respectively.
+        # Recall that, in JuMP's convention, we have λₗ ≥ 0, λᵤ ≤ 0, hence
+        #   λₗ = max(λ, 0) and λᵤ = min(λ, 0).
         # generator
-        dual_solution["pg_lb"] = dual.(LowerBoundRef.(model[:pg]))
-        dual_solution["pg_ub"] = dual.(model[:gen_max_output])
-        dual_solution["r_lb"] = dual.(LowerBoundRef.(model[:r]))
-        dual_solution["r_ub"] = dual.(UpperBoundRef.(model[:r]))
+        dual_solution["pg"] = dual.(LowerBoundRef.(model[:pg])) + dual.(model[:gen_max_output])
+        dual_solution["r"] = dual.(LowerBoundRef.(model[:r])) + dual.(UpperBoundRef.(model[:r]))
         # branch
-        dual_solution["pf_lb"] = dual.(model[:pf_lower_bound])
-        dual_solution["pf_ub"] = dual.(model[:pf_upper_bound])
-        dual_solution["δf_lb"] = dual.(LowerBoundRef.(model[:δf]))
+        dual_solution["pf"] = dual.(model[:pf_lower_bound]) + dual.(model[:pf_upper_bound])
+        dual_solution["δf"] = dual.(LowerBoundRef.(model[:δf]))
     end
 
     return dual_solution
