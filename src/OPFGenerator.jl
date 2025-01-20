@@ -17,6 +17,7 @@ export ScaledLogNormal, ScaledUniform
 
 include("utils/json.jl")
 include("utils/hdf5.jl")
+include("utils/float.jl")
 include("config.jl")
 
 # OPF formulations
