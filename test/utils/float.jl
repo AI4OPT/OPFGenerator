@@ -16,7 +16,7 @@ function test_float_conversion()
     # Use `===` to check value _and_ type when applicable,
     #   and to check that we didn't copy any data that wasn't converted
     d32 = OPFGenerator.convert_float_data(D, Float32)
-    @test isa(d32, Dict{String,Any}())
+    @test isa(d32, Dict{String,Any})
     @test d32["a"] === 1
     @test d["b"] === 2f0
     @test isa(d32["c"], Array{Float32,1})
@@ -34,7 +34,7 @@ function test_float_conversion()
 
     # Test Float64 conversion
     d64 = OPFGenerator.convert_float_data(D, Float64)
-    @test isa(d64, Dict{String,Any}())
+    @test isa(d64, Dict{String,Any})
     @test d64["a"] === 1
     @test d64["b"] === 2.0
     @test d64["c"] === D["c"]
