@@ -34,9 +34,10 @@ const NAME2OPTIMIZER = Dict(
 
 # Helper function to use correct arithmetic
 # The default `Float64` is over-ridden only for Clarabel
-value_type(::Any) = Float64
-value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
-value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
+_optimizer_value_type(::Any) = Float64
+_optimizer_value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
+_optimizer_value_type(m::MOI.OptimizerWithAttributes) = _optimizer_value_type(m.optimizer_constructor)
+_optimizer_value_type(m::JuMP.AbstractModel) = JuMP.value_type(m)
 
 function build_and_solve_model(data, config, dataset_name)
     opf_config = config["OPF"][dataset_name]
@@ -55,7 +56,7 @@ function build_and_solve_model(data, config, dataset_name)
     build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
 
     tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
-        T=value_type(solver.optimizer_constructor),
+        T=_optimizer_value_type(solver.optimizer_constructor),
         build_kwargs...
     )
 
