@@ -38,9 +38,10 @@ Saves dictionary `D` to HDF5 file `filename`.
     * `Complex` versions of the above numeric types
     * Dense `Array`s of the the above scalar types
 
-    Numerical data whose type is not listed above will be converted to `Float64`.
-    Set `warn=false` to disable such warnings.
-    An error will be thrown if this conversion is not possible 
+    Numerical data whose type is not listed above will be converted to `Float64`,
+      which may incur a loss of precision.
+    A warning will be displayed if this happens unless `warn` is set to `false`.
+    If conversion to `Float64` is not possible, an error is thrown.
     
 """
 function save_h5(filename::AbstractString, D; warn=true)
