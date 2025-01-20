@@ -22,6 +22,8 @@ using MathOptSymbolicAD
 
 using OPFGenerator
 
+const DEFAULT_FLOAT_PRECISION = Float32
+
 const NAME2OPTIMIZER = Dict(
     "Clarabel128" => Clarabel.Optimizer{Float128},
     "Clarabel" => Clarabel.Optimizer{Float64},
@@ -89,6 +91,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Parse seed range from CL arguments
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
+
+    # Grab precision used for exporting data
+    fp_string = get(config, "floating_point_type", "$(DEFAULT_FLOAT_PRECISION)")
+    float_type = if lowercase(fp_string) == "float32"
+        Float32
+    elseif lowercase(fp_string) == "float64"
+        Float64
+    else
+        error("Invalid floating-point type: $(fp_string); only `Float32` and `Float64` are supported.")
+    end
+    @info "Floating-point data will be exported in `$(float_type)`"
 
     # Dummy run (for pre-compilation)
     data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
@@ -185,7 +198,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     for (k, v) in D
         filepath = joinpath(config["export_dir"], "res_h5", "$(case_name)_$(k)_s$(smin)-s$(smax).h5")
         mkpath(dirname(filepath))
-        th5write = @elapsed OPFGenerator.save_h5(filepath, v)
+        # Convert floating-point data before exporting
+        v_ = OPFGenerator.convert_float_data(v, float_type)
+        th5write = @elapsed OPFGenerator.save_h5(filepath, v_)
     end
 
     return nothing
