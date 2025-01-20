@@ -18,7 +18,7 @@ function test_float_conversion()
     d32 = OPFGenerator.convert_float_data(D, Float32)
     @test isa(d32, Dict{String,Any})
     @test d32["a"] === 1
-    @test d["b"] === 2f0
+    @test d32["b"] === 2f0
     @test isa(d32["c"], Array{Float32,1})
     @test d32["c"] == [3.1f0, 3.2f0, 3.3f0]
     @test isa(d32["d"], Dict{String,Any})
@@ -26,9 +26,9 @@ function test_float_conversion()
     @test isa(d32["d"]["d1"], Array{Float32,1})
     @test d32["d"]["d1"] == ones(Float32, (1,))
     @test isa(d32["d"]["d2"], Array{Float32,2})
-    @test d32["d"]["d1"] == ones(Float32, (1,2))
+    @test d32["d"]["d2"] == ones(Float32, (1,2))
     @test isa(d32["d"]["d3"], Array{Float32,3})
-    @test d32["d"]["d1"] == ones(Float32, (3,1,2))
+    @test d32["d"]["d3"] == ones(Float32, (3,1,2))
     @test d32["e"] === D["e"]
     @test d32["f"] === D["f"]
 
@@ -43,9 +43,9 @@ function test_float_conversion()
     @test isa(d64["d"]["d1"], Array{Float64,1})
     @test d64["d"]["d1"] == ones(Float64, (1,))
     @test isa(d64["d"]["d2"], Array{Float64,2})
-    @test d64["d"]["d1"] == ones(Float64, (1,2))
+    @test d64["d"]["d2"] == ones(Float64, (1,2))
     @test isa(d64["d"]["d3"], Array{Float64,3})
-    @test d64["d"]["d1"] == ones(Float64, (3,1,2))
+    @test d64["d"]["d3"] == ones(Float64, (3,1,2))
     @test d64["e"] === D["e"]
     @test d64["f"] === D["f"]
 
