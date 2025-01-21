@@ -222,6 +222,7 @@ function test_sampler_script()
     config = Dict(
         "pglib_case" => "pglib_opf_case14_ieee",
         "export_dir" => temp_dir,
+        "floating_point_type" => "Float64",
         "sampler" => Dict(
             "load" => Dict(
                 "noise_type" => "ScaledLogNormal",
