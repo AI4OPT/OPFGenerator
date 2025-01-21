@@ -22,6 +22,8 @@ using MathOptSymbolicAD
 
 using OPFGenerator
 
+const DEFAULT_FLOAT_PRECISION = Float32
+
 const NAME2OPTIMIZER = Dict(
     "Clarabel128" => Clarabel.Optimizer{Float128},
     "Clarabel" => Clarabel.Optimizer{Float64},
@@ -32,9 +34,10 @@ const NAME2OPTIMIZER = Dict(
 
 # Helper function to use correct arithmetic
 # The default `Float64` is over-ridden only for Clarabel
-value_type(::Any) = Float64
-value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
-value_type(m::MOI.OptimizerWithAttributes) = value_type(m.optimizer_constructor)
+_optimizer_value_type(::Any) = Float64
+_optimizer_value_type(::Type{Clarabel.Optimizer{T}}) where{T} = T
+_optimizer_value_type(m::MOI.OptimizerWithAttributes) = _optimizer_value_type(m.optimizer_constructor)
+_optimizer_value_type(m::JuMP.AbstractModel) = JuMP.value_type(m)
 
 function build_and_solve_model(data, config, dataset_name)
     opf_config = config["OPF"][dataset_name]
@@ -53,7 +56,7 @@ function build_and_solve_model(data, config, dataset_name)
     build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
 
     tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
-        T=value_type(solver.optimizer_constructor),
+        T=_optimizer_value_type(solver.optimizer_constructor),
         build_kwargs...
     )
 
@@ -89,6 +92,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Parse seed range from CL arguments
     smin = parse(Int, ARGS[2])
     smax = parse(Int, ARGS[3])
+
+    # Grab precision used for exporting data
+    fp_string = get(config, "floating_point_type", "$(DEFAULT_FLOAT_PRECISION)")
+    float_type = if lowercase(fp_string) == "float32"
+        Float32
+    elseif lowercase(fp_string) == "float64"
+        Float64
+    else
+        error("Invalid floating-point type: $(fp_string); only `Float32` and `Float64` are supported.")
+    end
+    @info "Floating-point data will be exported in `$(float_type)`"
 
     # Dummy run (for pre-compilation)
     data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
@@ -185,7 +199,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     for (k, v) in D
         filepath = joinpath(config["export_dir"], "res_h5", "$(case_name)_$(k)_s$(smin)-s$(smax).h5")
         mkpath(dirname(filepath))
-        th5write = @elapsed OPFGenerator.save_h5(filepath, v)
+        # Convert floating-point data before exporting
+        v_ = OPFGenerator.convert_float_data(v, float_type)
+        th5write = @elapsed OPFGenerator.save_h5(filepath, v_)
     end
 
     return nothing
