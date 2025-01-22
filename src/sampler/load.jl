@@ -8,7 +8,7 @@ abstract type AbstractLoadSampler end
 Scales loads with multiplicative noise sampled from `d::D`.
 
 The distribution `d::D` is a `2*L`-dimensional distribution.
-    The sample active/reactive demand for load ``i`` is denoted by `\\tilde{p}_{i}, \\tilde{q}_{i}`` and has the form
+    The sample active/reactive demand for load ``i`` is denoted by ``\\tilde{p}_{i}, \\tilde{q}_{i}`` and has the form
     ``\\tilde{p}_{i} = \\epsilon_{i} \\bar{p}_{i}``,
     ``\\tilde{q}_{i} = \\epsilon_{i+L} \\bar{q}_{i}``,
     where
