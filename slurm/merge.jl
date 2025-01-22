@@ -51,6 +51,7 @@ function main(config::Dict)
         GC.gc()
     end
 
+    # Cleanup temp h5 files
     rm(joinpath(export_dir, "res_h5"), recursive=true)
 
     if "--no-split" in ARGS || get(slurm_config, "no_split", false)
@@ -94,35 +95,33 @@ function main(config::Dict)
     mkpath(joinpath(export_dir, "test"))
     mkpath(joinpath(export_dir, "infeasible"))
 
-    for opf in OPFs
-        for file in ["primal", "dual", "meta"]
-            h5open(joinpath(export_dir, opf, "$file.h5"), "r") do f
-                for (idx, split) in zip([train_idx, test_idx, infeasible_idx], ["train", "test", "infeasible"])
-                    mkpath(joinpath(export_dir, split, opf))
-                    h5open(joinpath(export_dir, split, opf, "$file.h5"), "w") do g
-                        for k in keys(f)
-                            val = read(f[k])
-                            g[k] = if k != "config" collect(selectdim(val, ndims(val), idx)) else val end
-                        end
-                    end
-                end
-            end
-            rm(joinpath(export_dir, opf, "$file.h5"))
-        end
-        rm(joinpath(export_dir, opf))
-    end
-    # same for input
-    h5open(joinpath(export_dir, "input.h5"), "r") do f
-        for (idx, split) in zip([train_idx, test_idx, infeasible_idx], ["train", "test", "infeasible"])
-            h5open(joinpath(export_dir, split, "input.h5"), "w") do g
-                for k in keys(f)
-                    val = read(f[k])
-                    g[k] = collect(selectdim(val, ndims(val), idx))
-                end
-            end
+    # g[k] = f[k][idx]  ∀ k ∈ keys(f)
+    function _copy_to_new_h5(g, f, idx)
+        for k in keys(f)
+            val = read(f[k])
+            g[k] = collect(selectdim(val, ndims(val), idx))
         end
     end
+
+    # Split consolidated H5s into train/test/infeasible sets
+    all_h5_paths = ["input"; [joinpath(opf, file) for opf in OPFs for file in ["primal", "dual", "meta"]]]
+    for (idx, split) in zip([train_idx, test_idx, infeasible_idx], ["train", "test", "infeasible"])
+        for p in all_h5_paths
+            src_path = joinpath(export_dir, p * ".h5")
+            h5open(src_path, "r") do f
+                dst_path = joinpath(export_dir, split, p * ".h5")
+                mkpath(dirname(dst_path))
+                h5open(dst_path, "w") do g
+                    _copy_to_new_h5(g, f, idx)
+                end  # close dst
+            end  # close src
+        end
+    end
+    # Cleanup workspace
     rm(joinpath(export_dir, "input.h5"))
+    for opf in OPFs
+        rm(joinpath(export_dir, opf), recursive=true)
+    end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
