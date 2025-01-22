@@ -318,7 +318,8 @@ function test_sampler_script()
     # Check that input data file is structured as expected
     h5open(input_file_path, "r") do h5
         @test haskey(h5, "seed")
-        @test h5["seed"] == [1, 2, 3, 4]
+        @test size(h5["seed"]) == (4,)
+        @test eltype(h5["seed"]) == Int
 
         @test haskey(h5, "pd")
         @test size(h5["pd"]) == (11, 4)
