@@ -30,7 +30,7 @@ function main(config::Dict)
         # _dedupe_and_sort_h5! expects the input dictionary to have a D["meta"]["seed"],
         #     so we artificially create this for input data...
         if dataset_name == "input"
-            D["meta"] = Dict("seed" => D["seed"])
+            D["meta"] = Dict("seed" => copy(D["seed"]))
         end
         OPFGenerator._dedupe_and_sort_h5!(D)
         # ... and delete it here
