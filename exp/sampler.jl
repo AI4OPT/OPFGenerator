@@ -104,7 +104,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @info "Floating-point data will be exported in `$(float_type)`"
 
     # Dummy run (for pre-compilation)
-    data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
+    data0 = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
     rand!(MersenneTwister(1), opf_sampler0, data0)
     main(data0, config)
