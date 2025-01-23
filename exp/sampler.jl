@@ -74,9 +74,6 @@ end
 
 function main(data, config)
     d = Dict{String,Any}()
-    
-    # Keep track of input data
-    d["data"] = data
 
     for dataset_name in keys(config["OPF"])
         d[dataset_name] = build_and_solve_model(data, config, dataset_name)

@@ -16,6 +16,7 @@ data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)
 include("../exp/sampler.jl")
 
 d = main(data, config)
+d["data"] = OPFGenerator.to_dict(data)
 
 mkpath(export_dir)
 OPFGenerator.save_json("$(export_dir)/case.json", d)
