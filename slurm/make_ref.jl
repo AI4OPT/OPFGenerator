@@ -17,6 +17,7 @@ include("../exp/sampler.jl")
 
 d = main(data, config)
 d["data"] = OPFGenerator.to_dict(data)
+d["config"] = config
 
 mkpath(export_dir)
 OPFGenerator.save_json("$(export_dir)/case.json", d)
