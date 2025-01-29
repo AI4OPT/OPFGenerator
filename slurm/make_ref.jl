@@ -5,17 +5,29 @@ using PGLib
 
 using OPFGenerator
 
-config_file = ARGS[1]
-config = TOML.parsefile(config_file)
-case_file, case_name = OPFGenerator._get_case_info(config)
-export_dir = pop!(config, "export_dir")
-pop!(config, "slurm")
+include(joinpath(@__DIR__, "..", "exp", "sampler.jl"))
 
-data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
+function main_ref(config; export_ref=false)
+    case_file, case_name = OPFGenerator._get_case_info(config)
+    export_dir = pop!(config, "export_dir")
+    pop!(config, "slurm")
 
-include("../exp/sampler.jl")
+    data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
 
-d = main(data, config)
+    d = main(data, config)
+    d["data"] = OPFGenerator.to_dict(data)
+    d["config"] = config
 
-mkpath(export_dir)
-OPFGenerator.save_json("$(export_dir)/case.json", d)
+    if export_ref
+        mkpath(export_dir)
+        OPFGenerator.save_json(joinpath(export_dir, "case.json"), d)
+    end
+    return d
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    config_file = ARGS[1]
+    config = TOML.parsefile(config_file)
+    main_ref(config; export_ref=true)
+    exit(0)
+end

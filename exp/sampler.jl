@@ -74,10 +74,6 @@ end
 
 function main(data, config)
     d = Dict{String,Any}()
-    d["config"] = deepcopy(config)
-    
-    # Keep track of input data
-    d["data"] = data
 
     for dataset_name in keys(config["OPF"])
         d[dataset_name] = build_and_solve_model(data, config, dataset_name)
@@ -105,7 +101,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @info "Floating-point data will be exported in `$(float_type)`"
 
     # Dummy run (for pre-compilation)
-    data0 = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
+    data0 = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
     rand!(MersenneTwister(1), opf_sampler0, data0)
     main(data0, config)
@@ -126,19 +122,18 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # These are concatenated at the end to create one H5 file per OPF configuration
     D = Dict{String,Any}()
     D["input"] = Dict{String,Any}(
-        "meta" => Dict{String,Any}("seed" => Int[]),
-        "data" => Dict{String,Any}(
-            "reserve_requirement" => Float64[],
-            # Demand data
-            "pd" => Vector{Float64}[],
-            "qd" => Vector{Float64}[],
-            # Generator reserves min/max levels
-            "rmin" => Vector{Float64}[],
-            "rmax" => Vector{Float64}[],
-            # Component status
-            "branch_status" => Vector{Bool}[],
-            "gen_status" => Vector{Bool}[],
-        )
+        "seed" => Int[],
+        # Demand data
+        "pd" => Vector{Float64}[],
+        "qd" => Vector{Float64}[],
+        # Global reserve requirement
+        "reserve_requirement" => Float64[],
+        # Generator reserves min/max levels
+        "rmin" => Vector{Float64}[],
+        "rmax" => Vector{Float64}[],
+        # Component status
+        "branch_status" => Vector{Bool}[],
+        "gen_status" => Vector{Bool}[],
     )
     for dataset_name in OPFs
         D[dataset_name] = Dict{String,Any}(
@@ -154,17 +149,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
         rng = MersenneTwister(s)
         tgen = @elapsed data_ = rand(rng, opf_sampler)
         tsolve = @elapsed res = main(data_, config)
-        res["config"]["seed"] = s
 
         # Update input data
-        push!(D["input"]["meta"]["seed"], s)
-        push!(D["input"]["data"]["pd"], data_.pd)
-        push!(D["input"]["data"]["qd"], data_.qd)
-        push!(D["input"]["data"]["rmin"], data_.rmin)
-        push!(D["input"]["data"]["rmax"], data_.rmax)
-        push!(D["input"]["data"]["reserve_requirement"], data_.reserve_requirement)
-        push!(D["input"]["data"]["branch_status"], data_.branch_status)
-        push!(D["input"]["data"]["gen_status"], data_.gen_status)
+        push!(D["input"]["seed"], s)
+        push!(D["input"]["pd"], data_.pd)
+        push!(D["input"]["qd"], data_.qd)
+        push!(D["input"]["rmin"], data_.rmin)
+        push!(D["input"]["rmax"], data_.rmax)
+        push!(D["input"]["reserve_requirement"], data_.reserve_requirement)
+        push!(D["input"]["branch_status"], data_.branch_status)
+        push!(D["input"]["gen_status"], data_.gen_status)
 
         # Add output results, one for each OPF dataset
         for dataset_name in OPFs
@@ -182,9 +176,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @info "All instances completed."
 
     # Tensorize everything in preparation for saving to disk
-    D["input"]["meta"]["seed"] = OPFGenerator.tensorize(D["input"]["meta"]["seed"])
-    for (k1, v1) in D["input"]["data"]
-        D["input"]["data"][k1] = OPFGenerator.tensorize(v1)
+    for (k1, v1) in D["input"]
+        D["input"][k1] = OPFGenerator.tensorize(v1)
     end
     for dataset_name in OPFs
         d = D[dataset_name]
@@ -192,7 +185,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             d[k1][k2] = OPFGenerator.tensorize(v2)
         end
         # Track random seed in dataset meta info, to simplify for post-processing
-        d["meta"]["seed"] = copy(D["input"]["meta"]["seed"])
+        d["meta"]["seed"] = copy(D["input"]["seed"])
     end
 
     # Save to disk in separate h5 files

@@ -317,31 +317,33 @@ function test_sampler_script()
     @test isfile(input_file_path)
     # Check that input data file is structured as expected
     h5open(input_file_path, "r") do h5
-        @test haskey(h5, "data")
+        @test haskey(h5, "seed")
+        @test size(h5["seed"]) == (4,)
+        @test eltype(h5["seed"]) == Int
 
-        @test haskey(h5["data"], "pd")
-        @test size(h5["data"]["pd"]) == (11, 4)
-        @test eltype(h5["data"]["pd"]) == Float64
-        @test haskey(h5["data"], "qd")
-        @test size(h5["data"]["pd"]) == (11, 4)
-        @test eltype(h5["data"]["qd"]) == Float64
+        @test haskey(h5, "pd")
+        @test size(h5["pd"]) == (11, 4)
+        @test eltype(h5["pd"]) == Float64
+        @test haskey(h5, "qd")
+        @test size(h5["pd"]) == (11, 4)
+        @test eltype(h5["qd"]) == Float64
 
-        @test haskey(h5["data"], "branch_status")
-        @test size(h5["data"]["branch_status"]) == (20, 4)
-        @test eltype(h5["data"]["branch_status"]) == Bool
-        @test haskey(h5["data"], "gen_status")
-        @test size(h5["data"]["gen_status"]) == (5, 4)
-        @test eltype(h5["data"]["gen_status"]) == Bool
+        @test haskey(h5, "branch_status")
+        @test size(h5["branch_status"]) == (20, 4)
+        @test eltype(h5["branch_status"]) == Bool
+        @test haskey(h5, "gen_status")
+        @test size(h5["gen_status"]) == (5, 4)
+        @test eltype(h5["gen_status"]) == Bool
 
-        @test haskey(h5["data"], "reserve_requirement")
-        @test size(h5["data"]["reserve_requirement"]) == (4,)
-        @test eltype(h5["data"]["reserve_requirement"]) == Float64
-        @test haskey(h5["data"], "rmin")
-        @test size(h5["data"]["rmin"]) == (5,4)
-        @test eltype(h5["data"]["rmin"]) == Float64
-        @test haskey(h5["data"], "rmax")
-        @test size(h5["data"]["rmax"]) == (5,4)
-        @test eltype(h5["data"]["rmax"]) == Float64
+        @test haskey(h5, "reserve_requirement")
+        @test size(h5["reserve_requirement"]) == (4,)
+        @test eltype(h5["reserve_requirement"]) == Float64
+        @test haskey(h5, "rmin")
+        @test size(h5["rmin"]) == (5,4)
+        @test eltype(h5["rmin"]) == Float64
+        @test haskey(h5, "rmax")
+        @test size(h5["rmax"]) == (5,4)
+        @test eltype(h5["rmax"]) == Float64
     end
 
     h5_paths = [
