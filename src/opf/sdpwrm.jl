@@ -267,9 +267,8 @@ function extract_result(opf::OPFModel{PM.SDPWRMPowerModel})
                 "pt" => value(model[:pf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
                 "qf" => value(model[:qf][(b,ref[:branch][b]["f_bus"],ref[:branch][b]["t_bus"])]),
                 "qt" => value(model[:qf][(b,ref[:branch][b]["t_bus"],ref[:branch][b]["f_bus"])]),
-                # By construction of the PSD matrix, wr and wi are defined for buspairs instead of branches.
-                # For convenience, they are stored for branches.
-                # The same values will be repeated if there are multiple branches between a bus pair.
+                # only extract wr and wi entries that correspond to branches since they are necessary for power flow computation
+                # other entries are not extracted as they are dense
                 "wr" => value(model[:WR][ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"]]),
                 "wi" => value(model[:WI][ref[:branch][b]["f_bus"], ref[:branch][b]["t_bus"]]),
                 # dual vars

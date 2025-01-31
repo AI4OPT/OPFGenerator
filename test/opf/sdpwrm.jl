@@ -137,7 +137,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     S = Symmetric(sparse(
         vcat([1:N;], [N+1 : 2*N;], br_i_array, br_j_array, br_i_array .+ N, br_j_array .+ N, br_i_array, br_j_array),
         vcat([1:N;], [N+1 : 2*N;], br_j_array, br_i_array, br_j_array .+ N, br_i_array .+ N, br_j_array .+ N, br_i_array .+ N),
-        # repeat sr since there may be branches where f_bus > t_bus (entry is below the diagonal)
+        # Symmetric() uses the upper triangular part of the matrix, but there may be branches where f_bus > t_bus (entry is below the diagonal), so we repeat sr for both directions of each branch
         vcat(s, s, sr, sr, sr, sr, si, -si),
         2*N, 2*N,
         # ignore duplicate values at the same position
