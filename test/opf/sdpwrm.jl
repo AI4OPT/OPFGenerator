@@ -88,8 +88,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     ref = PM.build_ref(data)[:it][:pm][:nw][0]
     N = length(ref[:bus])
     E = length(ref[:branch])
-    br_i_array = [ref[:branch][e]["f_bus"] for e in 1:E]
-    br_j_array = [ref[:branch][e]["t_bus"] for e in 1:E]
+    bus_fr = [ref[:branch][e]["f_bus"] for e in 1:E]
+    bus_to = [ref[:branch][e]["t_bus"] for e in 1:E]
     bus_loads = [
         [ref[:load][l] for l in ref[:bus_loads][i]]
         for i in 1:N
@@ -135,8 +135,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
     sr = [res["solution"]["branch"]["$e"]["sr"] for e in 1:E]
     si = [res["solution"]["branch"]["$e"]["si"] for e in 1:E]
     S = Symmetric(sparse(
-        vcat([1:N;], [N+1 : 2*N;], br_i_array, br_j_array, br_i_array .+ N, br_j_array .+ N, br_i_array, br_j_array),
-        vcat([1:N;], [N+1 : 2*N;], br_j_array, br_i_array, br_j_array .+ N, br_i_array .+ N, br_j_array .+ N, br_i_array .+ N),
+        vcat([1:N;], [N+1 : 2*N;], bus_fr, bus_to, bus_fr .+ N, bus_to .+ N, bus_fr, bus_to),
+        vcat([1:N;], [N+1 : 2*N;], bus_to, bus_fr, bus_to .+ N, bus_fr .+ N, bus_to .+ N, bus_fr .+ N),
         # Symmetric() uses the upper triangular part of the matrix, but there may be branches where f_bus > t_bus (entry is below the diagonal), so we repeat sr for both directions of each branch
         vcat(s, s, sr, sr, sr, sr, si, -si),
         2*N, 2*N,
@@ -167,8 +167,8 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         for e in 1:E
     ]
     AR = Diagonal([(-gs[i] * λp[i] + bs[i] * λq[i] + μ_w[i]) for i in 1:N]) + Symmetric(sparse(
-        vcat(br_i_array, br_j_array, br_i_array, br_j_array),
-        vcat(br_i_array, br_j_array, br_j_array, br_i_array),
+        vcat(bus_fr, bus_to, bus_fr, bus_to),
+        vcat(bus_fr, bus_to, bus_to, bus_fr),
         vcat(AR_ff_values, AR_tt_values, 1/2 * AR_ft_values, 1/2 * AR_ft_values),
         N, N
     ))
@@ -186,7 +186,7 @@ function _test_sdpwrm_DualFeasibility(data, res; atol=1e-6)
         for e in 1:E
     ]
     AI = sparse(
-        vcat(br_i_array, br_j_array), vcat(br_j_array, br_i_array), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
+        vcat(bus_fr, bus_to), vcat(bus_to, bus_fr), vcat(1/2 * AI_values, -1/2 * AI_values), N, N
     )
     @test norm(AI + S[1:N, (N+1):(2*N)] - S[(N+1):(2*N), 1:N], Inf) <= atol
     return nothing
