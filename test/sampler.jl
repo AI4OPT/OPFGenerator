@@ -292,6 +292,12 @@ function test_sampler_script()
                         "iterative_refinement_abstol" => 1e-18,
                     )
                 )
+            ),
+            "SDPOPF" => Dict(
+                "type" => "SDPOPF",
+                "solver" => Dict(
+                    "name" => "SCS"
+                )
             )
         )
     )

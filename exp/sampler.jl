@@ -11,6 +11,7 @@ using PGLib
 
 using JuMP
 using Clarabel
+using SCS
 using Ipopt
 using Mosek, MosekTools
 using HiGHS
@@ -30,6 +31,7 @@ const NAME2OPTIMIZER = Dict(
     "Ipopt" => Ipopt.Optimizer,
     "Mosek" => Mosek.Optimizer,
     "HiGHS" => HiGHS.Optimizer,
+    "SCS" => SCS.Optimizer,
 )
 
 # Helper function to use correct arithmetic
