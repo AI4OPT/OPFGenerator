@@ -21,7 +21,7 @@ This repository is a non-registered Julia package.
 * Option 1: install as a Julia package. You can use it, but not modify the code
     ```julia
     using Pkg
-    Pkg.add("git@github.com:AI4OPT/OPFGenerator.git")
+    Pkg.add(url="git@github.com:AI4OPT/OPFGenerator.git")
     ```
 
 * Option 2: clone the repository. Use this if you want to change the code
