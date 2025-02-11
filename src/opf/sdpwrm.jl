@@ -65,11 +65,10 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     set_upper_bound.([WR[i, i] for i in 1:N], vmax.^2)
 
     # Voltage product bounds
-    # FIXME: if there are parallel branches and only one is off, values will be set to 0 nontheless
-    set_lower_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], branch_status .* wr_min)
-    set_upper_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], branch_status .* wr_max)
-    set_lower_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], branch_status .* wi_min)
-    set_upper_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], branch_status .* wi_max)
+    set_lower_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], wr_min)
+    set_upper_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], wr_max)
+    set_lower_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], wi_min)
+    set_upper_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], wi_max)
 
     # Active generation bounds (both zero if generator is off)
     set_lower_bound.(pg, gen_status .* pgmin)
