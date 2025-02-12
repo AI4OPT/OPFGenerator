@@ -296,7 +296,10 @@ function test_sampler_script()
             "SDPOPF" => Dict(
                 "type" => "SDPOPF",
                 "solver" => Dict(
-                    "name" => "SCS"
+                    "name" => "Clarabel",
+                    "attributes" => Dict(
+                        "static_regularization_constant" => 1e-7,
+                    )
                 )
             )
         )

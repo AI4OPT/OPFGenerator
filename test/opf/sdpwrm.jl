@@ -21,9 +21,9 @@ function test_opf_pm(::Type{OPFGenerator.SDPOPF}, data::Dict)
 
     # Check that the right problem was indeed solved
     @test res["meta"]["formulation"] == string(OPF)
-    @test res["meta"]["termination_status"] ∈ ["LOCALLY_SOLVED", "OPTIMAL"]
-    @test res["meta"]["primal_status"] == "FEASIBLE_POINT"
-    @test res["meta"]["dual_status"] == "FEASIBLE_POINT"
+    @test res["meta"]["termination_status"] ∈ ["OPTIMAL", "ALMOST_OPTIMAL"]
+    @test res["meta"]["primal_status"] ∈ ["FEASIBLE_POINT", "NEARLY_FEASIBLE_POINT"]
+    @test res["meta"]["dual_status"] ∈ ["FEASIBLE_POINT", "NEARLY_FEASIBLE_POINT"]
     # Check objective value against PowerModels
     @test isapprox(res["meta"]["primal_objective_value"], res_pm["objective"], atol=1e-3, rtol=1e-3)
     @test isapprox(res["meta"]["primal_objective_value"], res["meta"]["dual_objective_value"], rtol=1e-6)
@@ -39,7 +39,6 @@ function test_opf_pm(::Type{OPFGenerator.SDPOPF}, data::Dict)
         :qg => Float64[
             get(get(sol_pm["gen"], "$g", Dict()), "qg", 0) for g in 1:G
         ],
-        # The diagonal elements of sol_pm["WR"]. Note that the rows and columns of sol_pm["WR"] are ordered in the order of ref[:bus].
         :w => Float64[sol_pm["bus"]["$i"]["w"] for i in 1:N]
     )
     model = opf.model
@@ -51,7 +50,7 @@ function test_opf_pm(::Type{OPFGenerator.SDPOPF}, data::Dict)
     fix.(diag(model[:WR]), var2val_pm[:w]; force=true)
 
     optimize!(model)
-    @test termination_status(model) ∈ [OPTIMAL, ALMOST_OPTIMAL, LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
+    @test termination_status(model) ∈ [OPTIMAL, ALMOST_OPTIMAL]
     @test primal_status(model) ∈ [FEASIBLE_POINT, NEARLY_FEASIBLE_POINT]
     # Also check that we get the same objective value as PowerModels
     @test isapprox(objective_value(opf.model), res_pm["objective"], atol=1e-3, rtol=1e-3)
