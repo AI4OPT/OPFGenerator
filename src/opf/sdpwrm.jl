@@ -67,6 +67,12 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     # Voltage product bounds
     set_lower_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], wr_min)
     set_upper_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], wr_max)
+    # In the current implementation of SkewSymmetricMatrixSpace, entries of WI are
+    # monomial AffExpr. If bus_fr[e] > bus_to[e], then the corresponding WI entry
+    # is in the lower triangle and has a coefficient of -1, so set_lower_bound
+    # or set_upper_bound can not be called on the expression directly.
+    # set_lower_bound and set_upper_bound can only be called on entries in the
+    # upper triangle of WI.
     set_lower_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], wi_min)
     set_upper_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], wi_max)
 
@@ -111,7 +117,9 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     )
 
     # Branch power flow physics and limit constraints
-    # Note that the same variable may appear more than once if there are parallel branches
+    # If e_1 and e_2 are parallel branches that connect the same two buses,
+    # then wf[e_1] and wf[e_2] will represent the same entry in W.
+    # Similarly for wt, wr and wi.
     @expression(model, wf[e in 1:E], WR[bus_fr[e], bus_fr[e]])
     @expression(model, wt[e in 1:E], WR[bus_to[e], bus_to[e]])
     @expression(model, wr[e in 1:E], WR[bus_fr[e], bus_to[e]])
@@ -179,18 +187,19 @@ function extract_primal(opf::OPFModel{SDPOPF})
     )
     if has_values(model)
         # bus
-        primal_solution["w"] = value.([model[:WR][i, i] for i in 1:N])
+        primal_solution["w"] = value.([model[:WR][i, i] for i in 1:N])  # diagonal of W
 
         # generator
         primal_solution["pg"] = value.(model[:pg])
         primal_solution["qg"] = value.(model[:qg])
 
         # branch
-        # By construction of the PSD matrix, WR and WI are defined for buspairs instead of branches.
-        # For convenience, they are stored for branches.
-        # The same values will be repeated if there are multiple branches between a bus pair.
-        # Only extract WR and WI entries that correspond to branches (necessary for power flow computation)
-        # Other entries are not extracted as they are dense
+        # W is dense, so extract only the off-diagonal entries of W that correspond to connected
+        # bus pairs to save space.
+        # Other off-diagonal entries of W do not appear in constraints other than the PSD constraint.
+        # These entries can be recovered by solving a PSD matrix completion problem.
+        # If there are multiple branches between two buses, the same entry of W (corresponding
+        # to the bus pair) is extracted for each of the branches.
         primal_solution["wr"] = value.(model[:wr])
         primal_solution["wi"] = value.(model[:wi])
         primal_solution["pf"] = value.(model[:pf])
@@ -244,12 +253,13 @@ function extract_dual(opf::OPFModel{SDPOPF})
     )
 
     if has_duals(model)
-        S = dual.(model[:S])
+        S = dual.(model[:S])  # 2N * 2N, with four N * N blocks
 
         # Bus-level constraints
         dual_solution["kcl_p"] = dual.(model[:kcl_p])
         dual_solution["kcl_q"] = dual.(model[:kcl_q])
-        dual_solution["s"] = [S[i, i] for i in 1:N] # upper-left diagonal of S
+        # diagonal of the upper-left block of S
+        dual_solution["s"] = [S[i, i] for i in 1:N]
 
         # Generator-level constraints
         # N/A
@@ -262,11 +272,12 @@ function extract_dual(opf::OPFModel{SDPOPF})
         dual_solution["va_diff"] = dual.(model[:va_diff_lb]) + dual.(model[:va_diff_ub])  # same as bound constraints
         dual_solution["sm_fr"] = dual.(model[:sm_fr])
         dual_solution["sm_to"] = dual.(model[:sm_to])
-        # By construction of the PSD matrix, sr and si are defined for buspairs instead of branches.
-        # For convenience, they are stored for branches.
-        # The same values will be repeated if there are multiple branches between a bus pair.
-        dual_solution["sr"] = [S[bus_fr[e], bus_to[e]] for e in 1:E] # upper left block
-        dual_solution["si"] = [S[bus_fr[e], bus_to[e] + N] for e in 1:E] # upper right block
+        # Extract only the off-diagonal entries of S that correspond to connected bus pairs,
+        # since S has such sparsity structure due to constraints in the complex dual problem.
+        # If there are multiple branches between two buses, the same entry of S (corresponding
+        # to the bus pair) is extracted for each of the branches.
+        dual_solution["sr"] = [S[bus_fr[e], bus_to[e]] for e in 1:E] # upper left block of S
+        dual_solution["si"] = [S[bus_fr[e], bus_to[e] + N] for e in 1:E] # upper right block of S
         
         # For conic constraints, JuMP will return Vector{Vector{T}}
         # reshape duals of conic constraints into matrix shape
@@ -285,10 +296,11 @@ function extract_dual(opf::OPFModel{SDPOPF})
         dual_solution["pg"] = dual.(LowerBoundRef.(model[:pg])) + dual.(UpperBoundRef.(model[:pg]))
         dual_solution["qg"] = dual.(LowerBoundRef.(model[:qg])) + dual.(UpperBoundRef.(model[:qg]))
         # branch
-        # Note that wr and wi are by construction defined on buspairs, not branches.
-        # The same values will be repeated if there are multiple branches between a bus pair.
+        # Recall that only entries of W that correspond to connected bus pairs have bounds.
         dual_solution["wr"] = dual.(LowerBoundRef.([model[:WR][bus_fr[e], bus_to[e]] for e in 1:E])) + dual.(UpperBoundRef.([model[:WR][bus_fr[e], bus_to[e]] for e in 1:E]))
-        # In the current implementation of SkewSymmetricMatrixSpace, entries of WI are AffExpr, so need to extract the corresponding variable
+        # In the current implementation of SkewSymmetricMatrixSpace, entries of WI are AffExpr,
+        # so need to extract the corresponding variable.
+        # Recall that bounds are always defined for the entries in the upper triangle of WI, even if bus_fr[e] > bus_to[e]
         dual_solution["wi"] = dual.(LowerBoundRef.([first(keys(model[:WI][bus_fr[e], bus_to[e]].terms)) for e in 1:E])) + dual.(UpperBoundRef.([first(keys(model[:WI][bus_fr[e], bus_to[e]].terms)) for e in 1:E]))
         dual_solution["pf"] = dual.(LowerBoundRef.(model[:pf])) + dual.(UpperBoundRef.(model[:pf]))
         dual_solution["qf"] = dual.(LowerBoundRef.(model[:qf])) + dual.(UpperBoundRef.(model[:qf]))
