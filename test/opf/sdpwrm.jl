@@ -127,8 +127,6 @@ function _test_sdpwrm_DualFeasibility(data::OPFGenerator.OPFData, res; atol=1e-6
     μθ_ub = min.(0, res["dual"]["va_diff"])
 
     μ_w = res["dual"]["w"]
-    μ_wr = res["dual"]["wr"]
-    μ_wi = res["dual"]["wi"]
     
     # Reconstruct S from s, sr, si
     S = Symmetric(sparse(
@@ -162,7 +160,6 @@ function _test_sdpwrm_DualFeasibility(data::OPFGenerator.OPFData, res; atol=1e-6
             - btf[e] * λqt[e]
             - tan(δθmin[e]) * μθ_lb[e]
             + tan(δθmax[e]) * μθ_ub[e]
-            + μ_wr[e]
         )
         for e in 1:E
     ]
@@ -184,7 +181,6 @@ function _test_sdpwrm_DualFeasibility(data::OPFGenerator.OPFData, res; atol=1e-6
             - gtf[e] * λqt[e]
             + μθ_lb[e]
             - μθ_ub[e]
-            + μ_wi[e]
         )
         for e in 1:E
     ]

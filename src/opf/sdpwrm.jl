@@ -26,8 +26,6 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     dvamin, dvamax, smax = data.dvamin, data.dvamax, data.smax
     branch_status = data.branch_status
 
-    wr_min, wr_max, wi_min, wi_max = compute_voltage_phasor_bounds(data)
-
     model = JuMP.GenericModel{T}(optimizer)
     model.ext[:opf_model] = SDPOPF
 
@@ -62,18 +60,6 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     # Voltage magnitude bounds
     set_lower_bound.([WR[i, i] for i in 1:N], vmin.^2)
     set_upper_bound.([WR[i, i] for i in 1:N], vmax.^2)
-
-    # Voltage product bounds
-    set_lower_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], wr_min)
-    set_upper_bound.([WR[bus_fr[e], bus_to[e]] for e in 1:E], wr_max)
-    # In the current implementation of SkewSymmetricMatrixSpace, entries of WI are
-    # monomial AffExpr. If bus_fr[e] > bus_to[e], then the corresponding WI entry
-    # is in the lower triangle and has a coefficient of -1, so set_lower_bound
-    # or set_upper_bound can not be called on the expression directly.
-    # set_lower_bound and set_upper_bound can only be called on entries in the
-    # upper triangle of WI.
-    set_lower_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], wi_min)
-    set_upper_bound.([WI[sort([bus_fr[e], bus_to[e]])...] for e in 1:E], wi_max)
 
     # Active generation bounds (both zero if generator is off)
     set_lower_bound.(pg, gen_status .* pgmin)
@@ -243,8 +229,6 @@ function extract_dual(opf::OPFModel{SDPOPF})
         "pg"         => zeros(T, G),
         "qg"         => zeros(T, G),
         # branch
-        "wr"         => zeros(T, E),
-        "wi"         => zeros(T, E),
         "pf"         => zeros(T, E),
         "qf"         => zeros(T, E),
         "pt"         => zeros(T, E),
@@ -295,12 +279,6 @@ function extract_dual(opf::OPFModel{SDPOPF})
         dual_solution["pg"] = dual.(LowerBoundRef.(model[:pg])) + dual.(UpperBoundRef.(model[:pg]))
         dual_solution["qg"] = dual.(LowerBoundRef.(model[:qg])) + dual.(UpperBoundRef.(model[:qg]))
         # branch
-        # Recall that only entries of W that correspond to connected bus pairs have bounds.
-        dual_solution["wr"] = dual.(LowerBoundRef.([model[:WR][bus_fr[e], bus_to[e]] for e in 1:E])) + dual.(UpperBoundRef.([model[:WR][bus_fr[e], bus_to[e]] for e in 1:E]))
-        # In the current implementation of SkewSymmetricMatrixSpace, entries of WI are AffExpr,
-        # so need to extract the corresponding variable.
-        # Recall that bounds are always defined for the entries in the upper triangle of WI, even if bus_fr[e] > bus_to[e]
-        dual_solution["wi"] = dual.(LowerBoundRef.([first(keys(model[:WI][bus_fr[e], bus_to[e]].terms)) for e in 1:E])) + dual.(UpperBoundRef.([first(keys(model[:WI][bus_fr[e], bus_to[e]].terms)) for e in 1:E]))
         dual_solution["pf"] = dual.(LowerBoundRef.(model[:pf])) + dual.(UpperBoundRef.(model[:pf]))
         dual_solution["qf"] = dual.(LowerBoundRef.(model[:qf])) + dual.(UpperBoundRef.(model[:qf]))
         dual_solution["pt"] = dual.(LowerBoundRef.(model[:pt])) + dual.(UpperBoundRef.(model[:pt]))
