@@ -197,7 +197,7 @@ function _test_sdpwrm_DualSolFormat()
     N = length(data["bus"])
     E = length(data["branch"])
 
-    solver = CLRBL_SOLVER
+    solver = CLRBL_SOLVER_SDP
     opf = OPFGenerator.build_opf(OPFGenerator.SDPOPF, data, solver)
     set_silent(opf.model)
     OPFGenerator.solve!(opf)
@@ -206,8 +206,12 @@ function _test_sdpwrm_DualSolFormat()
     res = OPFGenerator.extract_result(opf)
 
     @test Set(collect(keys(res))) == Set(["meta", "primal", "dual"])
+    @test size(res["dual"]["s"]) == (N,)
     @test size(res["dual"]["sm_fr"]) == (E, 3)
     @test size(res["dual"]["sm_to"]) == (E, 3)
+    @test size(res["dual"]["sr"]) == (E,)
+    @test size(res["dual"]["si"]) == (E,)
+    @test size(res["dual"]["w"]) == (N,)
     return nothing
 end
 
