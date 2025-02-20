@@ -102,8 +102,8 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     )
 
     # Branch power flow physics and limit constraints
-    # If e_1 and e_2 are parallel branches that connect the same two buses,
-    # then wf[e_1] and wf[e_2] will represent the same entry in W.
+    # If e_1 and e_2 are parallel branches that connect from bus i to j, then
+    # wf[e_1] and wf[e_2] will refer to the same entry in W.
     # Similarly for wt, wr and wi.
     @expression(model, wf[e in 1:E], WR[bus_fr[e], bus_fr[e]])
     @expression(model, wt[e in 1:E], WR[bus_to[e], bus_to[e]])
@@ -179,12 +179,12 @@ function extract_primal(opf::OPFModel{SDPOPF})
         primal_solution["qg"] = value.(model[:qg])
 
         # branch
-        # W is dense, so extract only the off-diagonal entries of W that correspond to connected
-        # bus pairs to save space.
-        # Other off-diagonal entries of W do not appear in constraints other than the PSD constraint.
+        # W is dense, so extract only the off-diagonal entries of W that correspond to branches
+        # to save space. Other off-diagonal entries of W only appear in the PSD constraint and
+        # not in any other constraint.
         # These entries can be recovered by solving a PSD matrix completion problem.
-        # If there are multiple branches between two buses, the same entry of W (corresponding
-        # to the bus pair) is extracted for each of the branches.
+        # If there are multiple branches from bus i to j, the same entries of W are extracted
+        # for each of the branches.
         primal_solution["wr"] = value.(model[:wr])
         primal_solution["wi"] = value.(model[:wi])
         primal_solution["pf"] = value.(model[:pf])
@@ -255,10 +255,10 @@ function extract_dual(opf::OPFModel{SDPOPF})
         dual_solution["va_diff"] = dual.(model[:va_diff_lb]) + dual.(model[:va_diff_ub])  # same as bound constraints
         dual_solution["sm_fr"] = dual.(model[:sm_fr])
         dual_solution["sm_to"] = dual.(model[:sm_to])
-        # Extract only the off-diagonal entries of S that correspond to connected bus pairs,
-        # since S has such sparsity structure due to constraints in the complex dual problem.
-        # If there are multiple branches between two buses, the same entry of S (corresponding
-        # to the bus pair) is extracted for each of the branches.
+        # Extract only the off-diagonal entries of S that correspond to branches, since entries
+        # that don't are 0.
+        # If there are multiple branches from bus i to j, the same entries of S are extracted for
+        # each of the branches.
         dual_solution["sr"] = [S[bus_fr[e], bus_to[e]] for e in 1:E] # upper left block of S
         dual_solution["si"] = [S[bus_fr[e], bus_to[e] + N] for e in 1:E] # upper right block of S
         
