@@ -45,9 +45,9 @@ function test_opf_pm(::Type{OPFGenerator.SDPOPF}, data::Dict)
     for varname in [:pg, :qg]
         x = model[varname]
         v = var2val_pm[varname]
-        fix.(x, v; force=true)
+        @constraint(model, v .<= x .<= v)
     end
-    fix.(diag(model[:WR]), var2val_pm[:w]; force=true)
+    @constraint(model, var2val_pm[:w] .<= diag(model[:WR]) .<= var2val_pm[:w])
 
     optimize!(model)
     @test termination_status(model) ∈ [OPTIMAL, ALMOST_OPTIMAL]
@@ -212,15 +212,5 @@ function _test_sdpwrm_DualSolFormat()
     @test size(res["dual"]["sr"]) == (E,)
     @test size(res["dual"]["si"]) == (E,)
     @test size(res["dual"]["w"]) == (N,)
-    return nothing
-end
-
-function _test_sdpwrm128(data::Dict)
-    opf = OPFGenerator.build_opf(OPFGenerator.SDPOPF, data, CLRBL128_SOLVER; T=Float128)
-
-    OPFGenerator.solve!(opf)
-
-    res = OPFGenerator.extract_result(opf)
-
     return nothing
 end
