@@ -63,11 +63,11 @@ end
 
 Test dual feasibility of SDPWRM problem.
 
-This test is executed on the 14 bus system.
+This test is executed on the 5 bus system.
 """
 function _test_sdpwrm_DualFeasibility()
     T = Float128
-    data = OPFGenerator.OPFData(make_basic_network(pglib("14_ieee")))
+    data = OPFGenerator.OPFData(make_basic_network(pglib("5_pjm")))
     solver = JuMP.optimizer_with_attributes(Clarabel.Optimizer{T},
         "verbose" => true,
         "equilibrate_enable" => false,
@@ -193,7 +193,7 @@ function _test_sdpwrm_DualFeasibility(data::OPFGenerator.OPFData, res; atol=1e-6
 end
 
 function _test_sdpwrm_DualSolFormat()
-    data = make_basic_network(pglib("pglib_opf_case14_ieee"))
+    data = make_basic_network(pglib("5_pjm"))
     N = length(data["bus"])
     E = length(data["branch"])
 

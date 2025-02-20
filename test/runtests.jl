@@ -33,7 +33,7 @@ const OPT_SOLVERS = Dict(
 
 
 const PGLIB_CASES = ["14_ieee", "30_ieee", "57_ieee", "89_pegase", "118_ieee"]
-const PGLIB_CASES_SDP = ["5_pjm"]
+const PGLIB_CASES_SDP = ["14_ieee"]
 @testset "OPFGenerator" begin
     include("utils/io.jl")
     include("utils/float.jl")    
