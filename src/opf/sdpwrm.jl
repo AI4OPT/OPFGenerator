@@ -40,7 +40,7 @@ function build_opf(::Type{SDPOPF}, data::OPFData, optimizer;
     =#
 
     # voltage magnitude and product
-    @variable(model, WR[i=1:N, j=1:N], Symmetric)
+    @variable(model, WR[1:N, 1:N], Symmetric)
     @variable(model, WI[1:N, 1:N] in SkewSymmetricMatrixSpace())
 
     # Active and reactive dispatch
