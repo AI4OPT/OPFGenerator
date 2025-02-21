@@ -44,6 +44,7 @@ end
 include("acp.jl")
 include("dcp.jl")
 include("socwr.jl")
+include("sdpwrm.jl")
 include("ed.jl")
 
 # other tests
@@ -51,7 +52,12 @@ include("quad_obj.jl")
 
 @testset "OPF" begin
     @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
-        @testset "$(casename)" for casename in PGLIB_CASES
+        if OPF == OPFGenerator.SDPOPF
+            cases = PGLIB_CASES_SDP
+        else
+            cases = PGLIB_CASES
+        end
+        @testset "$(casename)" for casename in cases
             test_opf_pm(OPF, casename)
         end
 
@@ -62,6 +68,10 @@ include("quad_obj.jl")
     @testset _test_socwr_DualSolFormat()
 
     @testset _test_socwr_DualFeasibility()
+
+    @testset _test_sdpwrm_DualSolFormat()
+
+    @testset _test_sdpwrm_DualFeasibility()
 end
 
 @testset "OPFData" begin

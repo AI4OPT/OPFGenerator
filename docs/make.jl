@@ -23,6 +23,7 @@ makedocs(
             "Problem formulations" => [
                 "Notations" => "opf/notations.md",
                 "AC-OPF"    => "opf/acp.md",
+                "SDP-OPF"   => "opf/sdpwrm.md",
                 "SOC-OPF"   => "opf/socwr.md",
                 "DC-OPF"    => "opf/dcp.md",
             ],
