@@ -215,6 +215,7 @@ The resulting SDP-OPF model in the real space is presented below.
     If branch ``e \in \EDGES`` is connected from bus ``i`` to ``j``, then ``\Wisdp_{e}`` refers to ``\Wisdp_{ij}``.
     If instead branch ``e`` is connected from bus ``j`` to ``i``, then ``\Wisdp_{e}`` refers to ``\Wisdp_{ji}``, which by definition is equal to ``-\Wisdp_{ij}``.
 
+More details of the model can be found in [Qiu, G., Tanneau, M., & Van Hentenryck, P. (2025). Dual Conic Proxy for Semidefinite Relaxation of AC Optimal Power Flow. arXiv preprint arXiv:2502.06978.](https://arxiv.org/abs/2502.06978)
 
 ### Variables
 
