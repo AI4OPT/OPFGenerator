@@ -4,7 +4,7 @@ The SOC-OPF model considered in OPFGenerator is presented below.
 
 ### Definitions
 
-The _second order cone_ and _rotated second-order cone_ or order ``n`` are defined as
+The _second order cone_ and _rotated second-order cone_ of order ``n`` are defined as
 ```math
 \begin{align*}
 \mathcal{Q}^{n} &= \left\{
@@ -28,9 +28,9 @@ The formulation is obtained through the change of variable
 ```math
 \begin{align*}
 \wm_{i} &= \VM_{i}^{2} 
-    && \forall i \in \mathcal{N}\\
+    && \forall i \in \NODES \\
 \wr_{e} &= \VM_{i} \VM_{j} \cos (\theta_{i} - \theta_{j}) 
-    && \forall e = (i, j) \in \EDGES\\
+    && \forall e = (i, j) \in \EDGES \\
 \wi_{e} &= \VM_{i} \VM_{j} \sin (\theta_{i} - \theta_{j}) 
     && \forall e = (i, j) \in \EDGES
 \end{align*}
@@ -46,7 +46,7 @@ The Jabr relaxation is obtained by relaxing this into the convex constraint
 (\wr)^{2} + (\wi)^{2} \leq \wm_{i} \times \wm_{j}
 ```
 
-The result SOC-OPF model is presented below.
+The resulting SOC-OPF model is presented below.
 ```math
 \begin{align}
     \min \quad 
@@ -54,7 +54,7 @@ The result SOC-OPF model is presented below.
         \sum_{i \in \NODES} \sum_{j \in \GENERATORS_{i}} c_j \PG_j + c_0\\
     \text{s.t.} \quad
     & \label{eq:SOCOPF:kcl_p}
-        \sum_{j\in\GENERATORS_i}\PG_j 
+        \sum_{g \in \GENERATORS_i} \PG_g
         - \sum_{e \in \EDGES^{+}_{i}} \PF_{e}
         - \sum_{e \in \EDGES^{-}_{i}} \PT_{e}
         - \GS_i \wm_{i}
@@ -63,12 +63,12 @@ The result SOC-OPF model is presented below.
         % && [\lambda^{p}]
         \\
     & \label{eq:SOCOPF:kcl_q}
-        \sum_{g \in \mathcal{G}_{i}} \QG_{g}
+        \sum_{g \in \GENERATORS_{i}} \QG_{g}
         - \sum_{e \in \EDGES^{+}_{i}} \QF_{e}
         - \sum_{e \in \EDGES^{-}_{i}} \QT_{e}
         + \BS_{i} \wm_{i}
         = \sum_{j\in\LOADS_i} \QD_j
-        & \forall i & \in \mathcal{N}
+        & \forall i & \in \NODES
         % && [\lambda^{q}]
         \\
     % Ohm's law
@@ -77,7 +77,7 @@ The result SOC-OPF model is presented below.
         + \gft_{e} \wr_{e}
         + \bft_{e} \wi_{e}
         - \PF_{e} = 0
-        & \forall e & \in \EDGES
+        & \forall e = (i,j) & \in \EDGES
         % && [\lambda^{pf}]
         \\
     & \label{eq:SOCOPF:ohm_qf}
@@ -85,7 +85,7 @@ The result SOC-OPF model is presented below.
         - \bft_{e} \wr_{e}
         + \gft_{e} \wi_{e}
         - \QF_{e} = 0
-        & \forall e & \in \EDGES
+        & \forall e = (i,j) & \in \EDGES
         % && [\lambda^{qf}]
         \\
     & \label{eq:SOCOPF:ohm_pt}
@@ -93,7 +93,7 @@ The result SOC-OPF model is presented below.
         + \gtf_{e} \wr_{e}
         - \btf_{e} \wi_{e}
         - \PT_{e} = 0
-        & \forall e & \in \EDGES
+        & \forall e = (i,j) & \in \EDGES
         % && [\lambda^{pt}]
         \\
     & \label{eq:SOCOPF:ohm_qt}
@@ -101,7 +101,7 @@ The result SOC-OPF model is presented below.
         - \btf_{e} \wr_{e}
         - \gtf_{e} \wi_{e}
         - \QT_{e} = 0
-        & \forall e & \in \EDGES
+        & \forall e = (i,j) & \in \EDGES
         % && [\lambda^{qt}]
         \\
     % Jabr constraints
@@ -138,17 +138,17 @@ The result SOC-OPF model is presented below.
     % Variable bounds
     & \label{eq:SOCOPF:pg_bounds}
         \pgmin_{i} \leq \PG_{i} \leq \pgmax_{i}, 
-        & \forall i & \in \mathcal{G}
+        & \forall i & \in \GENERATORS
         % && [\mu^{pg}]
         \\
     & \label{eq:SOCOPF:qg_bounds}
         \qgmin_{i} \leq \QG_{i} \leq \qgmax_{i},
-        & \forall i & \in \mathcal{G}
+        & \forall i & \in \GENERATORS
         % && [\mu^{qg}]
         \\
     & \label{eq:SOCOPF:wm_bounds}
         \vmmin_{i}^{2} \leq \wm_{i} \leq \vmmax_{i}^{2}, 
-        & \forall i & \in \mathcal{N}
+        & \forall i & \in \NODES
         % && [\mu^{w}]
         \\ 
     & \label{eq:SOCOPF:wr_bounds}
@@ -209,12 +209,12 @@ The objective function ``\eqref{eq:SOCOPF:objective}`` minimizes the cost of act
 * ``\eqref{eq:SOCOPF:kcl_p}-\eqref{eq:SOCOPF:kcl_q}``:
     Kirchhoff's current law for active and reactive power
 * ``\eqref{eq:SOCOPF:ohm_pf}-\eqref{eq:SOCOPF:ohm_qt}``:
-    Ohm's law for active/reactive power flows in _from_ and _to_ directions.
+    Ohm's law for active/reactive power flows in _from_ and _to_ directions
 * ``\eqref{eq:SOCOPF:jabr}``: Jabr constraint
-* ``\eqref{eq:SOCOPF:sm_f}-\eqref{eq:SOCOPF:sm_t}``: Thermal limits
-* ``\eqref{eq:SOCOPF:va_diff}``: voltage angle deviation constraints.
+* ``\eqref{eq:SOCOPF:sm_f}-\eqref{eq:SOCOPF:sm_t}``: thermal limits
+* ``\eqref{eq:SOCOPF:va_diff}``: voltage angle deviation constraints
 * ``\eqref{eq:SOCOPF:pg_bounds}-\eqref{eq:SOCOPF:qg_bounds}``: active/reactive generation limits
-* ``\eqref{eq:SOCOPF:wm_bounds}``: nodal voltage angle limits
+* ``\eqref{eq:SOCOPF:wm_bounds}``: bounds on squared voltage magnitude
 * ``\eqref{eq:SOCOPF:wr_bounds}-\eqref{eq:SOCOPF:wi_bounds}``: bounds on voltage product variables
 * ``\eqref{eq:SOCOPF:pf_bounds}-\eqref{eq:SOCOPF:qt_bounds}``: power flow bounds, derived from thermal limits
 
@@ -238,7 +238,7 @@ The objective function ``\eqref{eq:SOCOPF:objective}`` minimizes the cost of act
 |:--------------------------|:-----|:------|:----------------------------------|
 | ``\mathbf{w}``            | `w`  | ``N`` | Squared nodal voltage magnitude
 | ``\PG`` | `pg` | ``G`` | Active power generation
-| ``\QG`` | `pg` | ``G`` | Reactive power generation
+| ``\QG`` | `qg` | ``G`` | Reactive power generation
 | ``\wr`` | `wr` | ``E`` | Voltage product variable (real part)
 | ``\wi`` | `wi` | ``E`` | Voltage product variable (imaginary part)
 | ``\PF`` | `pf` | ``E`` | Active power flow (from)
