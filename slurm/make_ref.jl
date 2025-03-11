@@ -3,24 +3,24 @@ using PowerModels
 PowerModels.silence()
 using PGLib
 
-using OPFGenerator
+using PGLearn
 
 include(joinpath(@__DIR__, "..", "exp", "sampler.jl"))
 
 function main_ref(config; export_ref=false)
-    case_file, case_name = OPFGenerator._get_case_info(config)
+    case_file, case_name = PGLearn._get_case_info(config)
     export_dir = pop!(config, "export_dir")
     pop!(config, "slurm")
 
-    data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
+    data = PGLearn.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
 
     d = main(data, config)
-    d["data"] = OPFGenerator.to_dict(data)
+    d["data"] = PGLearn.to_dict(data)
     d["config"] = config
 
     if export_ref
         mkpath(export_dir)
-        OPFGenerator.save_json(joinpath(export_dir, "case.json"), d)
+        PGLearn.save_json(joinpath(export_dir, "case.json"), d)
     end
     return d
 end

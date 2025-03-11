@@ -4,15 +4,15 @@ using Mustache
 using Pkg
 using TOML
 
-using OPFGenerator
+using PGLearn
 
 
 config_file = ARGS[1]
 config = TOML.parsefile(config_file)
 
-opfgenerator_dir = normpath(joinpath(dirname(pathof(OPFGenerator)), ".."))
+opfgenerator_dir = normpath(joinpath(dirname(pathof(PGLearn)), ".."))
 
-case_file, case_name = OPFGenerator._get_case_info(config)
+case_file, case_name = PGLearn._get_case_info(config)
 isfile(case_file) || error("Reference case file not found: $(case_file)")
 result_dir = config["export_dir"]
 S = config["slurm"]["n_samples"]
