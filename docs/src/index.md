@@ -1,6 +1,6 @@
-# OPFGenerator.jl
+# PGLearn.jl
 
-Documentation for OPFGenerator.jl
+Documentation for PGLearn.jl
 
 !!! warning
     This documentation is a work in progress.

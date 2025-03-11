@@ -1,4 +1,4 @@
-`OPFGenerator` provides utilities to save/load files in the HDF5 and JSON formats.
+`PGLearn` provides utilities to save/load files in the HDF5 and JSON formats.
 
 ## HDF5
 
@@ -31,7 +31,7 @@ save_h5("myfile.h5", d)
 Use the [`load_json`](@ref) and [`save_json`](@ref) functions to load/save data to/from JSON files.
 
 ```julia
-using OPFGenerator
+using PGLearn
 
 # Load a dictionary from a JSON file
 d = load_json("my_json_file.json")
