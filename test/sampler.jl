@@ -3,7 +3,7 @@ using LinearAlgebra
 using TOML
 
 function test_glocal()
-    d = OPFGenerator.Glocal(
+    d = PGLearn.Glocal(
         Uniform(0.0, 1.0),
         Distributions.MvNormal(zeros(4), Diagonal(ones(4)))
     )
@@ -23,7 +23,7 @@ function test_ScaledLogNormal()
 
     @test length(d) == 3
 
-    @test isa(d, OPFGenerator.Glocal)
+    @test isa(d, PGLearn.Glocal)
     @test d.d_α == Uniform(0.8, 1.2)
     @test isa(d.d_η, Distributions.MvLogNormal)
 
@@ -39,7 +39,7 @@ function test_ScaledUniform()
 
     @test length(d) == 5
 
-    @test isa(d, OPFGenerator.Glocal)
+    @test isa(d, PGLearn.Glocal)
     @test d.d_α == Uniform(0.8, 1.2)
     @test isa(d.d_η, Distributions.Product)
 
@@ -51,7 +51,7 @@ function test_ScaledUniform()
 end
 
 function test_LoadScaler()
-    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    data = PGLearn.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # ScaledLogNormal
     options = Dict(
@@ -104,7 +104,7 @@ function test_LoadScaler()
 end
 
 function test_LoadScaler_sanity_checks()
-    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    data = PGLearn.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
 
     # Invalid noise type
     options = Dict()
@@ -139,7 +139,7 @@ function test_LoadScaler_sanity_checks()
 end
 
 function test_sampler()
-    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    data = PGLearn.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     _data = deepcopy(data)  # keep a deepcopy nearby
     sampler_config = Dict(
         "load" => Dict(
@@ -165,7 +165,7 @@ function test_sampler()
 end
 
 function test_nminus1_sampler()
-    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    data = PGLearn.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     sampler_config = Dict{String,Any}(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
@@ -199,7 +199,7 @@ function test_nminus1_sampler()
 end
 
 function test_inplace_sampler()
-    data = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    data = PGLearn.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
     sampler_config = Dict(
         "load" => Dict(
             "noise_type" => "ScaledLogNormal",
@@ -310,7 +310,7 @@ function test_sampler_script()
         TOML.print(io, config)
     end
 
-    case_file, case_name = OPFGenerator._get_case_info(config)
+    case_file, case_name = PGLearn._get_case_info(config)
     smin, smax = 1, 4
     proc = run(setenv(`$(joinpath(Sys.BINDIR, "julia")) --project=. $sampler_script $config_file $smin $smax`, dir=joinpath(@__DIR__, "..")))
 

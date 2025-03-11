@@ -1,8 +1,8 @@
 using LinearAlgebra
 using SparseArrays
 
-function test_opf_pm(::Type{OPFGenerator.SDPOPF}, data::Dict)
-    OPF = OPFGenerator.SDPOPF
+function test_opf_pm(::Type{PGLearn.SDPOPF}, data::Dict)
+    OPF = PGLearn.SDPOPF
 
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
@@ -13,11 +13,11 @@ function test_opf_pm(::Type{OPFGenerator.SDPOPF}, data::Dict)
     solver = OPT_SOLVERS[OPF]
     res_pm = PM.solve_opf(data, PM.SDPWRMPowerModel, solver)
 
-    # Build and solve OPF with OPFGenerator
+    # Build and solve OPF with PGLearn
     solver = OPT_SOLVERS[OPF]
-    opf = OPFGenerator.build_opf(OPF, data, solver)
-    OPFGenerator.solve!(opf)
-    res = OPFGenerator.extract_result(opf)
+    opf = PGLearn.build_opf(OPF, data, solver)
+    PGLearn.solve!(opf)
+    res = PGLearn.extract_result(opf)
 
     # Check that the right problem was indeed solved
     @test res["meta"]["formulation"] == string(OPF)
@@ -67,7 +67,7 @@ This test is executed on the 5 bus system.
 """
 function _test_sdpwrm_DualFeasibility()
     T = Float128
-    data = OPFGenerator.OPFData(make_basic_network(pglib("5_pjm")))
+    data = PGLearn.OPFData(make_basic_network(pglib("5_pjm")))
     solver = JuMP.optimizer_with_attributes(Clarabel.Optimizer{T},
         "verbose" => true,
         "equilibrate_enable" => false,
@@ -77,10 +77,10 @@ function _test_sdpwrm_DualFeasibility()
         "tol_infeas_rel" => 1e-14,
         "tol_ktratio"    => 1e-14,
     )
-    opf = OPFGenerator.build_opf(OPFGenerator.SDPOPF, data, solver; T=T)
+    opf = PGLearn.build_opf(PGLearn.SDPOPF, data, solver; T=T)
     # set_silent(opf.model)
-    OPFGenerator.solve!(opf)
-    res = OPFGenerator.extract_result(opf)
+    PGLearn.solve!(opf)
+    res = PGLearn.extract_result(opf)
 
     _test_sdpwrm_DualFeasibility(data, res)
 
@@ -99,7 +99,7 @@ Tests feasibility for dual constraints associated to `WR` and `WI` variables.
 - `res`: Result dictionary of the SOCWR optimization
 - `atol=1e-6`: The absolute tolerance for feasibility checks (default is 1e-6).
 """
-function _test_sdpwrm_DualFeasibility(data::OPFGenerator.OPFData, res; atol=1e-6)
+function _test_sdpwrm_DualFeasibility(data::PGLearn.OPFData, res; atol=1e-6)
     # Grab problem data
     N = data.N
     E = data.E
@@ -198,12 +198,12 @@ function _test_sdpwrm_DualSolFormat()
     E = length(data["branch"])
 
     solver = CLRBL_SOLVER_SDP
-    opf = OPFGenerator.build_opf(OPFGenerator.SDPOPF, data, solver)
+    opf = PGLearn.build_opf(PGLearn.SDPOPF, data, solver)
     set_silent(opf.model)
-    OPFGenerator.solve!(opf)
+    PGLearn.solve!(opf)
 
     # Check shape of dual solution
-    res = OPFGenerator.extract_result(opf)
+    res = PGLearn.extract_result(opf)
 
     @test Set(collect(keys(res))) == Set(["meta", "primal", "dual"])
     @test size(res["dual"]["s"]) == (N,)
