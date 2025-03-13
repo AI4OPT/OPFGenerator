@@ -4,12 +4,12 @@ Copyright Georgia Tech 2022-2024
 [![codecov][codecov-img]][codecov-url]
 [![docs-dev][docs-dev-img]][docs-dev-url]
  
-[build-img]: https://github.com/ai4opt/PGLearn/actions/workflows/ci.yml/badge.svg?branch=main
-[build-url]: https://github.com/ai4opt/PGLearn/actions?query=workflow%3ACI
-[codecov-img]: https://codecov.io/gh/AI4OPT/PGLearn/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/AI4OPT/PGLearn
+[build-img]: https://github.com/ai4opt/PGLearn.jl/actions/workflows/ci.yml/badge.svg?branch=main
+[build-url]: https://github.com/ai4opt/PGLearn.jl/actions?query=workflow%3ACI
+[codecov-img]: https://codecov.io/gh/AI4OPT/PGLearn.jl/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/AI4OPT/PGLearn.jl
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://ai4opt.github.io/PGLearn/dev/
+[docs-dev-url]: https://ai4opt.github.io/PGLearn.jl/dev/
 
 # PGLearn
 Instance generator for various OPF problems.
@@ -21,7 +21,7 @@ This repository is a non-registered Julia package.
 * Option 1: install as a Julia package. You can use it, but not modify the code
     ```julia
     using Pkg
-    Pkg.add(url="git@github.com:AI4OPT/PGLearn.git")
+    Pkg.add(url="git@github.com:AI4OPT/PGLearn.jl.git")
     ```
 
 * Option 2: clone the repository. Use this if you want to change the code
