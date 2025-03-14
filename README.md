@@ -26,7 +26,7 @@ This repository is a non-registered Julia package.
 
 * Option 2: clone the repository. Use this if you want to change the code
     ```bash
-    git clone git@github.com:AI4OPT/PGLearn.git
+    git clone git@github.com:AI4OPT/PGLearn.jl.git
     ```
     To use the package after cloning the repo
     ```bash
