@@ -1,15 +1,15 @@
-function test_opf_pm(::Type{OPFGenerator.EconomicDispatch}, data::Dict)
-    OPF = OPFGenerator.EconomicDispatch
+function test_opf_pm(::Type{PGLearn.EconomicDispatch}, data::Dict)
+    OPF = PGLearn.EconomicDispatch
 
     data["basic_network"] || error("Input data must be in basic format to test")
     G = length(data["gen"])
     E = length(data["branch"])
 
-    # Build and solve OPF with OPFGenerator
+    # Build and solve OPF with PGLearn
     solver = OPT_SOLVERS[OPF]
-    opf = OPFGenerator.build_opf(OPF, data, solver) # NOTE: this does not consider soft versions
-    OPFGenerator.solve!(opf)
-    res = OPFGenerator.extract_result(opf)
+    opf = PGLearn.build_opf(OPF, data, solver) # NOTE: this does not consider soft versions
+    PGLearn.solve!(opf)
+    res = PGLearn.extract_result(opf)
 
     # Solve OPF with PowerModels
     data_pm = deepcopy(data)

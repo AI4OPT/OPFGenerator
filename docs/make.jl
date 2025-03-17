@@ -1,12 +1,12 @@
 using Documenter
-using OPFGenerator
+using PGLearn
 
 
 include("definitions.jl")
 
 makedocs(
-    modules=[OPFGenerator],
-    sitename = "OPFGenerator",
+    modules=[PGLearn],
+    sitename = "PGLearn",
     format = Documenter.HTML(;
         assets = ["assets/wider.css", "assets/redlinks.css"],
         mathengine = Documenter.MathJax3(Dict(
@@ -37,6 +37,6 @@ makedocs(
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
 deploydocs(
-    repo="github.com/AI4OPT/OPFGenerator.git",
+    repo="github.com/AI4OPT/PGLearn.jl.git",
     push_preview=true,
 )

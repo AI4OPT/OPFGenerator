@@ -15,7 +15,7 @@ function test_float_conversion()
     # Test Float32 conversion
     # Use `===` to check value _and_ type when applicable,
     #   and to check that we didn't copy any data that wasn't converted
-    d32 = OPFGenerator.convert_float_data(D, Float32)
+    d32 = PGLearn.convert_float_data(D, Float32)
     @test isa(d32, Dict{String,Any})
     @test d32["a"] === 1
     @test d32["b"] === 2f0
@@ -33,7 +33,7 @@ function test_float_conversion()
     @test d32["f"] === D["f"]
 
     # Test Float64 conversion
-    d64 = OPFGenerator.convert_float_data(D, Float64)
+    d64 = PGLearn.convert_float_data(D, Float64)
     @test isa(d64, Dict{String,Any})
     @test d64["a"] === 1
     @test d64["b"] === 2.0
@@ -50,8 +50,8 @@ function test_float_conversion()
     @test d64["f"] === D["f"]
 
     # Test argument sanity checks
-    @test_throws ErrorException OPFGenerator.convert_float_data(Dict{Int,Any}(), Float32)
-    @test_throws ErrorException OPFGenerator.convert_float_data(Dict{String,Any}(), Int)
+    @test_throws ErrorException PGLearn.convert_float_data(Dict{Int,Any}(), Float32)
+    @test_throws ErrorException PGLearn.convert_float_data(Dict{String,Any}(), Int)
 
     return nothing
 end

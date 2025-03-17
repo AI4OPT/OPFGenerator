@@ -1,15 +1,15 @@
-using OPFGenerator: OPFData
+using PGLearn: OPFData
 
 include("utils.jl")
 include("ptdf.jl")
 
-function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::String)
+function test_opf_pm(OPF::Type{<:PGLearn.AbstractFormulation}, casename::String)
     network = make_basic_network(pglib(casename))
     @testset "Full data" begin test_opf_pm(OPF, network) end
 
     network_drop = deepcopy(network)
 
-    is_bridge = OPFGenerator.bridges(OPFGenerator.OPFData(network_drop))
+    is_bridge = PGLearn.bridges(PGLearn.OPFData(network_drop))
     non_bridge = [network_drop["branch"]["$e"] for (e, b) in enumerate(is_bridge) if !b]
     drop_branch = argmin(branch->branch["rate_a"], non_bridge)["index"]
     network_drop["branch"]["$drop_branch"]["br_status"] = 0
@@ -17,7 +17,7 @@ function test_opf_pm(OPF::Type{<:OPFGenerator.AbstractFormulation}, casename::St
     drop_gen = argmin(gen->gen[2]["pmax"], network_drop["gen"])[1]
     network_drop["gen"]["$drop_gen"]["gen_status"] = 0
 
-    if OPF == OPFGenerator.EconomicDispatch
+    if OPF == PGLearn.EconomicDispatch
         @test_throws ErrorException test_opf_pm(OPF, network_drop) # ED does not yet support branch status
     else
         @testset "Branch/Gen Status" begin test_opf_pm(OPF, network_drop) end
@@ -27,9 +27,9 @@ end
 """
     test_opf_pm(OPF, data)
 
-Build & solve opf using OPFGenerator, and compare against PowerModels implementation.
+Build & solve opf using PGLearn, and compare against PowerModels implementation.
 """
-function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: OPFGenerator.AbstractFormulation}
+function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: PGLearn.AbstractFormulation}
     error("""`test_opf_pm($(OPF), data)` not implemented.
     You must implement a function with the following signature:
         function test_opf_pm(::Type{OPF}, data::Dict) where{OPF <: $(OPF)}
@@ -51,8 +51,8 @@ include("ed.jl")
 include("quad_obj.jl")
 
 @testset "OPF" begin
-    @testset "$(OPF)" for OPF in OPFGenerator.SUPPORTED_OPF_MODELS
-        if OPF == OPFGenerator.SDPOPF
+    @testset "$(OPF)" for OPF in PGLearn.SUPPORTED_OPF_MODELS
+        if OPF == PGLearn.SDPOPF
             cases = PGLIB_CASES_SDP
         else
             cases = PGLIB_CASES

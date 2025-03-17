@@ -1,4 +1,4 @@
-using OPFGenerator
+using PGLearn
 using HDF5
 using JSON
 using TOML
@@ -9,7 +9,7 @@ main(fconfig::AbstractString) = main(TOML.parsefile(fconfig))
 
 function main(config::Dict)
     export_dir = pop!(config, "export_dir")
-    case_file, case_name = OPFGenerator._get_case_info(config)
+    case_file, case_name = PGLearn._get_case_info(config)
     all_h5_files = filter(endswith(".h5"), readdir(joinpath(export_dir, "res_h5"), join=true))
 
     slurm_config = pop!(config, "slurm")
@@ -26,13 +26,13 @@ function main(config::Dict)
         end
         
         # Merge minibatches, sort, and export to disk
-        D = OPFGenerator._merge_h5(Ds)
+        D = PGLearn._merge_h5(Ds)
         # _dedupe_and_sort_h5! expects the input dictionary to have a D["meta"]["seed"],
         #     so we artificially create this for input data...
         if dataset_name == "input"
             D["meta"] = Dict("seed" => copy(D["seed"]))
         end
-        OPFGenerator._dedupe_and_sort_h5!(D)
+        PGLearn._dedupe_and_sort_h5!(D)
         # ... and delete it here
         if dataset_name == "input"
             delete!(D, "meta")
@@ -40,12 +40,12 @@ function main(config::Dict)
 
         # Save dataset to disk
         if dataset_name == "input"
-            OPFGenerator.save_h5(joinpath(export_dir, "input.h5"), D)
+            PGLearn.save_h5(joinpath(export_dir, "input.h5"), D)
         else
             mkpath(joinpath(export_dir, dataset_name))
-            OPFGenerator.save_h5(joinpath(export_dir, dataset_name, "meta.h5"), D["meta"])
-            OPFGenerator.save_h5(joinpath(export_dir, dataset_name, "primal.h5"), D["primal"])
-            OPFGenerator.save_h5(joinpath(export_dir, dataset_name, "dual.h5"), D["dual"])
+            PGLearn.save_h5(joinpath(export_dir, dataset_name, "meta.h5"), D["meta"])
+            PGLearn.save_h5(joinpath(export_dir, dataset_name, "primal.h5"), D["primal"])
+            PGLearn.save_h5(joinpath(export_dir, dataset_name, "dual.h5"), D["dual"])
         end
 
         GC.gc()

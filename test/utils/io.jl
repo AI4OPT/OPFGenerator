@@ -10,7 +10,7 @@ This function checks that `String` and all subtypes of `HDF5_SUPPORTED_NUMBER_TY
 Tests are also conducted for 1-, 2- and 3-dimensional `Array` of those types.
 """
 function test_h5_supported_types()
-    supported_number_types = Base.uniontypes(OPFGenerator.HDF5_SUPPORTED_NUMBER_TYPES)
+    supported_number_types = Base.uniontypes(PGLearn.HDF5_SUPPORTED_NUMBER_TYPES)
     supported_types = [String; supported_number_types]
 
     # Check that all HDF5-supported types are indeed supported
@@ -20,14 +20,14 @@ function test_h5_supported_types()
 
         # First check scalars
         d = Dict("$T" => one(T))
-        @test_logs OPFGenerator.save_h5(f5, d)
+        @test_logs PGLearn.save_h5(f5, d)
         d_ = HDF5.h5read(f5, "/")
         @test d == d_
 
         # Now do the same thing with arrays (up to 3-dimensional arrays)
         for N in 1:3
             v = Dict("$T" => ones(T, NTuple{N}(ones(Int, N))))
-            @test_logs OPFGenerator.save_h5(f5, v)
+            @test_logs PGLearn.save_h5(f5, v)
             h = HDF5.h5read(f5, "/")
             @test h == v
         end
@@ -48,25 +48,25 @@ function test_h5_precision_warning()
 
     msg = """Unsupported data type for writing to an HDF5 group: \"x\"::BigFloat.
     This value was converted to Float64, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, Dict("x" => x))
+    @test_logs (:warn, msg) PGLearn.save_h5(f5, Dict("x" => x))
     h = HDF5.h5read(f5, "/")
     @test h["x"] == convert(Float64, x)
 
     msg = """Unsupported data type for writing to an HDF5 group: \"z\"::Complex{BigFloat}.
     This value was converted to ComplexF64, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5,  Dict("z" => z))
+    @test_logs (:warn, msg) PGLearn.save_h5(f5,  Dict("z" => z))
     h = HDF5.h5read(f5, "/")
     @test h["z"] == convert(Complex{Float64}, z)
 
     msg = """Unsupported data type for writing to an HDF5 group: \"v\"::Vector{BigFloat}.
     This value was converted to Vector{Float64}, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5, Dict("v" => [x]))
+    @test_logs (:warn, msg) PGLearn.save_h5(f5, Dict("v" => [x]))
     h = HDF5.h5read(f5, "/")
     @test h["v"] == convert(Vector{Float64}, [x])
 
     msg = """Unsupported data type for writing to an HDF5 group: \"w\"::Vector{Complex{BigFloat}}.
     This value was converted to Vector{ComplexF64}, which may incur a loss of precision."""
-    @test_logs (:warn, msg) OPFGenerator.save_h5(f5,  Dict("w" => [z]))
+    @test_logs (:warn, msg) PGLearn.save_h5(f5,  Dict("w" => [z]))
     h = HDF5.h5read(f5, "/")
     @test h["w"] == convert(Vector{Complex{Float64}}, [z])
 
@@ -85,12 +85,12 @@ function test_h5_invalid_types()
  
     x = 1:4
     msg = "Unsupported data type for writing to an HDF5 group: \"key\"::UnitRange{Int64}."
-    @test_throws msg OPFGenerator.save_h5(f5, Dict("key" => x))
+    @test_throws msg PGLearn.save_h5(f5, Dict("key" => x))
 
     # Not converting JuMP status codes to String is a common mistale...
     st = MOI.OPTIMAL
     msg = "Unsupported data type for writing to an HDF5 group: \"termination_status\"::MathOptInterface.TerminationStatusCode."
-    @test_throws msg OPFGenerator.save_h5(f5, Dict("termination_status" => st))
+    @test_throws msg PGLearn.save_h5(f5, Dict("termination_status" => st))
 
     return nothing
 end
@@ -118,7 +118,7 @@ function test_h5_io()
             ),
         ),
     )
-    OPFGenerator.save_h5(f5, d)
+    PGLearn.save_h5(f5, d)
     h = HDF5.h5read(f5, "/")
     @test h == d
 end
@@ -128,9 +128,9 @@ function test_json_io()
     fjson = tempname()
 
     @testset "$ext" for ext in [".json", ".json.gz", ".json.bz2"]
-        OPFGenerator.save_json(fjson * ext, d)
+        PGLearn.save_json(fjson * ext, d)
         @test isfile(fjson * ext)
-        @test OPFGenerator.load_json(fjson * ext) == d
+        @test PGLearn.load_json(fjson * ext) == d
         rm(fjson * ext)
     end
 
@@ -140,9 +140,9 @@ function test_json_io()
         Unsupported JSON extension: \"$(basename(fjson*ext))\"
         Supported extensions are: \".json\", \".json.bz2\" and \".json.gz\".
         """
-        @test_throws msg OPFGenerator.save_json(fjson * ext, d)
+        @test_throws msg PGLearn.save_json(fjson * ext, d)
         @test !isfile(fjson * ext)
-        @test_throws msg OPFGenerator.load_json(fjson * ext)
+        @test_throws msg PGLearn.load_json(fjson * ext)
     end
 
     return nothing

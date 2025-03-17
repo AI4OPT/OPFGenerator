@@ -2,7 +2,7 @@
 
 ## Mathematical Formulation
 
-The DCOPF model considered in OPFGenerator is presented below.
+The DCOPF model considered in PGLearn is presented below.
 
 ```math
 \begin{align}
@@ -41,7 +41,7 @@ The DCOPF model considered in OPFGenerator is presented below.
 The objective function ``\eqref{model:dcopf:obj}`` minimizes the cost of active power generation.
 
 !!! todo
-    OPFGenerator currently supports only linear cost functions.
+    PGLearn currently supports only linear cost functions.
     Support for quadratic functions is planned for a later stage; please open an issue if 
     you would like to request this feature.
 

@@ -1,4 +1,4 @@
-function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
+function test_opfdata(data::PGLearn.OPFData, network::Dict{String,Any})
     ref = PowerModels.build_ref(network)[:it][:pm][:nw][0]
 
     @test data.N == length(network["bus"])
@@ -103,18 +103,18 @@ function test_opfdata(data::OPFGenerator.OPFData, network::Dict{String,Any})
         @test data.A == PowerModels.calc_basic_incidence_matrix(network)
     end
 
-    data_dict = OPFGenerator.to_dict(data)
+    data_dict = PGLearn.to_dict(data)
     @test keys(data_dict["A"]) == Set(["I", "J", "V", "M", "N"])
     @test keys(data_dict["Ag"]) == Set(["I", "J", "V", "M", "N"])
 
     return nothing
 end
 
-function test_voltage_phasor_bounds(data::OPFGenerator.OPFData, network::Dict{String,Any})
+function test_voltage_phasor_bounds(data::PGLearn.OPFData, network::Dict{String,Any})
     buspairs = PowerModels.calc_buspair_parameters(network["bus"], network["branch"])
     bp_wr_min, bp_wr_max, bp_wi_min, bp_wi_max = PowerModels.ref_calc_voltage_product_bounds(buspairs)
 
-    wr_min, wr_max, wi_min, wi_max = OPFGenerator.compute_voltage_phasor_bounds(data)
+    wr_min, wr_max, wi_min, wi_max = PGLearn.compute_voltage_phasor_bounds(data)
 
     for e in 1:data.E
         if data.branch_status[e]
@@ -137,7 +137,7 @@ function test_voltage_phasor_bounds_scalar()
     
     # Symmetric bounds
     @testset "symmetric bounds" begin
-        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/3, pi/3)
+        wrmin, wrmax, wimin, wimax = PGLearn.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/3, pi/3)
         @test wrmin ≈ 0.81 * cos(pi/3)
         @test wrmax ≈ 1.21 * 1.0
         @test wimin ≈ -1.21 * sin(pi/3)
@@ -146,7 +146,7 @@ function test_voltage_phasor_bounds_scalar()
 
     # Non-symmetric bounds, but still different signs
     @testset "asynmetric bounds" begin
-        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/6, pi/3)
+        wrmin, wrmax, wimin, wimax = PGLearn.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/6, pi/3)
         @test wrmin ≈ 0.81 * cos(pi/3)
         @test wrmax ≈ 1.21
         @test wimin ≈ -1.21 * sin(pi/6)
@@ -155,7 +155,7 @@ function test_voltage_phasor_bounds_scalar()
 
     # Positive angles
     @testset "positive angles" begin
-        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, pi/6, pi/3)
+        wrmin, wrmax, wimin, wimax = PGLearn.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, pi/6, pi/3)
         @test wrmin ≈ 0.81 * cos(pi/3)
         @test wrmax ≈ 1.21 * cos(pi/6)
         @test wimin ≈ 0.81 * sin(pi/6)
@@ -164,7 +164,7 @@ function test_voltage_phasor_bounds_scalar()
 
     # Negative angles
     @testset "negative angles" begin
-        wrmin, wrmax, wimin, wimax = OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/3, -pi/4)
+        wrmin, wrmax, wimin, wimax = PGLearn.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi/3, -pi/4)
         @test wrmin ≈ 0.81 * cos(pi/3)
         @test wrmax ≈ 1.21 * cos(pi/4)
         @test wimin ≈ -1.21 * sin(pi/3)
@@ -173,8 +173,8 @@ function test_voltage_phasor_bounds_scalar()
 
     # Invalid bounds
     @testset "invalid bounds" begin
-        @test_throws DomainError OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi, 0.0)
-        @test_throws DomainError OPFGenerator.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, 0.0, pi/2 + 0.01)
+        @test_throws DomainError PGLearn.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, -pi, 0.0)
+        @test_throws DomainError PGLearn.compute_voltage_phasor_bounds(vfmin, vfmax, vtmin, vtmax, 0.0, pi/2 + 0.01)
     end
 
     return nothing

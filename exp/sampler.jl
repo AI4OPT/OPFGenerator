@@ -20,7 +20,7 @@ const LIB_COINHSL = HSL_jll.libhsl_path
 
 using MathOptSymbolicAD
 
-using OPFGenerator
+using PGLearn
 
 const DEFAULT_FLOAT_PRECISION = Float32
 
@@ -41,7 +41,7 @@ _optimizer_value_type(m::JuMP.AbstractModel) = JuMP.value_type(m)
 
 function build_and_solve_model(data, config, dataset_name)
     opf_config = config["OPF"][dataset_name]
-    OPF = OPFGenerator.OPF2TYPE[opf_config["type"]]
+    OPF = PGLearn.OPF2TYPE[opf_config["type"]]
     solver_config = get(opf_config, "solver", Dict())
 
     if solver_config["name"] == "Ipopt"
@@ -55,16 +55,16 @@ function build_and_solve_model(data, config, dataset_name)
     )
     build_kwargs = Dict(Symbol(k) => v for (k, v) in get(opf_config, "kwargs", Dict()))
 
-    tbuild = @elapsed opf = OPFGenerator.build_opf(OPF, data, solver;
+    tbuild = @elapsed opf = PGLearn.build_opf(OPF, data, solver;
         T=_optimizer_value_type(solver.optimizer_constructor),
         build_kwargs...
     )
 
     set_silent(opf.model)
     
-    OPFGenerator.solve!(opf)
+    PGLearn.solve!(opf)
 
-    time_extract = @elapsed res = OPFGenerator.extract_result(opf)
+    time_extract = @elapsed res = PGLearn.extract_result(opf)
     
     res["meta"]["build_time"] = tbuild
     res["meta"]["extract_time"] = time_extract
@@ -101,16 +101,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @info "Floating-point data will be exported in `$(float_type)`"
 
     # Dummy run (for pre-compilation)
-    data0 = OPFGenerator.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
-    opf_sampler0 = OPFGenerator.SimpleOPFSampler(data0, config["sampler"])
+    data0 = PGLearn.OPFData(make_basic_network(pglib("pglib_opf_case14_ieee")))
+    opf_sampler0 = PGLearn.SimpleOPFSampler(data0, config["sampler"])
     rand!(MersenneTwister(1), opf_sampler0, data0)
     main(data0, config)
 
     # Load reference data and setup OPF sampler
-    case_file, case_name = OPFGenerator._get_case_info(config)
+    case_file, case_name = PGLearn._get_case_info(config)
     isfile(case_file) || error("Reference case file not found: $(case_file)")
-    data = OPFGenerator.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
-    opf_sampler = OPFGenerator.SimpleOPFSampler(data, config["sampler"])
+    data = PGLearn.OPFData(make_basic_network(PowerModels.parse_file(case_file)))
+    opf_sampler = PGLearn.SimpleOPFSampler(data, config["sampler"])
 
     # Data info
     N, E, L, G = data.N, data.E, data.L, data.G
@@ -177,12 +177,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     # Tensorize everything in preparation for saving to disk
     for (k1, v1) in D["input"]
-        D["input"][k1] = OPFGenerator.tensorize(v1)
+        D["input"][k1] = PGLearn.tensorize(v1)
     end
     for dataset_name in OPFs
         d = D[dataset_name]
         for (k1, v1) in d, (k2, v2) in v1
-            d[k1][k2] = OPFGenerator.tensorize(v2)
+            d[k1][k2] = PGLearn.tensorize(v2)
         end
         # Track random seed in dataset meta info, to simplify for post-processing
         d["meta"]["seed"] = copy(D["input"]["seed"])
@@ -193,8 +193,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
         filepath = joinpath(config["export_dir"], "res_h5", "$(case_name)_$(k)_s$(smin)-s$(smax).h5")
         mkpath(dirname(filepath))
         # Convert floating-point data before exporting
-        v_ = OPFGenerator.convert_float_data(v, float_type)
-        th5write = @elapsed OPFGenerator.save_h5(filepath, v_)
+        v_ = PGLearn.convert_float_data(v, float_type)
+        th5write = @elapsed PGLearn.save_h5(filepath, v_)
     end
 
     return nothing

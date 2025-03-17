@@ -1,5 +1,5 @@
-function test_opf_pm(::Type{OPFGenerator.ACOPF}, data::Dict)
-    OPF = OPFGenerator.ACOPF
+function test_opf_pm(::Type{PGLearn.ACOPF}, data::Dict)
+    OPF = PGLearn.ACOPF
     # Sanity checks
     data["basic_network"] || error("Input data must be in basic format to test")
     N = length(data["bus"])
@@ -10,11 +10,11 @@ function test_opf_pm(::Type{OPFGenerator.ACOPF}, data::Dict)
     solver = OPT_SOLVERS[OPF]
     res_pm = PM.solve_opf(data, PM.ACPPowerModel, solver)
 
-    # Build and solve OPF with OPFGenerator
+    # Build and solve OPF with PGLearn
     solver = OPT_SOLVERS[OPF]
-    opf = OPFGenerator.build_opf(OPF, data, solver)
-    OPFGenerator.solve!(opf)
-    res = OPFGenerator.extract_result(opf)
+    opf = PGLearn.build_opf(OPF, data, solver)
+    PGLearn.solve!(opf)
+    res = PGLearn.extract_result(opf)
     @test res["meta"]["formulation"] == string(OPF)
     
     # Check that problem was solved

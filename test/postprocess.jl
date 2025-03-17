@@ -1,13 +1,13 @@
 function test_tensorize()
     # Vector of scalars
     V = [1.0, 2.0, 3.0, 4.0]
-    @test OPFGenerator.tensorize(V) == [1.0, 2.0, 3.0, 4.0]
+    @test PGLearn.tensorize(V) == [1.0, 2.0, 3.0, 4.0]
     V = ["1.0", "2.0", "3.0", "4.0", "e", "f"]
-    @test OPFGenerator.tensorize(V) == ["1.0", "2.0", "3.0", "4.0", "e", "f"]
+    @test PGLearn.tensorize(V) == ["1.0", "2.0", "3.0", "4.0", "e", "f"]
     
     # Vector of vectors
     V = [(10*i) .+ collect(1:4) for i in 1:3]
-    @test OPFGenerator.tensorize(V) == [
+    @test PGLearn.tensorize(V) == [
         11 21 31;
         12 22 32;
         13 23 33;
@@ -16,7 +16,7 @@ function test_tensorize()
 
     # Vector of matrices
     V = [(i .* ones(2, 3)) for i in 1:4]
-    M = OPFGenerator.tensorize(V)
+    M = PGLearn.tensorize(V)
     @test size(M) == (2, 3, 4)
     @test all(M[:, :, i] == V[i] for i in 1:4)
 
@@ -26,11 +26,11 @@ end
 function test_merge_h5_array()
     # Cannot merge empty collection
     V = Array{Float64,1}[]
-    @test_throws ErrorException OPFGenerator._merge_h5(V)
+    @test_throws ErrorException PGLearn._merge_h5(V)
 
     # Check that trying to merge arrays of wrong sizes yields an error
     V = [ones(1, 2, 3), ones(2, 1, 3)]
-    @test_throws DimensionMismatch OPFGenerator._merge_h5(V)
+    @test_throws DimensionMismatch PGLearn._merge_h5(V)
 
     # Merge arrays of multiple dimensions
     for N in 1:4
@@ -38,7 +38,7 @@ function test_merge_h5_array()
         V = [i .* ones(Float64, 1:N...) for i in 1:4]
 
         # Check for type stability
-        M = @inferred Array{Float64,N} OPFGenerator._merge_h5(V)
+        M = @inferred Array{Float64,N} PGLearn._merge_h5(V)
 
         # Checck output
         @test size(M) == (1:(N-1)..., 4*N)
@@ -54,7 +54,7 @@ function test_merge_h5_array()
         [100 * i1 + 10*i2 + (2+i3) for i1 in 1:2, i2 in 1:3, i3 in 1:4],
         [100 * i1 + 10*i2 + (6+i3) for i1 in 1:2, i2 in 1:3, i3 in 1:3],
     ]
-    M = OPFGenerator._merge_h5(V)
+    M = PGLearn._merge_h5(V)
     @test M == [100 * i1 + 10*i2 + i3 for i1 in 1:2, i2 in 1:3, i3 in 1:9]
 
     return nothing
@@ -84,7 +84,7 @@ function test_dedupe_sort_h5()
 
     # dedupe
     @testset "dedupe" begin
-    D_ = OPFGenerator._dedupe_h5!(deepcopy(D))
+    D_ = PGLearn._dedupe_h5!(deepcopy(D))
         @test D_["meta"]["seed"] == [1, 4, 3, 2]
         @test D_["primal"]["pg"] == [10.1, 40.1, 30.1, 20.1]
         @test D_["primal"]["qg"] == [11.1, 41.1, 31.1, 21.1]
@@ -100,7 +100,7 @@ function test_dedupe_sort_h5()
 
     # sort
     @testset "sort" begin
-        D_ = OPFGenerator._sort_h5!(deepcopy(D))
+        D_ = PGLearn._sort_h5!(deepcopy(D))
         @test D_["meta"]["seed"] == [1, 1, 2, 3, 3, 4]
         # we cannot guarantee that the order of repeated seeds is preserved,
         #   so we only check the integer parts 
@@ -119,7 +119,7 @@ function test_dedupe_sort_h5()
     
     # dedupe and sort
     @testset "dedupe and sort" begin
-        D_ = OPFGenerator._dedupe_and_sort_h5!(deepcopy(D))
+        D_ = PGLearn._dedupe_and_sort_h5!(deepcopy(D))
         # the dedupe part should keep only the first occurence of each seed,
         #   so here we do test with decimals values
         @test D_["meta"]["seed"] == [1, 2, 3, 4]

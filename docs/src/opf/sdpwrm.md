@@ -1,6 +1,6 @@
 # SDP-OPF
 
-The SDP-OPF model considered in OPFGenerator is presented below.
+The SDP-OPF model considered in PGLearn is presented below.
 
 ### Definitions
 Let ``\im`` be the imaginary unit. Let ``\cdot^{*}`` be the complex conjugate operator.
@@ -63,7 +63,7 @@ which is the set of positive semidefinite ``n \times n`` Hermitian matrices in t
 
 ## Mathematical formulation
 
-The SDP-OPF formulation in OPFGenerator is obtained through the change of variable ``\Wsdp = \V \V^{*}``; i.e., ``\Wsdp_{ij} = \V_{i} \V_{j}^{*}``.
+The SDP-OPF formulation in PGLearn is obtained through the change of variable ``\Wsdp = \V \V^{*}``; i.e., ``\Wsdp_{ij} = \V_{i} \V_{j}^{*}``.
 This change allows formulating AC-OPF so that constraints involving ``\Wsdp`` are linear in ``\Wsdp``.
 It is known that ``\Wsdp = \V \V^{*}`` for some ``\V`` if and only if ``\Wsdp \in \psdhermat^{N}`` and ``rank(\Wsdp) = 1``. By relaxing the rank constraint, a complex semidefinite program (SDP) relaxation of AC-OPF is obtained, where a positive semidefinite constraint requires ``\Wsdp \in \psdhermat^{N}``.
 
@@ -233,7 +233,7 @@ More details of the model can be found in [Qiu, G., Tanneau, M., & Van Hentenryc
 The objective function ``\eqref{eq:SDPOPF:objective}`` minimizes the cost of active power generation.
 
 !!! todo
-    OPFGenerator currently supports only linear cost functions.
+    PGLearn currently supports only linear cost functions.
     Support for quadratic functions is planned for a later stage; please open an issue if 
     you would like to request this feature.
 

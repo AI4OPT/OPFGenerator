@@ -1,6 +1,5 @@
-name = "OPFGenerator"
+name = "PGLearn"
 uuid = "5d2523b5-5e96-4b1c-8178-da2b93e9175f"
-authors = ["mtanneau3 <mtanneau3@gatech.edu>"]
 version = "0.1.0"
 
 [deps]

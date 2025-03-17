@@ -1,4 +1,4 @@
-using OPFGenerator: LazyPTDF, FullPTDF, OPFData, compute_flow!, ptdf_row
+using PGLearn: LazyPTDF, FullPTDF, OPFData, compute_flow!, ptdf_row
 
 function test_ptdf(network, data)
     N = length(network["bus"])

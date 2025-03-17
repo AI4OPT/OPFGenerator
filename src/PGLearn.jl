@@ -1,4 +1,4 @@
-module OPFGenerator
+module PGLearn
 
 using LinearAlgebra
 using Random

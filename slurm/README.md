@@ -1,6 +1,6 @@
-# OPFGenerator SLURM Job Submission and Output Guide
+# PGLearn SLURM Job Submission and Output Guide
 
-This guide provides instructions on how to use the `submit_jobs.jl` script to submit jobs to a SLURM HPC cluster for generating OPF problem instances with OPFGenerator, as well as details on the output structure.
+This guide provides instructions on how to use the `submit_jobs.jl` script to submit jobs to a SLURM HPC cluster for generating OPF problem instances with PGLearn, as well as details on the output structure.
 
 The script has three dependencies: `julia`, `gcc` (for sysimage), and `parallel` (for sampler). The file `env.sh` in the `slurm/template` directory contains a default environment setup which may need to be changed by the user. The user can either edit this file directly or create a new one and provide the path to it in the configuration file with the `slurm.env_path` option. The script will be sourced (executed in the job's main shell) before running each of the jobs.
 

@@ -1,6 +1,6 @@
 # SOC-OPF
 
-The SOC-OPF model considered in OPFGenerator is presented below.
+The SOC-OPF model considered in PGLearn is presented below.
 
 ### Definitions
 
@@ -23,7 +23,7 @@ The _second order cone_ and _rotated second-order cone_ of order ``n`` are defin
 
 ## Mathematical formulation
 
-The SOC-OPF formulation in OPFGenerator is the Jabr relaxation of AC-OPF.
+The SOC-OPF formulation in PGLearn is the Jabr relaxation of AC-OPF.
 The formulation is obtained through the change of variable
 ```math
 \begin{align*}
@@ -200,7 +200,7 @@ The resulting SOC-OPF model is presented below.
 The objective function ``\eqref{eq:SOCOPF:objective}`` minimizes the cost of active power generation.
 
 !!! todo
-    OPFGenerator currently supports only linear cost functions.
+    PGLearn currently supports only linear cost functions.
     Support for quadratic functions is planned for a later stage; please open an issue if 
     you would like to request this feature.
 

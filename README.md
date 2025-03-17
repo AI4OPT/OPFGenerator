@@ -4,14 +4,14 @@ Copyright Georgia Tech 2022-2024
 [![codecov][codecov-img]][codecov-url]
 [![docs-dev][docs-dev-img]][docs-dev-url]
  
-[build-img]: https://github.com/ai4opt/OPFGenerator/actions/workflows/ci.yml/badge.svg?branch=main
-[build-url]: https://github.com/ai4opt/OPFGenerator/actions?query=workflow%3ACI
-[codecov-img]: https://codecov.io/gh/AI4OPT/OPFGenerator/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/AI4OPT/OPFGenerator
+[build-img]: https://github.com/ai4opt/PGLearn.jl/actions/workflows/ci.yml/badge.svg?branch=main
+[build-url]: https://github.com/ai4opt/PGLearn.jl/actions?query=workflow%3ACI
+[codecov-img]: https://codecov.io/gh/AI4OPT/PGLearn.jl/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/AI4OPT/PGLearn.jl
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://ai4opt.github.io/OPFGenerator/dev/
+[docs-dev-url]: https://ai4opt.github.io/PGLearn.jl/dev/
 
-# OPFGenerator
+# PGLearn
 Instance generator for various OPF problems.
 
 ## Installation instructions
@@ -21,26 +21,26 @@ This repository is a non-registered Julia package.
 * Option 1: install as a Julia package. You can use it, but not modify the code
     ```julia
     using Pkg
-    Pkg.add(url="git@github.com:AI4OPT/OPFGenerator.git")
+    Pkg.add(url="git@github.com:AI4OPT/PGLearn.jl.git")
     ```
 
 * Option 2: clone the repository. Use this if you want to change the code
     ```bash
-    git clone git@github.com:AI4OPT/OPFGenerator.git
+    git clone git@github.com:AI4OPT/PGLearn.jl.git
     ```
     To use the package after cloning the repo
     ```bash
-    $ cd OPFGenerator
+    $ cd PGLearn
     $ julia --project=.
-    julia> using OPFGenerator
+    julia> using PGLearn
     ```
 
     If you are modifying the source code, it is recommened to use the package [`Revise.jl`](https://github.com/timholy/Revise.jl)
     so that you can use the changes without having to start Julia.
-    Make sure you load `Revise` before loading `OPFGenerator` in your julia session.
+    Make sure you load `Revise` before loading `PGLearn` in your julia session.
     ```julia
     using Revise
-    using OPFGenerator
+    using PGLearn
     ```
 
 ### Using HSL solvers (ma27, ma57)
@@ -62,20 +62,20 @@ solver.attributes.linear_solver = "ma27"
 
 ```julia
 using PGLib, PowerModels
-using OPFGenerator
+using PGLearn
 using Ipopt
 
 # Load data from PGLib case
 pm_network = PowerModels.make_basic_network(pglib("14_ieee"))
-data = OPFGenerator.OPFData(pm_network)
+data = PGLearn.OPFData(pm_network)
 
 # Build OPF optimization model
 # To switch formulations, replace ACOPF with, e.g., DCOPF or SOCOPF
-opf = OPFGenerator.build_opf(OPFGenerator.ACOPF, data, Ipopt.Optimizer)
+opf = PGLearn.build_opf(PGLearn.ACOPF, data, Ipopt.Optimizer)
 
 # Solve and extract result
-OPFGenerator.solve!(opf)
-res = OPFGenerator.extract_result(opf)
+PGLearn.solve!(opf)
+res = PGLearn.extract_result(opf)
 ```
 
 
@@ -84,11 +84,11 @@ res = OPFGenerator.extract_result(opf)
 ```julia
 using Random 
 using PGLib, PowerModels
-using OPFGenerator
+using PGLearn
 
 # Load data from PGLib case
 pm_network = PowerModels.make_basic_network(pglib("14_ieee"))
-data = OPFGenerator.OPFData(pm_network)
+data = PGLearn.OPFData(pm_network)
 
 # Load scaler using global scaling + uncorrelated LogNormal noise
 config = Dict(
@@ -115,7 +115,7 @@ new_data.pd[1]  # new
 To generate multiple instances, run the above code in a loop
 ```julia
 dataset = [
-    OPFGenerator.rand(rng, opf_sampler)
+    PGLearn.rand(rng, opf_sampler)
     for i in 1:100
 ]
 ```
